@@ -10,7 +10,7 @@ interface SerialPortOptions {
     baudRate?: number;
     rtscts?: boolean;
     path?: string;
-    adapter?: 'zstack' | 'deconz' | 'zigate' | 'ezsp' | 'ember' | 'zboss' | 'auto';
+    adapter?: 'zstack' | 'deconz' | 'zigate' | 'ezsp' | 'ember' | 'zboss' | 'blz' | 'auto';
 }
 
 interface AdapterOptions {
