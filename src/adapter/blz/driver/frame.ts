@@ -1,10 +1,9 @@
 /* istanbul ignore file */
 
 import {logger} from '../../../utils/logger';
+const NS = 'zh:blz:frame';
 
-const NS = 'zh:zigate:frame';
-
-enum ZiGateFrameChunkSize {
+enum BlzFrameChunkSize {
     UInt8 = 1,
     UInt16,
     UInt32,
@@ -21,22 +20,19 @@ const hasStopByte = (stopByte: number, frame: Buffer): boolean => {
 
 const combineBytes = (byte: number, idx: number, frame: number[]): [number, number] => {
     const nextByte = frame[idx + 1];
-
     return [byte, nextByte];
 };
-// maybe any
+
 const removeDuplicate = (_: unknown, idx: number, frame: number[][]): boolean => {
     if (idx === 0) {
         return true;
     }
-
     const [first] = frame[idx - 1];
-
-    return first !== 0x2;
+    return first !== 0x07;
 };
 
 const decodeBytes = (bytesPair: [number, number]): number => {
-    return bytesPair[0] === 0x2 ? bytesPair[1] ^ 0x10 : bytesPair[0];
+    return bytesPair[0] === 0x07 ? bytesPair[1] ^ 0x10 : bytesPair[0];
 };
 
 const readBytes = (bytes: Buffer): number => {
@@ -53,21 +49,20 @@ const xor = (checksum: number, byte: number): number => {
 
 const decodeFrame = (frame: Buffer): Buffer => {
     const arrFrame = Array.from(frame).map(combineBytes).filter(removeDuplicate).map(decodeBytes);
-
     return Buffer.from(arrFrame);
 };
 
-const getFrameChunk = (frame: Buffer, pos: number, size: ZiGateFrameChunkSize): Buffer => {
+const getFrameChunk = (frame: Buffer, pos: number, size: BlzFrameChunkSize): Buffer => {
     return frame.slice(pos, pos + size);
 };
 
-export default class ZiGateFrame {
-    static readonly START_BYTE = 0x1;
-    static readonly STOP_BYTE = 0x3;
+export default class BlzFrame {
+    static readonly START_BYTE = 0x42;
+    static readonly STOP_BYTE = 0x4C;
 
-    msgCodeBytes: Buffer = Buffer.alloc(ZiGateFrameChunkSize.UInt16);
-    msgLengthBytes: Buffer = Buffer.alloc(ZiGateFrameChunkSize.UInt16);
-    checksumBytes: Buffer = Buffer.alloc(ZiGateFrameChunkSize.UInt8);
+    msgCodeBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt16);
+    msgLengthBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt16);
+    checksumBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt8);
     msgPayloadBytes: Buffer = Buffer.alloc(0);
     rssiBytes: Buffer = Buffer.alloc(0);
 
@@ -76,12 +71,11 @@ export default class ZiGateFrame {
     constructor(frame?: Buffer) {
         if (frame !== undefined) {
             const decodedFrame = decodeFrame(frame);
-            // logger.debug(`decoded frame >>> %o`, decodedFrame, NS);
-            // Due to ZiGate incoming frames with erroneous msg length
+
             this.msgLengthOffset = -1;
 
-            if (!ZiGateFrame.isValid(frame)) {
-                logger.error('Provided frame is not a valid ZiGate frame.', NS);
+            if (!BlzFrame.isValid(frame)) {
+                logger.error('Provided frame is not a valid BlzFrame.', NS);
                 return;
             }
 
@@ -101,7 +95,7 @@ export default class ZiGateFrame {
     }
 
     static isValid(frame: Buffer): boolean {
-        return hasStartByte(ZiGateFrame.START_BYTE, frame) && hasStopByte(ZiGateFrame.STOP_BYTE, frame);
+        return hasStartByte(BlzFrame.START_BYTE, frame) && hasStopByte(BlzFrame.STOP_BYTE, frame);
     }
 
     buildChunks(frame: Buffer): void {
@@ -109,24 +103,24 @@ export default class ZiGateFrame {
         this.msgLengthBytes = getFrameChunk(frame, 3, this.msgLengthBytes.length);
         this.checksumBytes = getFrameChunk(frame, 5, this.checksumBytes.length);
         this.msgPayloadBytes = getFrameChunk(frame, 6, this.readMsgLength());
-        this.rssiBytes = getFrameChunk(frame, 6 + this.readMsgLength(), ZiGateFrameChunkSize.UInt8);
+        this.rssiBytes = getFrameChunk(frame, 6 + this.readMsgLength(), BlzFrameChunkSize.UInt8);
     }
 
     toBuffer(): Buffer {
         const length = 5 + this.readMsgLength();
-
         const escapedData = this.escapeData(
             Buffer.concat([this.msgCodeBytes, this.msgLengthBytes, this.checksumBytes, this.msgPayloadBytes], length),
         );
 
-        return Buffer.concat([Uint8Array.from([ZiGateFrame.START_BYTE]), escapedData, Uint8Array.from([ZiGateFrame.STOP_BYTE])]);
+        return Buffer.concat([Uint8Array.from([BlzFrame.START_BYTE]), escapedData, Uint8Array.from([BlzFrame.STOP_BYTE])]);
     }
 
     escapeData(data: Buffer): Buffer {
         let encodedLength = 0;
         const encodedData = Buffer.alloc(data.length * 2);
         const FRAME_ESCAPE_XOR = 0x10;
-        const FRAME_ESCAPE = 0x02;
+        const FRAME_ESCAPE = 0x07;
+
         for (const b of data) {
             if (b <= FRAME_ESCAPE_XOR) {
                 encodedData[encodedLength++] = FRAME_ESCAPE;
@@ -135,6 +129,7 @@ export default class ZiGateFrame {
                 encodedData[encodedLength++] = b;
             }
         }
+
         return encodedData.slice(0, encodedLength);
     }
 
@@ -142,7 +137,7 @@ export default class ZiGateFrame {
         return readBytes(this.msgCodeBytes);
     }
 
-    writeMsgCode(msgCode: number): ZiGateFrame {
+    writeMsgCode(msgCode: number): BlzFrame {
         writeBytes(this.msgCodeBytes, msgCode);
         this.writeChecksum();
         return this;
@@ -152,7 +147,7 @@ export default class ZiGateFrame {
         return readBytes(this.msgLengthBytes) + this.msgLengthOffset;
     }
 
-    writeMsgLength(msgLength: number): ZiGateFrame {
+    writeMsgLength(msgLength: number): BlzFrame {
         writeBytes(this.msgLengthBytes, msgLength);
         return this;
     }
@@ -161,7 +156,7 @@ export default class ZiGateFrame {
         return readBytes(this.checksumBytes);
     }
 
-    writeMsgPayload(msgPayload: Buffer): ZiGateFrame {
+    writeMsgPayload(msgPayload: Buffer): BlzFrame {
         this.msgPayloadBytes = Buffer.from(msgPayload);
         this.writeMsgLength(msgPayload.length);
         this.writeChecksum();
@@ -172,7 +167,7 @@ export default class ZiGateFrame {
         return readBytes(this.rssiBytes);
     }
 
-    writeRSSI(rssi: number): ZiGateFrame {
+    writeRSSI(rssi: number): BlzFrame {
         this.rssiBytes = Buffer.from([rssi]);
         this.writeChecksum();
         return this;

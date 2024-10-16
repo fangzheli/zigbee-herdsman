@@ -1,4 +1,4 @@
-import {ZiGateCommandCode, ZiGateMessageCode, ZiGateObjectPayload} from './constants';
+import {BlzCommandCode, BlzMessageCode, ZiGateObjectPayload} from './constants';
 import ParameterType from './parameterType';
 
 export interface PermitJoinPayload extends ZiGateObjectPayload {
@@ -20,234 +20,116 @@ export interface RawAPSDataRequestPayload extends ZiGateObjectPayload {
     data: Buffer;
 }
 
-export interface ZiGateCommandParameter {
+export interface BlzCommandParameter {
     name: string;
     parameterType: ParameterType;
 }
 
-export interface ZiGateCommandType {
-    request: ZiGateCommandParameter[];
-    response?: ZiGateResponseMatcher[];
+export interface BlzCommandType {
+    request: BlzCommandParameter[];
+    response?: BlzResponseMatcher[];
     waitStatus?: boolean;
 }
 
-export interface ZiGateResponseMatcherRule {
+export interface BlzResponseMatcherRule {
     receivedProperty: string;
-    matcher: (expected: string | number | ZiGateMessageCode, received: string | number | ZiGateMessageCode) => boolean;
-    expectedProperty?: string; // or
-    expectedExtraParameter?: string; // or
-    value?: string | number | ZiGateMessageCode;
+    matcher: (expected: string | number, received: string | number) => boolean;
+    expectedProperty?: string;
+    expectedExtraParameter?: string;
+    value?: string | number;
 }
 
-/* istanbul ignore next */
-export function equal(expected: string | number | ZiGateMessageCode, received: string | number | ZiGateMessageCode): boolean {
+export function equal(expected: string | number, received: string | number): boolean {
     return expected === received;
 }
 
-/* istanbul ignore next */
-export function notEqual(expected: string | number | ZiGateMessageCode, received: string | number | ZiGateMessageCode): boolean {
-    return expected !== received;
-}
+export type BlzResponseMatcher = BlzResponseMatcherRule[];
 
-export type ZiGateResponseMatcher = ZiGateResponseMatcherRule[];
-
-/* istanbul ignore next */
-export const ZiGateCommand: {[key: string]: ZiGateCommandType} = {
-    [ZiGateCommandCode.SetDeviceType]: {
-        // 0x0023
-        request: [
-            {name: 'deviceType', parameterType: ParameterType.UINT8}, //<device type: uint8_t>
-        ],
-    },
-    [ZiGateCommandCode.StartNetwork]: {
-        // 0x0024
-        request: [],
-        response: [[{receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.NetworkJoined}]],
-    },
-    [ZiGateCommandCode.StartNetworkScan]: {
-        request: [],
-    },
-    [ZiGateCommandCode.GetNetworkState]: {
-        // 0x0009
-        request: [],
-        response: [[{receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.NetworkState}]],
-    },
-    [ZiGateCommandCode.GetTimeServer]: {
-        // 0x0017
-        request: [],
-    },
-    [ZiGateCommandCode.ErasePersistentData]: {
-        // 0x0012
+export const BLZCommand: {[key: string]: BlzCommandType} = {
+    [BLZ_COMMAND_CODE.Reset]: {
         request: [],
         response: [
             [
-                {
-                    receivedProperty: 'code',
-                    matcher: equal,
-                    value: ZiGateMessageCode.RestartFactoryNew,
-                },
+                {receivedProperty: 'code', matcher: equal, value: 0x02}, // RESET_COMPLETE
             ],
         ],
-        waitStatus: false,
     },
-    [ZiGateCommandCode.Reset]: {
-        // 0x0011
-        request: [],
-        response: [
-            [
-                {
-                    receivedProperty: 'code',
-                    matcher: equal,
-                    value: ZiGateMessageCode.RestartNonFactoryNew,
-                },
-            ],
-            [
-                {
-                    receivedProperty: 'code',
-                    matcher: equal,
-                    value: ZiGateMessageCode.RestartFactoryNew,
-                },
-            ],
-        ],
-        waitStatus: false,
-    },
-    [ZiGateCommandCode.SetTXpower]: {
-        // SetTXpower
-        request: [{name: 'value', parameterType: ParameterType.UINT8}],
-    },
-    // [ZiGateCommandCode.ManagementLQI]: {
-    //     // 0x004E
-    //     request: [
-    //         {name: 'targetAddress', parameterType: ParameterType.UINT16}, //<Target Address : uint16_t>	Status
-    //         {name: 'startIndex', parameterType: ParameterType.UINT8}, //<Start Index : uint8_t>
-    //     ],
-    //     response: [
-    //         [
-    //             {
-    //                 receivedProperty: 'code',
-    //                 matcher: equal,
-    //                 value: ZiGateMessageCode.DataIndication,
-    //             },
-    //             {
-    //                 receivedProperty: 'payload.sourceAddress',
-    //                 matcher: equal,
-    //                 expectedProperty: 'payload.targetAddress',
-    //             },
-    //             {
-    //                 receivedProperty: 'payload.clusterID',
-    //                 matcher: equal,
-    //                 value: 0x8031,
-    //             },
-    //         ],
-    //     ],
-    // },
-    [ZiGateCommandCode.SetSecurityStateKey]: {
-        // 0x0022
+    [BLZ_COMMAND_CODE.GetValue]: {
         request: [
-            {name: 'keyType', parameterType: ParameterType.UINT8}, // 	<key type: uint8_t>
-            {name: 'key', parameterType: ParameterType.BUFFER}, //   <key: data>
-        ],
-    },
-    [ZiGateCommandCode.GetVersion]: {
-        request: [],
-        response: [[{receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.VersionList}]],
-    },
-    [ZiGateCommandCode.RawMode]: {
-        request: [{name: 'enabled', parameterType: ParameterType.INT8}],
-    },
-    [ZiGateCommandCode.SetExtendedPANID]: {
-        request: [
-            {name: 'panId', parameterType: ParameterType.BUFFER}, //<64-bit Extended PAN ID:uint64_t>
-        ],
-    },
-    [ZiGateCommandCode.SetChannelMask]: {
-        request: [
-            {name: 'channelMask', parameterType: ParameterType.UINT32}, //<channel mask:uint32_t>
-        ],
-    },
-
-    // [ZiGateCommandCode.ManagementLeaveRequest]: {
-    //     request: [
-    //         {name: 'shortAddress', parameterType: ParameterType.UINT16},
-    //         {name: 'extendedAddress', parameterType: ParameterType.IEEEADDR}, // <extended address: uint64_t>
-    //         {name: 'rejoin', parameterType: ParameterType.UINT8},
-    //         {name: 'removeChildren', parameterType: ParameterType.UINT8}, // <Remove Children: uint8_t>
-    //     ],
-    //     response: [
-    //         [
-    //             {
-    //                 receivedProperty: 'code',
-    //                 matcher: equal,
-    //                 value: ZiGateMessageCode.LeaveIndication,
-    //             },
-    //             {
-    //                 receivedProperty: 'payload.extendedAddress',
-    //                 matcher: equal,
-    //                 expectedProperty: 'payload.extendedAddress',
-    //             },
-    //         ],
-    //         [
-    //             {
-    //                 receivedProperty: 'code',
-    //                 matcher: equal,
-    //                 value: ZiGateMessageCode.ManagementLeaveResponse,
-    //             },
-    //             {
-    //                 receivedProperty: 'payload.sqn',
-    //                 matcher: equal,
-    //                 expectedProperty: 'status.seqApsNum',
-    //             },
-    //         ],
-    //     ],
-    // },
-
-    [ZiGateCommandCode.RemoveDevice]: {
-        request: [
-            {name: 'parentAddress', parameterType: ParameterType.IEEEADDR}, // <parent address: uint64_t>
-            {name: 'extendedAddress', parameterType: ParameterType.IEEEADDR}, // <extended address: uint64_t>
+            {name: 'valueId', parameterType: ParameterType.UINT8},
         ],
         response: [
             [
-                {
-                    receivedProperty: 'code',
-                    matcher: equal,
-                    value: ZiGateMessageCode.LeaveIndication,
-                },
-                {
-                    receivedProperty: 'payload.extendedAddress',
-                    matcher: equal,
-                    expectedProperty: 'payload.extendedAddress',
-                },
+                {receivedProperty: 'status', matcher: equal, value: 0x00}, // STATUS.SUCCESS
+                {receivedProperty: 'value', matcher: equal, expectedProperty: 'value'},
             ],
         ],
     },
-    // [ZiGateCommandCode.PermitJoin]: {
-    //     request: [
-    //         {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, //<target short address: uint16_t> -
-    //         // broadcast 0xfffc
-    //         {name: 'interval', parameterType: ParameterType.UINT8}, //<interval: uint8_t>
-    //         // 0 = Disable Joining
-    //         // 1 – 254 = Time in seconds to allow joins
-    //         // 255 = Allow all joins
-    //         // {name: 'TCsignificance', parameterType: ParameterType.UINT8}, //<TCsignificance: uint8_t>
-    //         // 0 = No change in authentication
-    //         // 1 = Authentication policy as spec
-    //     ],
-    // },
-    [ZiGateCommandCode.PermitJoinStatus]: {
+    [BLZ_COMMAND_CODE.SetValue]: {
         request: [
-            {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, //<target short address: uint16_t> -
-            // broadcast 0xfffc
-            {name: 'interval', parameterType: ParameterType.UINT8}, //<interval: uint8_t>
-            // 0 = Disable Joining
-            // 1 – 254 = Time in seconds to allow joins
-            // 255 = Allow all joins
-            {name: 'TCsignificance', parameterType: ParameterType.UINT8}, //<TCsignificance: uint8_t>
-            // 0 = No change in authentication
-            // 1 = Authentication policy as spec
+            {name: 'valueId', parameterType: ParameterType.UINT8},
+            {name: 'valueLength', parameterType: ParameterType.UINT8},
+            {name: 'value', parameterType: ParameterType.BUFFER},
         ],
-        response: [[{receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.PermitJoinStatus}]],
+        response: [
+            [
+                {receivedProperty: 'status', matcher: equal, value: 0x00}, // STATUS.SUCCESS
+            ],
+        ],
     },
+    [BLZ_COMMAND_CODE.GetNetworkState]: {
+        request: [],
+        response: [
+            [
+                {receivedProperty: 'networkState', matcher: equal, value: 0x00}, // NETWORK_STATE.OFFLINE
+            ],
+            [
+                {receivedProperty: 'networkState', matcher: equal, value: 0x01}, // NETWORK_STATE.CONNECTED
+            ],
+        ],
+    },
+    [BLZ_COMMAND_CODE.SendApsData]: {
+        request: [
+            {name: 'addressMode', parameterType: ParameterType.UINT8},
+            {name: 'shortAddress', parameterType: ParameterType.UINT16},
+            {name: 'sourceEndpoint', parameterType: ParameterType.UINT8},
+            {name: 'destinationEndpoint', parameterType: ParameterType.UINT8},
+            {name: 'profileID', parameterType: ParameterType.UINT16},
+            {name: 'clusterID', parameterType: ParameterType.UINT16},
+            {name: 'securityMode', parameterType: ParameterType.UINT8},
+            {name: 'radius', parameterType: ParameterType.UINT8},
+            {name: 'dataLength', parameterType: ParameterType.UINT8},
+            {name: 'data', parameterType: ParameterType.BUFFER},
+        ],
+        response: [
+            [
+                {receivedProperty: 'status', matcher: equal, value: 0x00}, // STATUS.SUCCESS
+            ],
+        ],
+    },
+    [BLZ_COMMAND_CODE.GetNwkSecurityInfos]: {
+        request: [],
+        response: [
+            [
+                {receivedProperty: 'status', matcher: equal, value: 0x00}, // STATUS.SUCCESS
+            ],
+            [
+                {receivedProperty: 'nwkKey', matcher: equal, expectedProperty: 'nwkKey'},
+            ],
+        ],
+    },
+    [BLZ_COMMAND_CODE.SetBootEntry]: {
+        request: [
+            {name: 'bootEntry', parameterType: ParameterType.BUFFER},
+        ],
+        response: [
+            [
+                {receivedProperty: 'status', matcher: equal, value: 0x00}, // STATUS.SUCCESS
+            ],
+        ],
+    },
+};
+
     [ZiGateCommandCode.RawAPSDataRequest]: {
         request: [
             {name: 'addressMode', parameterType: ParameterType.UINT8}, // <address mode: uint8_t>

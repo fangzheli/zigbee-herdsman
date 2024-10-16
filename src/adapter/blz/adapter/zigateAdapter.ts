@@ -15,10 +15,10 @@ import {RawAPSDataRequestPayload} from '../driver/commandType';
 import {ADDRESS_MODE, DEVICE_TYPE, ZiGateCommandCode, ZiGateMessageCode, ZPSNwkKeyState} from '../driver/constants';
 import Driver from '../driver/zigate';
 import ZiGateObject from '../driver/ziGateObject';
-import {patchZdoBuffaloBE} from './patchZdoBuffaloBE';
+// import {patchZdoBuffaloBE} from './patchZdoBuffaloBE';
 
-const NS = 'zh:zigate';
-const default_bind_group = 901; // https://github.com/Koenkk/zigbee-herdsman-converters/blob/master/lib/constants.js#L3
+const NS = 'zh:blz';
+const default_bind_group = 901; 
 interface WaitressMatcher {
     address?: number | string;
     endpoint: number;
@@ -42,7 +42,6 @@ class ZiGateAdapter extends Adapter {
         backupPath: string,
         adapterOptions: TsType.AdapterOptions,
     ) {
-        patchZdoBuffaloBE();
         super(networkOptions, serialPortOptions, backupPath, adapterOptions);
         this.hasZdoMessageOverhead = false; // false for requests, true for responses
         this.manufacturerID = Zcl.ManufacturerCode.RESERVED_10;
