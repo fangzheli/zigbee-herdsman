@@ -1,6 +1,6 @@
 // import {BuffaloZdo} from '../../../zspec/zdo/buffaloZdo';
 
-// class ZiGateZdoBuffalo extends BuffaloZdo {
+// class BlzZdoBuffalo extends BuffaloZdo {
 //     public writeUInt16(value: number): void {
 //         this.buffer.writeUInt16BE(value, this.position);
 //         this.position += 2;
@@ -21,7 +21,7 @@
 //  * Patch BuffaloZdo to use Big Endian variants.
 //  */
 // export const patchZdoBuffaloBE = (): void => {
-//     BuffaloZdo.prototype.writeUInt16 = ZiGateZdoBuffalo.prototype.writeUInt16;
-//     BuffaloZdo.prototype.writeUInt32 = ZiGateZdoBuffalo.prototype.writeUInt32;
-//     BuffaloZdo.prototype.writeIeeeAddr = ZiGateZdoBuffalo.prototype.writeIeeeAddr;
+//     BuffaloZdo.prototype.writeUInt16 = BlzZdoBuffalo.prototype.writeUInt16;
+//     BuffaloZdo.prototype.writeUInt32 = BlzZdoBuffalo.prototype.writeUInt32;
+//     BuffaloZdo.prototype.writeIeeeAddr = BlzZdoBuffalo.prototype.writeIeeeAddr;
 // };

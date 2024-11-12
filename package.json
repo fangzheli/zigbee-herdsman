@@ -70,7 +70,8 @@
         "zstack",
         "emberznet",
         "deconz",
-        "zigate"
+        "zigate",
+        "blz"
     ],
     "license": "MIT",
     "main": "dist/index.js",

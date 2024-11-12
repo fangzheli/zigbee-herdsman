@@ -1,14 +1,14 @@
 import {BlzMessageCode} from './constants';
 import ParameterType from './parameterType';
 
-export interface ZiGateMessageParameter {
+export interface BlzMessageParameter {
     name: string;
     parameterType: ParameterType;
     options?: object;
 }
 
-export interface ZiGateMessageType {
-    response: ZiGateMessageParameter[];
+export interface BlzMessageType {
+    response: BlzMessageParameter[];
 }
 
 

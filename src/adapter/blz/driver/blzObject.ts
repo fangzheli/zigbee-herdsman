@@ -1,76 +1,71 @@
-/* istanbul ignore file */
-
-import {logger} from '../../../utils/logger';
-import BuffaloZiGate, {BuffaloZiGateOptions} from './buffaloZiGate';
-import {ZiGateCommand, ZiGateCommandParameter, ZiGateCommandType} from './commandType';
-import {ZiGateCommandCode, ZiGateMessageCode, ZiGateObjectPayload} from './constants';
-import ZiGateFrame from './frame';
-import {ZiGateMessage, ZiGateMessageParameter} from './messageType';
+import { logger } from '../../../utils/logger';
+import BuffaloBlz, { BuffaloBlzOptions } from './buffaloBlz';
+import { BlzCommand, BlzCommandParameter, BlzCommandType } from './commandType';
+import { BlzCommandCode, BlzMessageCode, BlzObjectPayload } from './constants';
+import BlzFrame from './frame';
+import { BlzMessage, BlzMessageParameter } from './messageType';
 import ParameterType from './parameterType';
 
-type ZiGateCode = ZiGateCommandCode | ZiGateMessageCode;
-type ZiGateParameter = ZiGateCommandParameter | ZiGateMessageParameter;
+type BlzCode = BlzCommandCode | BlzMessageCode;
+type BlzParameter = BlzCommandParameter | BlzMessageParameter;
 
-const NS = 'zh:zigate:object';
+const NS = 'zh:blz:object';
 
 const BufferAndListTypes: ParameterType[] = [
     ParameterType.BUFFER,
     ParameterType.BUFFER8,
     ParameterType.BUFFER16,
-    ParameterType.BUFFER18,
     ParameterType.BUFFER32,
-    ParameterType.BUFFER42,
-    ParameterType.BUFFER100,
     ParameterType.LIST_UINT16,
     ParameterType.LIST_UINT8,
 ];
 
-class ZiGateObject {
-    private readonly _code: ZiGateCode;
-    private readonly _payload: ZiGateObjectPayload;
-    private readonly _parameters: ZiGateParameter[];
-    private readonly _frame?: ZiGateFrame;
+class BlzObject {
+    private readonly _code: BlzCode;
+    private readonly _payload: BlzObjectPayload;
+    private readonly _parameters: BlzParameter[];
+    private readonly _frame?: BlzFrame;
 
-    private constructor(code: ZiGateCode, payload: ZiGateObjectPayload, parameters: ZiGateParameter[], frame?: ZiGateFrame) {
+    private constructor(code: BlzCode, payload: BlzObjectPayload, parameters: BlzParameter[], frame?: BlzFrame) {
         this._code = code;
         this._payload = payload;
         this._parameters = parameters;
         this._frame = frame;
     }
 
-    get code(): ZiGateCode {
+    get code(): BlzCode {
         return this._code;
     }
 
-    get frame(): ZiGateFrame | undefined {
+    get frame(): BlzFrame | undefined {
         return this._frame;
     }
 
-    get payload(): ZiGateObjectPayload {
+    get payload(): BlzObjectPayload {
         return this._payload;
     }
 
-    get command(): ZiGateCommandType {
-        return ZiGateCommand[this._code];
+    get command(): BlzCommandType {
+        return BlzCommand[this._code];
     }
 
-    public static createRequest(commandCode: ZiGateCommandCode, payload: ZiGateObjectPayload): ZiGateObject {
-        const cmd = ZiGateCommand[commandCode];
+    public static createRequest(commandCode: BlzCommandCode, payload: BlzObjectPayload): BlzObject {
+        const cmd = BlzCommand[commandCode];
 
         if (!cmd) {
             throw new Error(`Command '${commandCode}' not found`);
         }
 
-        return new ZiGateObject(commandCode, payload, cmd.request);
+        return new BlzObject(commandCode, payload, cmd.request);
     }
 
-    public static fromZiGateFrame(frame: ZiGateFrame): ZiGateObject {
+    public static fromBlzFrame(frame: BlzFrame): BlzObject {
         const code = frame.readMsgCode();
-        return ZiGateObject.fromBuffer(code, frame.msgPayloadBytes, frame);
+        return BlzObject.fromBuffer(code, frame.msgPayloadBytes, frame);
     }
 
-    public static fromBuffer(code: number, buffer: Buffer, frame: ZiGateFrame): ZiGateObject {
-        const msg = ZiGateMessage[code];
+    public static fromBuffer(code: number, buffer: Buffer, frame: BlzFrame): BlzObject {
+        const msg = BlzMessage[code];
 
         if (!msg) {
             throw new Error(`Message '${code.toString(16)}' not found`);
@@ -83,19 +78,17 @@ class ZiGateObject {
 
         const payload = this.readParameters(buffer, parameters);
 
-        return new ZiGateObject(code, payload, parameters, frame);
+        return new BlzObject(code, payload, parameters, frame);
     }
 
-    private static readParameters(buffer: Buffer, parameters: ZiGateParameter[]): ZiGateObjectPayload {
-        const buffalo = new BuffaloZiGate(buffer);
-        const result: ZiGateObjectPayload = {};
+    private static readParameters(buffer: Buffer, parameters: BlzParameter[]): BlzObjectPayload {
+        const buffalo = new BuffaloBlz(buffer);
+        const result: BlzObjectPayload = {};
 
         for (const parameter of parameters) {
-            const options: BuffaloZiGateOptions = {};
+            const options: BuffaloBlzOptions = {};
 
             if (BufferAndListTypes.includes(parameter.parameterType)) {
-                // When reading a buffer, assume that the previous parsed parameter contains
-                // the length of the buffer
                 const lengthParameter = parameters[parameters.indexOf(parameter) - 1];
                 const length = result[lengthParameter.name];
 
@@ -123,23 +116,24 @@ class ZiGateObject {
         return result;
     }
 
-    public toZiGateFrame(): ZiGateFrame {
+    public toBlzFrame(): BlzFrame {
         const buffer = this.createPayloadBuffer();
-        const frame = new ZiGateFrame();
+        const frame = new BlzFrame();
         frame.writeMsgCode(this._code as number);
         frame.writeMsgPayload(buffer);
         return frame;
     }
 
     private createPayloadBuffer(): Buffer {
-        const buffalo = new BuffaloZiGate(Buffer.alloc(256)); // hardcode @todo
+        const buffalo = new BuffaloBlz(Buffer.alloc(256));
 
         for (const parameter of this._parameters) {
             const value = this._payload[parameter.name];
             buffalo.write(parameter.parameterType, value, {});
         }
+
         return buffalo.getWritten();
     }
 }
 
-export default ZiGateObject;
+export default BlzObject;

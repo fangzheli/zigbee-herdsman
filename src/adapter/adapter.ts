@@ -60,7 +60,7 @@ abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
         const {EZSPAdapter} = await import('./ezsp/adapter');
         const {EmberAdapter} = await import('./ember/adapter');
         const {ZBOSSAdapter} = await import('./zboss/adapter');
-        const {BLZAdapter} = await import('./blz/adapter');
+        const {BlzAdapter} = await import('./blz/adapter');
         type AdapterImplementation =
             | typeof ZStackAdapter
             | typeof DeconzAdapter
@@ -68,7 +68,7 @@ abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
             | typeof EZSPAdapter
             | typeof EmberAdapter
             | typeof ZBOSSAdapter
-            | typeof BLZAdapter;
+            | typeof BlzAdapter;
 
         let adapters: AdapterImplementation[];
         const adapterLookup = {
@@ -78,7 +78,7 @@ abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
             ezsp: EZSPAdapter,
             ember: EmberAdapter,
             zboss: ZBOSSAdapter,
-            blz: BLZAdapter,
+            blz: BlzAdapter,
         };
 
         if (serialPortOptions.adapter && serialPortOptions.adapter !== 'auto') {

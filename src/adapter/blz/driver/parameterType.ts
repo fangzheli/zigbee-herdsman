@@ -22,7 +22,7 @@ enum ParameterType {
     RAW = 102,
 
     // /!\ TODO missing but used in code, IDs assigned for proper compiling, NOT based on spec, needs updating
-    // /!\      some also don't have proper read/write in BuffaloZiGate
+    // /!\      some also don't have proper read/write in BuffaloBlz
     BUFFER_RAW = 247,
     MAYBE_UINT8 = 252,
     LOG_LEVEL = 253,

@@ -1,13 +1,13 @@
-import {BlzCommandCode, BlzMessageCode, ZiGateObjectPayload} from './constants';
+import {BlzCommandCode, BlzMessageCode, BlzObjectPayload} from './constants';
 import ParameterType from './parameterType';
 
-export interface PermitJoinPayload extends ZiGateObjectPayload {
+export interface PermitJoinPayload extends BlzObjectPayload {
     targetShortAddress: number;
     interval: number;
     TCsignificance?: number;
 }
 
-export interface RawAPSDataRequestPayload extends ZiGateObjectPayload {
+export interface RawAPSDataRequestPayload extends BlzObjectPayload {
     addressMode: number;
     targetShortAddress: number;
     sourceEndpoint: number;
@@ -45,16 +45,16 @@ export function equal(expected: string | number, received: string | number): boo
 
 export type BlzResponseMatcher = BlzResponseMatcherRule[];
 
-export const BLZCommand: {[key: string]: BlzCommandType} = {
-    [BLZ_COMMAND_CODE.Reset]: {
+export const BlzCommand: {[key: string]: BlzCommandType} = {
+    [BlzCommandCode.Reset]: {
         request: [],
         response: [
-            [
-                {receivedProperty: 'code', matcher: equal, value: 0x02}, // RESET_COMPLETE
-            ],
+            // [
+            //     {receivedProperty: 'code', matcher: equal, value: 0x02}, // RESET_COMPLETE
+            // ],
         ],
     },
-    [BLZ_COMMAND_CODE.GetValue]: {
+    [BlzCommandCode.GetValue]: {
         request: [
             {name: 'valueId', parameterType: ParameterType.UINT8},
         ],
@@ -65,7 +65,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
             ],
         ],
     },
-    [BLZ_COMMAND_CODE.SetValue]: {
+    [BlzCommandCode.SetValue]: {
         request: [
             {name: 'valueId', parameterType: ParameterType.UINT8},
             {name: 'valueLength', parameterType: ParameterType.UINT8},
@@ -77,7 +77,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
             ],
         ],
     },
-    [BLZ_COMMAND_CODE.GetNetworkState]: {
+    [BlzCommandCode.GetNetworkState]: {
         request: [],
         response: [
             [
@@ -88,7 +88,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
             ],
         ],
     },
-    [BLZ_COMMAND_CODE.SendApsData]: {
+    [BlzCommandCode.SendApsData]: {
         request: [
             {name: 'addressMode', parameterType: ParameterType.UINT8},
             {name: 'shortAddress', parameterType: ParameterType.UINT16},
@@ -107,7 +107,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
             ],
         ],
     },
-    [BLZ_COMMAND_CODE.GetNwkSecurityInfos]: {
+    [BlzCommandCode.GetNwkSecurityInfos]: {
         request: [],
         response: [
             [
@@ -118,7 +118,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
             ],
         ],
     },
-    [BLZ_COMMAND_CODE.SetBootEntry]: {
+    [BlzCommandCode.SetBootEntry]: {
         request: [
             {name: 'bootEntry', parameterType: ParameterType.BUFFER},
         ],
@@ -130,21 +130,21 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     },
 };
 
-    [ZiGateCommandCode.RawAPSDataRequest]: {
-        request: [
-            {name: 'addressMode', parameterType: ParameterType.UINT8}, // <address mode: uint8_t>
-            {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, // <target short address: uint16_t>
-            {name: 'sourceEndpoint', parameterType: ParameterType.UINT8}, // <source endpoint: uint8_t>
-            {name: 'destinationEndpoint', parameterType: ParameterType.UINT8}, // <destination endpoint: uint8_t>
-            {name: 'clusterID', parameterType: ParameterType.UINT16}, // <cluster ID: uint16_t>
-            {name: 'profileID', parameterType: ParameterType.UINT16}, // <profile ID: uint16_t>
-            {name: 'securityMode', parameterType: ParameterType.UINT8}, // <security mode: uint8_t>
-            {name: 'radius', parameterType: ParameterType.UINT8}, // <radius: uint8_t>
-            {name: 'dataLength', parameterType: ParameterType.UINT8}, // <data length: uint8_t>
-            {name: 'data', parameterType: ParameterType.BUFFER}, // <data: auint8_t>
-        ],
-    },
-    // [ZiGateCommandCode.NodeDescriptor]: {
+    // [BlzCommandCode.RawAPSDataRequest]: {
+    //     request: [
+    //         {name: 'addressMode', parameterType: ParameterType.UINT8}, // <address mode: uint8_t>
+    //         {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, // <target short address: uint16_t>
+    //         {name: 'sourceEndpoint', parameterType: ParameterType.UINT8}, // <source endpoint: uint8_t>
+    //         {name: 'destinationEndpoint', parameterType: ParameterType.UINT8}, // <destination endpoint: uint8_t>
+    //         {name: 'clusterID', parameterType: ParameterType.UINT16}, // <cluster ID: uint16_t>
+    //         {name: 'profileID', parameterType: ParameterType.UINT16}, // <profile ID: uint16_t>
+    //         {name: 'securityMode', parameterType: ParameterType.UINT8}, // <security mode: uint8_t>
+    //         {name: 'radius', parameterType: ParameterType.UINT8}, // <radius: uint8_t>
+    //         {name: 'dataLength', parameterType: ParameterType.UINT8}, // <data length: uint8_t>
+    //         {name: 'data', parameterType: ParameterType.BUFFER}, // <data: auint8_t>
+    //     ]
+    // };
+    // [BlzCommandCode.NodeDescriptor]: {
     //     request: [
     //         {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, // <target short address: uint16_t>
     //     ],
@@ -153,7 +153,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //             {
     //                 receivedProperty: 'code',
     //                 matcher: equal,
-    //                 value: ZiGateMessageCode.DataIndication,
+    //                 value: BlzMessageCode.DataIndication,
     //             },
     //             {
     //                 receivedProperty: 'payload.sourceAddress',
@@ -168,7 +168,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //         ],
     //     ],
     // },
-    // [ZiGateCommandCode.ActiveEndpoint]: {
+    // [BlzCommandCode.ActiveEndpoint]: {
     //     request: [
     //         {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, // <target short address: uint16_t>
     //     ],
@@ -177,7 +177,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //             {
     //                 receivedProperty: 'code',
     //                 matcher: equal,
-    //                 value: ZiGateMessageCode.DataIndication,
+    //                 value: BlzMessageCode.DataIndication,
     //             },
     //             {
     //                 receivedProperty: 'payload.sourceAddress',
@@ -192,14 +192,14 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //         ],
     //     ],
     // },
-    // [ZiGateCommandCode.SimpleDescriptor]: {
+    // [BlzCommandCode.SimpleDescriptor]: {
     //     request: [
     //         {name: 'targetShortAddress', parameterType: ParameterType.UINT16}, // <target short address: uint16_t>
     //         {name: 'endpoint', parameterType: ParameterType.UINT8}, // <endpoint: uint8_t>
     //     ],
     //     response: [
     //         [
-    //             {receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.DataIndication},
+    //             {receivedProperty: 'code', matcher: equal, value: BlzMessageCode.DataIndication},
     //             {
     //                 receivedProperty: 'payload.sourceAddress',
     //                 matcher: equal,
@@ -213,7 +213,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //         ],
     //     ],
     // },
-    // [ZiGateCommandCode.Bind]: {
+    // [BlzCommandCode.Bind]: {
     //     request: [
     //         {name: 'targetExtendedAddress', parameterType: ParameterType.IEEEADDR}, // <target extended address: uint64_t>
     //         {name: 'targetEndpoint', parameterType: ParameterType.UINT8}, // <target endpoint: uint8_t>
@@ -231,7 +231,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //             {
     //                 receivedProperty: 'code',
     //                 matcher: equal,
-    //                 value: ZiGateMessageCode.DataIndication,
+    //                 value: BlzMessageCode.DataIndication,
     //             },
     //             {
     //                 receivedProperty: 'payload.sourceAddress',
@@ -251,7 +251,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //         ],
     //     ],
     // },
-    // [ZiGateCommandCode.UnBind]: {
+    // [BlzCommandCode.UnBind]: {
     //     request: [
     //         {name: 'targetExtendedAddress', parameterType: ParameterType.IEEEADDR}, // <target extended address: uint64_t>
     //         {name: 'targetEndpoint', parameterType: ParameterType.UINT8}, // <target endpoint: uint8_t>
@@ -269,7 +269,7 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //             {
     //                 receivedProperty: 'code',
     //                 matcher: equal,
-    //                 value: ZiGateMessageCode.DataIndication,
+    //                 value: BlzMessageCode.DataIndication,
     //             },
     //             {
     //                 receivedProperty: 'payload.sourceAddress',
@@ -289,13 +289,13 @@ export const BLZCommand: {[key: string]: BlzCommandType} = {
     //         ],
     //     ],
     // },
-    [ZiGateCommandCode.AddGroup]: {
-        request: [
-            {name: 'addressMode', parameterType: ParameterType.UINT8}, //<device type: uint8_t>
-            {name: 'shortAddress', parameterType: ParameterType.UINT16},
-            {name: 'sourceEndpoint', parameterType: ParameterType.UINT8},
-            {name: 'destinationEndpoint', parameterType: ParameterType.UINT8},
-            {name: 'groupAddress', parameterType: ParameterType.UINT16},
-        ],
-    },
-};
+    // [BlzCommandCode.AddGroup]: {
+    //     request: [
+    //         {name: 'addressMode', parameterType: ParameterType.UINT8}, //<device type: uint8_t>
+    //         {name: 'shortAddress', parameterType: ParameterType.UINT16},
+    //         {name: 'sourceEndpoint', parameterType: ParameterType.UINT8},
+    //         {name: 'destinationEndpoint', parameterType: ParameterType.UINT8},
+    //         {name: 'groupAddress', parameterType: ParameterType.UINT16},
+    //     ],
+    // },
+// };

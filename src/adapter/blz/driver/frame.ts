@@ -10,6 +10,9 @@ enum BlzFrameChunkSize {
     UInt64,
 }
 
+const ESCAPE_BYTE = 0x07;
+const ESCAPE_MASK = 0x10;
+
 const hasStartByte = (startByte: number, frame: Buffer): boolean => {
     return frame.indexOf(startByte, 0) === 0;
 };
@@ -28,18 +31,26 @@ const removeDuplicate = (_: unknown, idx: number, frame: number[][]): boolean =>
         return true;
     }
     const [first] = frame[idx - 1];
-    return first !== 0x07;
+    return first !== ESCAPE_BYTE;
 };
 
 const decodeBytes = (bytesPair: [number, number]): number => {
-    return bytesPair[0] === 0x07 ? bytesPair[1] ^ 0x10 : bytesPair[0];
+    return bytesPair[0] === ESCAPE_BYTE ? bytesPair[1] ^ ESCAPE_MASK : bytesPair[0];
 };
 
-const readBytes = (bytes: Buffer): number => {
+const readBytesLE = (bytes: Buffer): number => {
+    return bytes.readUIntLE(0, bytes.length);
+};
+
+const readBytesBE = (bytes: Buffer): number => {
     return bytes.readUIntBE(0, bytes.length);
 };
 
-const writeBytes = (bytes: Buffer, val: number): void => {
+const writeBytesLE = (bytes: Buffer, val: number): void => {
+    bytes.writeUIntLE(val, 0, bytes.length);
+};
+
+const writeBytesBE = (bytes: Buffer, val: number): void => {
     bytes.writeUIntBE(val, 0, bytes.length);
 };
 
@@ -53,26 +64,24 @@ const decodeFrame = (frame: Buffer): Buffer => {
 };
 
 const getFrameChunk = (frame: Buffer, pos: number, size: BlzFrameChunkSize): Buffer => {
-    return frame.slice(pos, pos + size);
+    return frame.subarray(pos, pos + size); 
 };
 
 export default class BlzFrame {
     static readonly START_BYTE = 0x42;
     static readonly STOP_BYTE = 0x4C;
 
+    msgFrameControlBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt8);
+    msgSequenceBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt8);
     msgCodeBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt16);
-    msgLengthBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt16);
-    checksumBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt8);
     msgPayloadBytes: Buffer = Buffer.alloc(0);
-    rssiBytes: Buffer = Buffer.alloc(0);
-
-    msgLengthOffset = 0;
+    checksumBytes: Buffer = Buffer.alloc(BlzFrameChunkSize.UInt16);
 
     constructor(frame?: Buffer) {
         if (frame !== undefined) {
             const decodedFrame = decodeFrame(frame);
-
-            this.msgLengthOffset = -1;
+            logger.debug(`decoded frame >>> %o`, decodedFrame, NS);
+            // this.msgLengthOffset = -1;
 
             if (!BlzFrame.isValid(frame)) {
                 logger.error('Provided frame is not a valid BlzFrame.', NS);
@@ -99,32 +108,33 @@ export default class BlzFrame {
     }
 
     buildChunks(frame: Buffer): void {
-        this.msgCodeBytes = getFrameChunk(frame, 1, this.msgCodeBytes.length);
-        this.msgLengthBytes = getFrameChunk(frame, 3, this.msgLengthBytes.length);
-        this.checksumBytes = getFrameChunk(frame, 5, this.checksumBytes.length);
-        this.msgPayloadBytes = getFrameChunk(frame, 6, this.readMsgLength());
-        this.rssiBytes = getFrameChunk(frame, 6 + this.readMsgLength(), BlzFrameChunkSize.UInt8);
+        this.msgFrameControlBytes = getFrameChunk(frame, 1, this.msgFrameControlBytes.length); 
+        this.msgSequenceBytes = getFrameChunk(frame, 2, this.msgSequenceBytes.length);
+        this.msgCodeBytes = getFrameChunk(frame, 3, this.msgCodeBytes.length);
+        this.msgPayloadBytes = getFrameChunk(frame, 5, frame.length - 6 - this.checksumBytes.length);
+        this.checksumBytes = getFrameChunk(frame, frame.length - this.checksumBytes.length - 1, this.checksumBytes.length);
     }
 
     toBuffer(): Buffer {
-        const length = 5 + this.readMsgLength();
-        const escapedData = this.escapeData(
-            Buffer.concat([this.msgCodeBytes, this.msgLengthBytes, this.checksumBytes, this.msgPayloadBytes], length),
-        );
-
-        return Buffer.concat([Uint8Array.from([BlzFrame.START_BYTE]), escapedData, Uint8Array.from([BlzFrame.STOP_BYTE])]);
-    }
+        const data = Buffer.concat([
+            this.msgFrameControlBytes,
+            this.msgSequenceBytes,
+            this.msgCodeBytes,
+            this.msgPayloadBytes,
+            this.checksumBytes,
+        ]);
+        const escapedData = this.escapeData(data);
+        return Buffer.concat([Buffer.from([BlzFrame.START_BYTE]), escapedData, Buffer.from([BlzFrame.STOP_BYTE])]);
+    }    
 
     escapeData(data: Buffer): Buffer {
         let encodedLength = 0;
         const encodedData = Buffer.alloc(data.length * 2);
-        const FRAME_ESCAPE_XOR = 0x10;
-        const FRAME_ESCAPE = 0x07;
-
+    
         for (const b of data) {
-            if (b <= FRAME_ESCAPE_XOR) {
-                encodedData[encodedLength++] = FRAME_ESCAPE;
-                encodedData[encodedLength++] = b ^ FRAME_ESCAPE_XOR;
+            if (b === BlzFrame.START_BYTE || b === BlzFrame.STOP_BYTE || b === ESCAPE_BYTE) {
+                encodedData[encodedLength++] = ESCAPE_BYTE;
+                encodedData[encodedLength++] = b ^ ESCAPE_MASK;
             } else {
                 encodedData[encodedLength++] = b;
             }
@@ -132,60 +142,66 @@ export default class BlzFrame {
 
         return encodedData.slice(0, encodedLength);
     }
+    
 
     readMsgCode(): number {
-        return readBytes(this.msgCodeBytes);
+        return readBytesLE(this.msgCodeBytes);
     }
 
     writeMsgCode(msgCode: number): BlzFrame {
-        writeBytes(this.msgCodeBytes, msgCode);
+        writeBytesLE(this.msgCodeBytes, msgCode);
         this.writeChecksum();
-        return this;
-    }
-
-    readMsgLength(): number {
-        return readBytes(this.msgLengthBytes) + this.msgLengthOffset;
-    }
-
-    writeMsgLength(msgLength: number): BlzFrame {
-        writeBytes(this.msgLengthBytes, msgLength);
         return this;
     }
 
     readChecksum(): number {
-        return readBytes(this.checksumBytes);
+        return readBytesBE(this.checksumBytes);
     }
 
     writeMsgPayload(msgPayload: Buffer): BlzFrame {
         this.msgPayloadBytes = Buffer.from(msgPayload);
-        this.writeMsgLength(msgPayload.length);
         this.writeChecksum();
         return this;
     }
-
-    readRSSI(): number {
-        return readBytes(this.rssiBytes);
-    }
-
-    writeRSSI(rssi: number): BlzFrame {
-        this.rssiBytes = Buffer.from([rssi]);
-        this.writeChecksum();
-        return this;
-    }
-
+    
     calcChecksum(): number {
-        let checksum = 0x00;
-
-        checksum = this.msgCodeBytes.reduce(xor, checksum);
-        checksum = this.msgLengthBytes.reduce(xor, checksum);
-        checksum = this.rssiBytes.reduce(xor, checksum);
-        checksum = this.msgPayloadBytes.reduce(xor, checksum);
-
-        return checksum;
+        let crc16 = 0xFFFF; // Initial CRC value
+    
+        // Combine all frame parts to compute CRC on them sequentially
+        const dataParts = [
+            ...this.msgFrameControlBytes,
+            ...this.msgSequenceBytes,
+            ...this.msgCodeBytes,
+            ...this.msgPayloadBytes
+        ];
+    
+        for (const byte of dataParts) {
+            crc16 = this.calcCrc16(byte, crc16);
+        }
+    
+        return crc16;
     }
+    
+    /**
+     * Helper function to perform the CRC-16 calculation on each byte.
+     * @param {number} newByte - The byte to process.
+     * @param {number} prevResult - The previous CRC result.
+     * @returns {number} - Updated CRC result after processing the byte.
+     */
+    calcCrc16(newByte: number, prevResult: number): number {
+        prevResult = ((prevResult >> 8) | (prevResult << 8)) & 0xFFFF; // Swap bytes
+        prevResult ^= newByte; // XOR with new byte
+        prevResult ^= (prevResult & 0xFF) >> 4; // XOR the lower 4 bits
+        prevResult ^= ((prevResult << 8) << 4) & 0xFFFF; // XOR result shifted left
+        prevResult ^= (((prevResult & 0xFF) << 5) | ((prevResult & 0xFF) >> 3) << 8) & 0xFFFF; // Final XOR
+        return prevResult;
+    }    
 
     writeChecksum(): this {
-        this.checksumBytes = Buffer.from([this.calcChecksum()]);
+        const checksumValue = this.calcChecksum();
+        this.checksumBytes = Buffer.alloc(2);
+        writeBytesBE(this.checksumBytes, checksumValue);
         return this;
     }
+    
 }

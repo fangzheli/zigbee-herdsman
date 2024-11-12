@@ -16,17 +16,16 @@ import {SerialPort} from '../../serialPort';
 import SerialPortUtils from '../../serialPortUtils';
 import SocketPortUtils from '../../socketPortUtils';
 import {SerialPortOptions} from '../../tstype';
-import {equal, ZiGateResponseMatcher, ZiGateResponseMatcherRule} from './commandType';
-import {STATUS, ZDO_REQ_CLUSTER_ID_TO_ZIGATE_COMMAND_ID, ZiGateCommandCode, ZiGateMessageCode, ZiGateObjectPayload} from './constants';
-import ZiGateFrame from './frame';
-import ZiGateObject from './ziGateObject';
+// import {equal, BlzResponseMatcher, BlzResponseMatcherRule} from './commandType';
+// import {STATUS, ZDO_REQ_CLUSTER_ID_TO_ZIGATE_COMMAND_ID, BlzCommandCode, BlzMessageCode, BlzObjectPayload} from './constants';
+import { ADDRESS_MODE, BlzCommandCode, BlzMessageCode } from '../driver/constants';
+import BlzFrame from '../driver/frame';
+import BlzObject from '../driver/blzObject';
+import {equal, BlzResponseMatcher, BlzResponseMatcherRule} from './commandType';
 
-const NS = 'zh:zigate:driver';
 
-const autoDetectDefinitions = [
-    {manufacturer: 'zigate_PL2303', vendorId: '067b', productId: '2303'},
-    {manufacturer: 'zigate_cp2102', vendorId: '10c4', productId: 'ea60'},
-];
+
+const NS = 'zh:blz:driver';
 
 const timeouts = {
     reset: 30000,
@@ -34,13 +33,20 @@ const timeouts = {
 };
 
 type WaitressMatcher = {
-    ziGateObject?: ZiGateObject;
-    rules: ZiGateResponseMatcher;
+    blzObject: BlzObject;
+    rules: BlzResponseMatcher;
     extraParameters?: object;
 };
 
+
+// const autoDetectDefinitions = [
+//     {manufacturer: 'blz_PL2303', vendorId: '067b', productId: '2303'},
+//     {manufacturer: 'blz_cp2102', vendorId: '10c4', productId: 'ea60'},
+// ];
+
+
 type ZdoWaitressPayload = {
-    ziGatePayload: {
+    BlzPayload: {
         status: number;
         profileID: number;
         clusterID: number;
@@ -70,15 +76,15 @@ function resolve(path: string | [], obj: {[k: string]: any}, separator = '.'): a
     return properties.reduce((prev, curr) => prev && prev[curr], obj);
 }
 
-interface ZiGateEventMap {
+interface BlzEventMap {
     close: [];
     zdoResponse: [Zdo.ClusterId, GenericZdoResponse];
-    received: [ZiGateObject];
-    LeaveIndication: [ZiGateObject];
+    received: [BlzObject];
+    LeaveIndication: [BlzObject];
     DeviceAnnounce: [EndDeviceAnnounce];
 }
 
-export default class ZiGate extends EventEmitter<ZiGateEventMap> {
+export default class BlzAdapter extends EventEmitter<BlzEventMap> {
     private path: string;
     private baudRate: number;
     private initialized: boolean;
@@ -87,103 +93,74 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
     private serialPort?: SerialPort;
     private socketPort?: net.Socket;
     private queue: Queue;
-
     public portWrite?: SerialPort | net.Socket;
-    private waitress: Waitress<ZiGateObject, WaitressMatcher>;
-    private zdoWaitress: Waitress<ZdoWaitressPayload, ZdoWaitressMatcher>;
+    private waitress: Waitress<BlzObject, WaitressMatcher>;
 
     public constructor(path: string, serialPortOptions: SerialPortOptions) {
         super();
         this.path = path;
-        this.baudRate = typeof serialPortOptions.baudRate === 'number' ? serialPortOptions.baudRate : 115200;
-        // XXX: not used?
-        // this.rtscts = typeof serialPortOptions.rtscts === 'boolean' ? serialPortOptions.rtscts : false;
+        this.baudRate = serialPortOptions.baudRate || 2000000;
         this.initialized = false;
         this.queue = new Queue(1);
 
-        this.waitress = new Waitress<ZiGateObject, WaitressMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
-        this.zdoWaitress = new Waitress<ZdoWaitressPayload, ZdoWaitressMatcher>(this.zdoWaitressValidator, this.waitressTimeoutFormatter);
+        this.waitress = new Waitress<BlzObject, WaitressMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
     }
 
     public async sendCommand(
-        code: ZiGateCommandCode,
-        payload?: ZiGateObjectPayload,
+        code: BlzCommandCode,
+        payload?: BlzObject,
         timeout?: number,
         extraParameters?: object,
-        disableResponse: boolean = false,
-    ): Promise<ZiGateObject> {
-        const waiters: Promise<ZiGateObject>[] = [];
-        const waitersId: number[] = [];
+        disableResponse = false,
+    ): Promise<BlzObject> {
         return await this.queue.execute(async () => {
             try {
                 logger.debug(
                     () =>
                         'Send command \x1b[32m>>>> ' +
-                        ZiGateCommandCode[code] +
+                        BlzCommandCode[code] +
                         ' 0x' +
-                        zeroPad(code) +
+                        code.toString(16) +
                         ` <<<<\x1b[0m \nPayload: ${JSON.stringify(payload)}`,
                     NS,
                 );
-                const ziGateObject = ZiGateObject.createRequest(code, payload);
-                const frame = ziGateObject.toZiGateFrame();
-                logger.debug(() => `${JSON.stringify(frame)}`, NS);
 
-                const sendBuffer = frame.toBuffer();
-                logger.debug(`<-- send command ${sendBuffer.toString('hex')}`, NS);
-                logger.debug(`DisableResponse: ${disableResponse}`, NS);
+                const blzObject = BlzObject.createRequest(code, payload || {});
+                const frame = blzObject.toBlzFrame();
+                logger.debug(() => `Frame: ${JSON.stringify(frame)}`, NS);
 
-                if (!disableResponse && Array.isArray(ziGateObject.command.response)) {
-                    ziGateObject.command.response.forEach((rules) => {
-                        const waiter = this.waitress.waitFor({ziGateObject, rules, extraParameters}, timeout || timeouts.default);
-                        waitersId.push(waiter.ID);
-                        waiters.push(waiter.start().promise);
-                    });
+                await this.portWrite?.write(frame.toBuffer());
+
+                if (disableResponse) {
+                    return blzObject;
                 }
 
-                let resultPromise: Promise<ZiGateObject> | undefined;
-                if (ziGateObject.command.waitStatus !== false) {
-                    const ruleStatus: ZiGateResponseMatcher = [
-                        {receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.Status},
-                        {receivedProperty: 'payload.packetType', matcher: equal, value: ziGateObject.code},
-                    ];
+                const matcher = {
+                    blzObject,
+                    rules: [{ receivedProperty: 'code', matcher: equal, value: code }],
+                    extraParameters,
+                };
 
-                    const statusWaiter = this.waitress.waitFor({ziGateObject, rules: ruleStatus}, timeout || timeouts.default).start();
-                    resultPromise = statusWaiter.promise;
-                }
-
-                // @ts-expect-error assumed proper based on port type
-                this.portWrite!.write(sendBuffer);
-
-                if (ziGateObject.command.waitStatus !== false && resultPromise) {
-                    const statusResponse: ZiGateObject = await resultPromise;
-                    if (statusResponse.payload.status !== STATUS.E_SL_MSG_STATUS_SUCCESS) {
-                        waitersId.map((id) => this.waitress.remove(id));
-                        return await Promise.reject(statusResponse);
-                    } else if (waiters.length === 0) {
-                        return await Promise.resolve(statusResponse);
-                    }
-                }
-                return await Promise.race(waiters);
-            } catch (e) {
-                logger.error(`sendCommand error ${e}`, NS);
-                return await Promise.reject(new Error('sendCommand error: ' + e));
+                return this.waitress.waitFor(matcher, timeout || timeouts.default);
+            } catch (error) {
+                logger.error(`Error sending command ${code}: ${error.message}`, NS);
+                throw error;
             }
         });
     }
 
     public async requestZdo(clusterId: Zdo.ClusterId, payload: Buffer): Promise<boolean> {
         return await this.queue.execute(async () => {
-            const commandCode = ZDO_REQ_CLUSTER_ID_TO_ZIGATE_COMMAND_ID[clusterId];
+            const commandCode = ZDO_REQ_CLUSTER_ID_TO_BLZ_COMMAND_ID[clusterId];
             assert(commandCode !== undefined, `ZDO cluster ID '${clusterId}' not supported.`);
-            const ruleStatus: ZiGateResponseMatcher = [
-                {receivedProperty: 'code', matcher: equal, value: ZiGateMessageCode.Status},
+            const ruleStatus: BlzResponseMatcher = [
+                {receivedProperty: 'code', matcher: equal, value: BlzMessageCode.Status},
                 {receivedProperty: 'payload.packetType', matcher: equal, value: commandCode},
             ];
 
             logger.debug(() => `ZDO ${Zdo.ClusterId[clusterId]}(cmd code: ${commandCode}) ${payload.toString('hex')}`, NS);
 
-            const frame = new ZiGateFrame();
+            const frame = new BlzFrame();
             frame.writeMsgCode(commandCode);
             frame.writeMsgPayload(payload);
 
@@ -198,7 +175,7 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
             // @ts-expect-error assumed proper based on port type
             this.portWrite!.write(sendBuffer);
 
-            const statusResponse: ZiGateObject = await statusWaiter.start().promise;
+            const statusResponse: BlzObject = await statusWaiter.start().promise;
 
             return statusResponse.payload.status === STATUS.E_SL_MSG_STATUS_SUCCESS;
         });
@@ -251,7 +228,7 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
             lock: false,
             autoOpen: false,
         });
-        this.parser = this.serialPort.pipe(new DelimiterParser({delimiter: [ZiGateFrame.STOP_BYTE], includeDelimiter: true}));
+        this.parser = this.serialPort.pipe(new DelimiterParser({delimiter: [BlzFrame.STOP_BYTE], includeDelimiter: true}));
         this.parser.on('data', this.onSerialData.bind(this));
 
         this.portWrite = this.serialPort;
@@ -283,7 +260,7 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
         this.socketPort.setNoDelay(true);
         this.socketPort.setKeepAlive(true, 15000);
 
-        this.parser = this.socketPort.pipe(new DelimiterParser({delimiter: [ZiGateFrame.STOP_BYTE], includeDelimiter: true}));
+        this.parser = this.socketPort.pipe(new DelimiterParser({delimiter: [BlzFrame.STOP_BYTE], includeDelimiter: true}));
         this.parser.on('data', this.onSerialData.bind(this));
 
         this.portWrite = this.socketPort;
@@ -325,36 +302,36 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
         try {
             // logger.debug(() => `--- parseNext ${JSON.stringify(buffer)}`, NS);
 
-            const frame = new ZiGateFrame(buffer);
-            if (!(frame instanceof ZiGateFrame)) return; // @Todo fix
+            const frame = new BlzFrame(buffer);
+            if (!(frame instanceof BlzFrame)) return;
 
             const code = frame.readMsgCode();
-            const msgName = (ZiGateMessageCode[code] ? ZiGateMessageCode[code] : '') + ' 0x' + zeroPad(code);
+            const msgName = (BlzMessageCode[code] ? BlzMessageCode[code] : '') + ' 0x' + zeroPad(code);
 
             logger.debug(`--> parsed frame \x1b[1;34m>>>> ${msgName} <<<<\x1b[0m `, NS);
 
             try {
-                const ziGateObject = ZiGateObject.fromZiGateFrame(frame);
-                logger.debug(() => `${JSON.stringify(ziGateObject.payload)}`, NS);
-
-                if (code === ZiGateMessageCode.DataIndication && ziGateObject.payload.profileID === Zdo.ZDO_PROFILE_ID) {
-                    const ziGatePayload: ZdoWaitressPayload['ziGatePayload'] = ziGateObject.payload;
+                const blzObject = BlzObject.fromBlzFrame(frame);
+                logger.debug(() => `${JSON.stringify(blzObject.payload)}`, NS);
+                //TODO
+                if (code === BlzMessageCode.ApsDataIndication && blzObject.payload.profileID === Zdo.ZDO_PROFILE_ID) {
+                    const BlzPayload: ZdoWaitressPayload['BlzPayload'] = blzObject.payload;
                     // requests don't have tsn, but responses do
-                    // https://zigate.fr/documentation/commandes-zigate/
-                    const zdo = Zdo.Buffalo.readResponse(true, ziGatePayload.clusterID, ziGatePayload.payload);
+                    // https://blz.fr/documentation/commandes-blz/
+                    const zdo = Zdo.Buffalo.readResponse(true, BlzPayload.clusterID, BlzPayload.payload);
 
-                    this.zdoWaitress.resolve({ziGatePayload, zdo});
-                    this.emit('zdoResponse', ziGatePayload.clusterID, zdo);
-                } else if (code === ZiGateMessageCode.LeaveIndication && ziGateObject.payload.rejoin === 0) {
-                    // mock a ZDO response (if waiter present) as zigate does not follow spec on this (missing ZDO LEAVE_RESPONSE)
-                    const ziGatePayload: ZdoWaitressPayload['ziGatePayload'] = {
+                    this.zdoWaitress.resolve({BlzPayload, zdo});
+                    this.emit('zdoResponse', BlzPayload.clusterID, zdo);
+                } else if (code === BlzMessageCode.LeaveIndication && blzObject.payload.rejoin === 0) {
+                    // mock a ZDO response (if waiter present) as blz does not follow spec on this (missing ZDO LEAVE_RESPONSE)
+                    const BlzPayload: ZdoWaitressPayload['BlzPayload'] = {
                         status: 0,
                         profileID: Zdo.ZDO_PROFILE_ID,
                         clusterID: Zdo.ClusterId.LEAVE_RESPONSE, // only piece actually required for waitress validation
                         sourceEndpoint: Zdo.ZDO_ENDPOINT,
                         destinationEndpoint: Zdo.ZDO_ENDPOINT,
                         sourceAddressMode: 0x03,
-                        sourceAddress: ziGateObject.payload.extendedAddress,
+                        sourceAddress: blzObject.payload.extendedAddress,
                         destinationAddressMode: 0x03,
                         destinationAddress: ZSpec.BLANK_EUI64,
                         // @ts-expect-error not used
@@ -362,28 +339,28 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
                     };
 
                     // Workaround: `zdo` is not valid for LEAVE_RESPONSE, but required to pass altered waitress validation (in sendZdo)
-                    if (this.zdoWaitress.resolve({ziGatePayload, zdo: [Zdo.Status.SUCCESS, {eui64: ziGateObject.payload.extendedAddress}]})) {
+                    if (this.zdoWaitress.resolve({BlzPayload, zdo: [Zdo.Status.SUCCESS, {eui64: blzObject.payload.extendedAddress}]})) {
                         this.emit('zdoResponse', Zdo.ClusterId.LEAVE_RESPONSE, [
                             Zdo.Status.SUCCESS,
                             undefined,
                         ] as ZdoResponseMap[Zdo.ClusterId.LEAVE_RESPONSE]);
                     }
 
-                    this.emit('LeaveIndication', ziGateObject);
+                    this.emit('LeaveIndication', blzObject);
                 } else {
-                    this.waitress.resolve(ziGateObject);
+                    this.waitress.resolve(blzObject);
 
-                    if (code === ZiGateMessageCode.DataIndication) {
-                        if (ziGateObject.payload.profileID === ZSpec.HA_PROFILE_ID) {
-                            this.emit('received', ziGateObject);
+                    if (code === BlzMessageCode.DataIndication) {
+                        if (blzObject.payload.profileID === ZSpec.HA_PROFILE_ID) {
+                            this.emit('received', blzObject);
                         } else {
-                            logger.debug('not implemented profile: ' + ziGateObject.payload.profileID, NS);
+                            logger.debug('not implemented profile: ' + blzObject.payload.profileID, NS);
                         }
-                    } else if (code === ZiGateMessageCode.DeviceAnnounce) {
+                    } else if (code === BlzMessageCode.DeviceAnnounce) {
                         this.emit('DeviceAnnounce', {
-                            nwkAddress: ziGateObject.payload.shortAddress,
-                            eui64: ziGateObject.payload.ieee,
-                            capabilities: ziGateObject.payload.MACcapability,
+                            nwkAddress: blzObject.payload.shortAddress,
+                            eui64: blzObject.payload.ieee,
+                            capabilities: blzObject.payload.MACcapability,
                         });
                     }
                 }
@@ -399,19 +376,19 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
         return `${JSON.stringify(matcher)} after ${timeout}ms`;
     }
 
-    private waitressValidator(ziGateObject: ZiGateObject, matcher: WaitressMatcher): boolean {
-        const validator = (rule: ZiGateResponseMatcherRule): boolean => {
+    private waitressValidator(BlzObject: BlzObject, matcher: WaitressMatcher): boolean {
+        const validator = (rule: BlzResponseMatcherRule): boolean => {
             try {
                 let expectedValue: string | number;
                 if (rule.value == undefined && rule.expectedProperty != undefined) {
-                    assert(matcher.ziGateObject, `Matcher ziGateObject expected valid.`);
-                    expectedValue = resolve(rule.expectedProperty, matcher.ziGateObject);
+                    assert(matcher.BlzObject, `Matcher BlzObject expected valid.`);
+                    expectedValue = resolve(rule.expectedProperty, matcher.BlzObject);
                 } else if (rule.value == undefined && rule.expectedExtraParameter != undefined) {
                     expectedValue = resolve(rule.expectedExtraParameter, matcher.extraParameters!); // XXX: assumed valid?
                 } else {
                     expectedValue = rule.value!; // XXX: assumed valid?
                 }
-                const receivedValue = resolve(rule.receivedProperty, ziGateObject);
+                const receivedValue = resolve(rule.receivedProperty, BlzObject);
                 return rule.matcher(expectedValue, receivedValue);
             } catch {
                 return false;
@@ -419,6 +396,31 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
         };
         return matcher.rules.every(validator);
     }
+    public async reset(type: 'soft' | 'hard'): Promise<void> {
+        if (type === 'soft') {
+            await this.sendCommand(BlzCommandCode.Reset, {}, 5000);
+        }
+        // More commands can be added for other types if needed.
+    }
+
+    public async getNetworkParameters(): Promise<ZSpec.NetworkParameters> {
+        const result = await this.sendCommand(BlzCommandCode.GetNetworkState, {}, 10000);
+        return {
+            panID: result.payload.PANID,
+            extendedPanID: result.payload.extendedPanID,
+            channel: result.payload.channel,
+        };
+    }
+
+    public async permitJoin(seconds: number, networkAddress?: number): Promise<void> {
+        const clusterId = Zdo.ClusterId.PERMIT_JOINING_REQUEST;
+
+        if (networkAddress !== undefined) {
+            const zdoPayload = Zdo.Buffalo.buildRequest(false, clusterId, seconds, 1, []);
+            await this.sendCommand(BlzCommandCode.PermitJoining, { payload: zdoPayload }, 10000);
+        }
+    }
+
 
     public zdoWaitFor(matcher: ZdoWaitressMatcher): ReturnType<typeof this.zdoWaitress.waitFor> {
         return this.zdoWaitress.waitFor(matcher, timeouts.default);
@@ -428,10 +430,10 @@ export default class ZiGate extends EventEmitter<ZiGateEventMap> {
         return (
             (matcher.target === undefined ||
                 (typeof matcher.target === 'number'
-                    ? matcher.target === payload.ziGatePayload.sourceAddress
+                    ? matcher.target === payload.BlzPayload.sourceAddress
                     : // @ts-expect-error checked with ?
                       matcher.target === payload.zdo?.[1]?.eui64)) &&
-            payload.ziGatePayload.clusterID === matcher.clusterId
+            payload.BlzPayload.clusterID === matcher.clusterId
         );
     }
 }

@@ -12,9 +12,9 @@ import Adapter from '../../adapter';
 import * as Events from '../../events';
 import * as TsType from '../../tstype';
 import {RawAPSDataRequestPayload} from '../driver/commandType';
-import {ADDRESS_MODE, DEVICE_TYPE, ZiGateCommandCode, ZiGateMessageCode, ZPSNwkKeyState} from '../driver/constants';
-import Driver from '../driver/zigate';
-import ZiGateObject from '../driver/ziGateObject';
+import {ADDRESS_MODE, DEVICE_TYPE, BlzCommandCode, BlzMessageCode, ZPSNwkKeyState} from '../driver/constants';
+import Driver from '../driver/blz';
+import BlzObject from '../driver/blzObject';
 // import {patchZdoBuffaloBE} from './patchZdoBuffaloBE';
 
 const NS = 'zh:blz';
@@ -29,7 +29,7 @@ interface WaitressMatcher {
     direction: number;
 }
 
-class ZiGateAdapter extends Adapter {
+class BlzAdapter extends Adapter {
     private driver: Driver;
     private joinPermitted: boolean;
     private waitress: Waitress<Events.ZclPayload, WaitressMatcher>;
@@ -57,7 +57,7 @@ class ZiGateAdapter extends Adapter {
         this.driver.on('received', this.dataListener.bind(this));
         this.driver.on('LeaveIndication', this.leaveIndicationListener.bind(this));
         this.driver.on('DeviceAnnounce', this.deviceAnnounceListener.bind(this));
-        this.driver.on('close', this.onZiGateClose.bind(this));
+        this.driver.on('close', this.onBlzClose.bind(this));
         this.driver.on('zdoResponse', this.onZdoResponse.bind(this));
     }
 
@@ -68,22 +68,22 @@ class ZiGateAdapter extends Adapter {
         let startResult: TsType.StartResult = 'resumed';
         try {
             await this.driver.open();
-            logger.info('Connected to ZiGate adapter successfully.', NS);
+            logger.info('Connected to Blz adapter successfully.', NS);
 
-            const resetResponse = await this.driver.sendCommand(ZiGateCommandCode.Reset, {}, 5000);
-            if (resetResponse.code === ZiGateMessageCode.RestartNonFactoryNew) {
+            const resetResponse = await this.driver.sendCommand(BlzCommandCode.Reset, {}, 5000);
+            if (resetResponse.code === BlzMessageCode.RestartNonFactoryNew) {
                 startResult = 'resumed';
-            } else if (resetResponse.code === ZiGateMessageCode.RestartFactoryNew) {
+            } else if (resetResponse.code === BlzMessageCode.RestartFactoryNew) {
                 startResult = 'reset';
             }
-            await this.driver.sendCommand(ZiGateCommandCode.RawMode, {enabled: 0x01});
+            await this.driver.sendCommand(BlzCommandCode.RawMode, {enabled: 0x01});
             // @todo check
-            await this.driver.sendCommand(ZiGateCommandCode.SetDeviceType, {
+            await this.driver.sendCommand(BlzCommandCode.SetDeviceType, {
                 deviceType: DEVICE_TYPE.coordinator,
             });
             await this.initNetwork();
 
-            await this.driver.sendCommand(ZiGateCommandCode.AddGroup, {
+            await this.driver.sendCommand(BlzCommandCode.AddGroup, {
                 addressMode: ADDRESS_MODE.short,
                 shortAddress: ZSpec.COORDINATOR_ADDRESS,
                 sourceEndpoint: ZSpec.HA_ENDPOINT,
@@ -91,7 +91,7 @@ class ZiGateAdapter extends Adapter {
                 groupAddress: default_bind_group,
             });
         } catch (error) {
-            throw new Error('failed to connect to zigate adapter ' + (error as Error).message);
+            throw new Error('failed to connect to blz adapter ' + (error as Error).message);
         }
 
         return startResult; // 'resumed' | 'reset' | 'restored'
@@ -103,12 +103,12 @@ class ZiGateAdapter extends Adapter {
     }
 
     public async getCoordinatorIEEE(): Promise<string> {
-        const networkResponse = await this.driver.sendCommand(ZiGateCommandCode.GetNetworkState);
+        const networkResponse = await this.driver.sendCommand(BlzCommandCode.GetNetworkState);
         return networkResponse.payload.extendedAddress;
     }
 
     public async getCoordinatorVersion(): Promise<TsType.CoordinatorVersion> {
-        const result = await this.driver.sendCommand(ZiGateCommandCode.GetVersion, {});
+        const result = await this.driver.sendCommand(BlzCommandCode.GetVersion, {});
         const meta = {
             transportrev: 0,
             product: 0,
@@ -119,7 +119,7 @@ class ZiGateAdapter extends Adapter {
         };
 
         return {
-            type: 'zigate',
+            type: 'blz',
             meta: meta,
         };
     }
@@ -157,15 +157,15 @@ class ZiGateAdapter extends Adapter {
 
     public async reset(type: 'soft' | 'hard'): Promise<void> {
         if (type === 'soft') {
-            await this.driver.sendCommand(ZiGateCommandCode.Reset, {}, 5000);
+            await this.driver.sendCommand(BlzCommandCode.Reset, {}, 5000);
         } else if (type === 'hard') {
-            await this.driver.sendCommand(ZiGateCommandCode.ErasePersistentData, {}, 5000);
+            await this.driver.sendCommand(BlzCommandCode.ErasePersistentData, {}, 5000);
         }
     }
 
     public async getNetworkParameters(): Promise<TsType.NetworkParameters> {
         try {
-            const result = await this.driver.sendCommand(ZiGateCommandCode.GetNetworkState, {}, 10000);
+            const result = await this.driver.sendCommand(BlzCommandCode.GetNetworkState, {}, 10000);
 
             return {
                 panID: <number>result.payload.PANID,
@@ -178,7 +178,7 @@ class ZiGateAdapter extends Adapter {
     }
 
     /**
-     * https://zigate.fr/documentation/deplacer-le-pdm-de-la-zigate/
+     * https://blz.fr/documentation/deplacer-le-pdm-de-la-blz/
      * pdm from host
      */
     public async supportsBackup(): Promise<boolean> {
@@ -191,7 +191,7 @@ class ZiGateAdapter extends Adapter {
 
     public async setTransmitPower(value: number): Promise<void> {
         try {
-            await this.driver.sendCommand(ZiGateCommandCode.SetTXpower, {value: value});
+            await this.driver.sendCommand(BlzCommandCode.SetTXpower, {value: value});
         } catch (error) {
             throw new Error(`Set transmitpower failed ${error}`);
         }
@@ -220,7 +220,7 @@ class ZiGateAdapter extends Adapter {
     ): Promise<ZdoTypes.RequestToResponseMap[K] | void> {
         return await this.queue.execute(async () => {
             // stack-specific requirements
-            // https://zigate.fr/documentation/commandes-zigate/
+            // https://blz.fr/documentation/commandes-blz/
             switch (clusterId) {
                 case Zdo.ClusterId.LEAVE_REQUEST: {
                     // extra zero for `removeChildren`
@@ -252,7 +252,7 @@ class ZiGateAdapter extends Adapter {
                 case Zdo.ClusterId.BINDING_TABLE_REQUEST:
                 case Zdo.ClusterId.NWK_UPDATE_REQUEST: {
                     const prefixedPayload = Buffer.alloc(payload.length + 2);
-                    prefixedPayload.writeUInt16BE(networkAddress, 0);
+                    prefixedPayload.writeUInt16LE(networkAddress, 0);
                     prefixedPayload.set(payload, 2);
 
                     payload = prefixedPayload;
@@ -374,7 +374,7 @@ class ZiGateAdapter extends Adapter {
         }
 
         try {
-            await this.driver.sendCommand(ZiGateCommandCode.RawAPSDataRequest, payload, undefined, {}, disableResponse);
+            await this.driver.sendCommand(BlzCommandCode.SendApsData, payload, undefined, {}, disableResponse);
         } catch {
             if (responseAttempt < 1 && !disableRecovery) {
                 // @todo discover route
@@ -429,7 +429,7 @@ class ZiGateAdapter extends Adapter {
     public async sendZclFrameToAll(endpoint: number, zclFrame: Zcl.Frame, sourceEndpoint: number, destination: BroadcastAddress): Promise<void> {
         return await this.queue.execute<void>(async () => {
             if (sourceEndpoint !== 0x01 /*&& sourceEndpoint !== 242*/) {
-                // @todo on zigate firmware without gp causes hang
+                // @todo on blz firmware without gp causes hang
                 logger.error(`source endpoint ${sourceEndpoint}, not supported`, NS);
                 return;
             }
@@ -449,7 +449,7 @@ class ZiGateAdapter extends Adapter {
             };
             logger.debug(() => `sendZclFrameToAll ${JSON.stringify(payload)}`, NS);
 
-            await this.driver.sendCommand(ZiGateCommandCode.RawAPSDataRequest, payload, undefined, {}, true);
+            await this.driver.sendCommand(BlzCommandCode.SendApsData, payload, undefined, {}, true);
             await Wait(200);
         });
     }
@@ -470,7 +470,7 @@ class ZiGateAdapter extends Adapter {
                 data: data,
             };
 
-            await this.driver.sendCommand(ZiGateCommandCode.RawAPSDataRequest, payload, undefined, {}, true);
+            await this.driver.sendCommand(BlzCommandCode.SendApsData, payload, undefined, {}, true);
             await Wait(200);
         });
     }
@@ -479,13 +479,23 @@ class ZiGateAdapter extends Adapter {
      * Supplementary functions
      */
     private async initNetwork(): Promise<void> {
+        // """wait self.reset_network_info()
+        // # set the network information after leave the network
+        // await self._api.set_security_infos(nwk_key=network_info.network_key.key, outgoing_frame_counter=t.uint32_t.deserialize(t.uint32_t(network_info.network_key.tx_counter).serialize())[0], nwk_key_seq_num=t.uint8_t.deserialize(t.uint8_t(network_info.network_key.seq).serialize())[0])
+        // await self._api.set_global_tc_link_key(network_info.tc_link_key.key, outgoing_frame_counter=t.uint32_t.deserialize(t.uint32_t(network_info.tc_link_key.tx_counter).serialize())[0])
+        // # await self._api.set_unique_tc_link_key(node_info.ieee, network_info.tc_link_key.key)
+        // epid, _ = zigpy.types.uint64_t.deserialize(
+        //     network_info.extended_pan_id.serialize()
+        // )
+        // try:
+        //     await self._api.form_network(ext_pan_id=epid, pan_id=t.uint16_t(network_info.pan_id), channel=t.uint8_t(network_info.channel))"""
         logger.debug(`Set channel mask ${this.networkOptions.channelList} key`, NS);
-        await this.driver.sendCommand(ZiGateCommandCode.SetChannelMask, {
+        await this.driver.sendCommand(BlzCommandCode.SetChannelMask, {
             channelMask: ZSpec.Utils.channelsToUInt32Mask(this.networkOptions.channelList),
         });
 
         logger.debug(`Set security key`, NS);
-        await this.driver.sendCommand(ZiGateCommandCode.SetSecurityStateKey, {
+        await this.driver.sendCommand(BlzCommandCode.SetSecurityStateKey, {
             keyType: this.networkOptions.networkKeyDistribute
                 ? ZPSNwkKeyState.ZPS_ZDO_DISTRIBUTED_LINK_KEY
                 : ZPSNwkKeyState.ZPS_ZDO_PRECONFIGURED_LINK_KEY,
@@ -495,11 +505,11 @@ class ZiGateAdapter extends Adapter {
         try {
             // The block is wrapped in trapping because if the network is already created, the firmware does not accept the new key.
             logger.debug(`Set EPanID ${this.networkOptions.extendedPanID!.toString()}`, NS);
-            await this.driver.sendCommand(ZiGateCommandCode.SetExtendedPANID, {
+            await this.driver.sendCommand(BlzCommandCode.SetExtendedPANID, {
                 panId: this.networkOptions.extendedPanID,
             });
 
-            await this.driver.sendCommand(ZiGateCommandCode.StartNetwork, {});
+            await this.driver.sendCommand(BlzCommandCode.StartNetwork, {});
         } catch (error) {
             logger.error((error as Error).stack!, NS);
         }
@@ -573,27 +583,27 @@ class ZiGateAdapter extends Adapter {
         this.emit('zdoResponse', clusterId, response);
     }
 
-    private dataListener(ziGateObject: ZiGateObject): void {
+    private dataListener(BlzObject: BlzObject): void {
         const payload: Events.ZclPayload = {
-            address: <number>ziGateObject.payload.sourceAddress,
-            clusterID: ziGateObject.payload.clusterID,
-            data: ziGateObject.payload.payload,
-            header: Zcl.Header.fromBuffer(ziGateObject.payload.payload),
-            endpoint: <number>ziGateObject.payload.sourceEndpoint,
-            linkquality: ziGateObject.frame!.readRSSI(), // read: frame valid
+            address: <number>BlzObject.payload.sourceAddress,
+            clusterID: BlzObject.payload.clusterID,
+            data: BlzObject.payload.payload,
+            header: Zcl.Header.fromBuffer(BlzObject.payload.payload),
+            endpoint: <number>BlzObject.payload.sourceEndpoint,
+            linkquality: 0 // @todo
             groupID: 0, // @todo
             wasBroadcast: false, // TODO
-            destinationEndpoint: <number>ziGateObject.payload.destinationEndpoint,
+            destinationEndpoint: <number>BlzObject.payload.destinationEndpoint,
         };
         this.waitress.resolve(payload);
         this.emit('zclPayload', payload);
     }
 
-    private leaveIndicationListener(ziGateObject: ZiGateObject): void {
-        logger.debug(() => `LeaveIndication ${JSON.stringify(ziGateObject)}`, NS);
+    private leaveIndicationListener(BlzObject: BlzObject): void {
+        logger.debug(() => `LeaveIndication ${JSON.stringify(BlzObject)}`, NS);
         const payload: Events.DeviceLeavePayload = {
-            networkAddress: <number>ziGateObject.payload.extendedAddress,
-            ieeeAddr: <string>ziGateObject.payload.extendedAddress,
+            networkAddress: <number>BlzObject.payload.extendedAddress,
+            ieeeAddr: <string>BlzObject.payload.extendedAddress,
         };
         this.emit('deviceLeave', payload);
     }
@@ -619,11 +629,11 @@ class ZiGateAdapter extends Adapter {
         );
     }
 
-    private onZiGateClose(): void {
+    private onBlzClose(): void {
         if (!this.closing) {
             this.emit('disconnected');
         }
     }
 }
 
-export default ZiGateAdapter;
+export default BlzAdapter;

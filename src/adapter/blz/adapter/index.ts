@@ -1,5 +1,5 @@
 /* istanbul ignore file */
 
-import ZiGateAdapter from './zigateAdapter';
+import BlzAdapter from './blzAdapter';
 
-export {ZiGateAdapter};
+export {BlzAdapter};
