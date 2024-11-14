@@ -9,11 +9,11 @@ import wait from '../../../utils/wait';
 import {SerialPort} from '../../serialPort';
 import SocketPortUtils from '../../socketPortUtils';
 import {SerialPortOptions} from '../../tstype';
-import {FrameType, Frame as NpiFrame} from './frame';
+import {Frame} from './frame';
 import {Parser} from './parser';
 import {Writer} from './writer';
 
-const NS = 'zh:ezsp:uart';
+const NS = 'zh:blz:uart';
 
 enum NcpResetCode {
     RESET_UNKNOWN_REASON = 0x00,
@@ -158,191 +158,86 @@ export class SerialDriver extends EventEmitter {
         });
     }
 
-    private async onParsed(frame: NpiFrame): Promise<void> {
-        const rejectCondition = this.rejectCondition;
+    private async onParsed(frame: Frame): Promise<void> {
         try {
-            frame.checkCRC();
+            if ((frame.control & 0x80) === 0) frame.checkCRC();
 
-            /* Frame receive handler */
-            switch (frame.type) {
-                case FrameType.DATA:
-                    this.handleDATA(frame);
-                    break;
-                case FrameType.ACK:
+            const frmNum = frame.sequence & 0x0F;
+            const reTx = frame.control & 0x01;
+
+            this.recvSeq = (frmNum + 1) & 0x0F;
+            logger.debug(`<-- Frame (${frmNum}, ${reTx}): ${frame}`, NS);
+
+            switch (frame.frameId) {
+                case 0x0001:
                     this.handleACK(frame);
                     break;
-                case FrameType.NAK:
-                    this.handleNAK(frame);
-                    break;
-                case FrameType.RST:
-                    this.handleRST(frame);
-                    break;
-                case FrameType.RSTACK:
-                    this.handleRSTACK(frame);
-                    break;
-                case FrameType.ERROR:
+                case 0x0002:
                     await this.handleError(frame);
                     break;
+                case 0x0003:
+                    this.handleReset(frame);
+                    break;
+                case 0x0004:
+                    this.handleResetAck(frame);
+                    break;
                 default:
-                    this.rejectCondition = true;
-                    logger.debug(`UNKNOWN FRAME RECEIVED: ${frame}`, NS);
+                    this.handleDATA(frame);
             }
         } catch (error) {
             this.rejectCondition = true;
-            logger.error(`Error while parsing to NpiFrame '${error}'`, NS);
-            logger.debug((error as Error).stack!, NS);
-        }
-
-        // We send NAK only if the rejectCondition was set in the current processing
-        if (!rejectCondition && this.rejectCondition) {
-            // send NAK
-            this.writer.sendNAK(this.recvSeq);
+            logger.error(`Error parsing frame: ${error}`, NS);
         }
     }
 
-    private handleDATA(frame: NpiFrame): void {
-        /* Data frame receive handler */
-        const frmNum = (frame.control & 0x70) >> 4;
-        const reTx = (frame.control & 0x08) >> 3;
-
-        logger.debug(`<-- DATA (${frmNum},${frame.control & 0x07},${reTx}): ${frame}`, NS);
-
-        // Expected package {recvSeq}, but received {frmNum}
-        // This happens when the chip sends us a reTx packet, but we are waiting for the next one
-        if (this.recvSeq != frmNum) {
-            if (reTx) {
-                // if the reTx flag is set, then this is a packet replay
-                logger.debug(`Unexpected DATA packet sequence ${frmNum} | ${this.recvSeq}: packet replay`, NS);
-            } else {
-                // otherwise, the sequence of packets is out of order - skip or send NAK is needed
-                logger.debug(`Unexpected DATA packet sequence ${frmNum} | ${this.recvSeq}: reject condition`, NS);
-                this.rejectCondition = true;
-                return;
-            }
-        }
-
-        this.rejectCondition = false;
-
-        this.recvSeq = (frmNum + 1) & 7; // next
-
-        logger.debug(`--> ACK  (${this.recvSeq})`, NS);
-
+    private handleDATA(frame: Frame): void {
         this.writer.sendACK(this.recvSeq);
 
-        const handled = this.handleACK(frame);
-
-        if (reTx && !handled) {
-            // if the package is resent and did not expect it,
-            // then will skip it - already processed it earlier
-            logger.debug(`Skipping the packet as repeated (${this.recvSeq})`, NS);
-
+        if (frame.control & 0x01) {
+            logger.debug(`Ignoring retransmitted frame: ${frame}`, NS);
             return;
         }
 
-        const data = frame.buffer.subarray(1, -3);
-
-        this.emit('received', NpiFrame.makeRandomizedBuffer(data));
+        this.emit('received', frame.payload);
     }
 
-    private handleACK(frame: NpiFrame): boolean {
-        /* Handle an acknowledgement frame */
-        // next number after the last accepted frame
-        this.ackSeq = frame.control & 0x07;
-
-        logger.debug(`<-- ACK (${this.ackSeq}): ${frame}`, NS);
-
-        const handled = this.waitress.resolve({sequence: this.ackSeq});
-
-        if (!handled && this.sendSeq !== this.ackSeq) {
-            // Packet confirmation received for {ackSeq}, but was expected {sendSeq}
-            // This happens when the chip has not yet received of the packet {sendSeq} from us,
-            // but has already sent us the next one.
-            logger.debug(`Unexpected packet sequence ${this.ackSeq} | ${this.sendSeq}`, NS);
-        }
-
-        return handled;
+    private handleACK(frame: Frame): void {
+        const ackSeq = frame.control & 0x0F;
+        this.waitress.resolve({ sequence: ackSeq });
+        logger.debug(`<-- ACK (${ackSeq}): ${frame}`, NS);
     }
 
-    private handleNAK(frame: NpiFrame): void {
-        /* Handle negative acknowledgment frame */
-        const nakNum = frame.control & 0x07;
-
-        logger.debug(`<-- NAK (${nakNum}): ${frame}`, NS);
-
-        const handled = this.waitress.reject({sequence: nakNum}, 'Recv NAK frame');
-
-        if (!handled) {
-            // send NAK
-            logger.debug(`NAK Unexpected packet sequence ${nakNum}`, NS);
-        } else {
-            logger.debug(`NAK Expected packet sequence ${nakNum}`, NS);
-        }
+    private handleResetAck(frame: Frame): void {
+        this.waitress.resolve({ sequence: -1 });
+        logger.debug(`<-- RESET_ACK: ${frame}`, NS);
     }
 
-    private handleRST(frame: NpiFrame): void {
-        logger.debug(`<-- RST:  ${frame}`, NS);
-    }
-
-    private handleRSTACK(frame: NpiFrame): void {
-        /* Reset acknowledgement frame receive handler */
-        let code;
-        this.rejectCondition = false;
-
-        logger.debug(`<-- RSTACK ${frame}`, NS);
-
-        try {
-            code = NcpResetCode[frame.buffer[2]];
-        } catch {
-            code = NcpResetCode.ERROR_UNKNOWN_EM3XX_ERROR;
-        }
-
-        logger.debug(`RSTACK Version: ${frame.buffer[1]} Reason: ${code.toString()} frame: ${frame}`, NS);
-
-        if (NcpResetCode[<number>code].toString() !== NcpResetCode.RESET_SOFTWARE.toString()) {
-            return;
-        }
-
-        this.waitress.resolve({sequence: -1});
-    }
-
-    private async handleError(frame: NpiFrame): Promise<void> {
-        logger.debug(`<-- Error ${frame}`, NS);
-
-        try {
-            // send reset
-            await this.reset();
-        } catch (error) {
-            logger.error(`Failed to reset on Error Frame: ${error}`, NS);
-        }
+    private async handleError(frame: Frame): Promise<void> {
+        logger.debug(`<-- Error: ${frame}`, NS);
+        await this.reset();
     }
 
     async reset(): Promise<void> {
-        logger.debug('Uart reseting', NS);
         this.parser.reset();
         this.queue.clear();
         this.sendSeq = 0;
         this.recvSeq = 0;
 
-        return await this.queue.execute<void>(async (): Promise<void> => {
+        return this.queue.execute(async () => {
             try {
-                logger.debug(`--> Write reset`, NS);
                 const waiter = this.waitFor(-1, 10000);
-                this.rejectCondition = false;
-
-                this.writer.sendReset();
-                logger.debug(`-?- waiting reset`, NS);
+                this.writer.sendReset(this.sendSeq, this.recvSeq);
                 await waiter.start().promise;
-                logger.debug(`-+- waiting reset success`, NS);
-
-                await wait(2000);
             } catch (e) {
-                logger.error(`--> Error: ${e}`, NS);
-
+                logger.error(`Reset failed: ${e}`, NS);
                 this.emit('reset');
-
                 throw new Error(`Reset error: ${e}`);
             }
         });
+    }
+
+    private handleReset(frame: Frame): void {
+        logger.warning(`<-- RST:  ${frame}`, NS);
     }
 
     public async close(emitClose: boolean): Promise<void> {
@@ -394,49 +289,38 @@ export class SerialDriver extends EventEmitter {
         return this.initialized;
     }
 
-    public async sendDATA(data: Buffer): Promise<void> {
+    public async sendDATA(
+        data: Buffer,
+        frameId: number,
+        retries = 2
+    ): Promise<void> {
         const seq = this.sendSeq;
-        this.sendSeq = (seq + 1) % 8; // next
-        const nextSeq = this.sendSeq;
         const ackSeq = this.recvSeq;
 
-        return await this.queue.execute<void>(async (): Promise<void> => {
-            const randData = NpiFrame.makeRandomizedBuffer(data);
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            const isRetransmission = attempt > 0;
 
             try {
-                const waiter = this.waitFor(nextSeq);
-                logger.debug(`--> DATA (${seq},${ackSeq},0): ${data.toString('hex')}`, NS);
-                this.writer.sendData(randData, seq, 0, ackSeq);
-                logger.debug(`-?- waiting (${nextSeq})`, NS);
+                const waiter = this.waitFor(seq);
+                this.writer.sendData(data, seq, ackSeq, frameId, isRetransmission);
+                this.sendSeq = (seq + 1) & 0x0F;
                 await waiter.start().promise;
-                logger.debug(`-+- waiting (${nextSeq}) success`, NS);
-            } catch (e1) {
-                logger.error(`--> Error: ${e1}`, NS);
-                logger.error(`-!- break waiting (${nextSeq})`, NS);
-                logger.error(`Can't send DATA frame (${seq},${ackSeq},0): ${data.toString('hex')}`, NS);
+                return;
+            } catch (e) {
+                logger.error(
+                    `Attempt ${attempt + 1} failed for seq ${seq}: ${e}`,
+                    NS
+                );
 
-                try {
-                    await Wait(500);
-                    const waiter = this.waitFor(nextSeq);
-                    logger.debug(`->> DATA (${seq},${ackSeq},1): ${data.toString('hex')}`, NS);
-                    this.writer.sendData(randData, seq, 1, ackSeq);
-                    logger.debug(`-?- rewaiting (${nextSeq})`, NS);
-                    await waiter.start().promise;
-                    logger.debug(`-+- rewaiting (${nextSeq}) success`, NS);
-                } catch (e2) {
-                    logger.error(`--> Error: ${e2}`, NS);
-                    logger.error(`-!- break rewaiting (${nextSeq})`, NS);
-                    logger.error(`Can't resend DATA frame (${seq},${ackSeq},1): ${data.toString('hex')}`, NS);
-                    if (this.initialized) {
-                        this.emit('reset');
-                    }
-                    throw new Error(`sendDATA error: try 1: ${e1}, try 2: ${e2}`);
+                if (attempt === retries) {
+                    logger.error(`All retries failed for seq ${seq}.`, NS);
+                    throw new Error(`Failed to send data after ${retries} retries.`);
                 }
             }
-        });
+        }
     }
 
-    public waitFor(sequence: number, timeout = 4000): {start: () => {promise: Promise<EZSPPacket>; ID: number}; ID: number} {
+    public waitFor(sequence: number, timeout = 3000): {start: () => {promise: Promise<EZSPPacket>; ID: number}; ID: number} {
         return this.waitress.waitFor({sequence}, timeout);
     }
 

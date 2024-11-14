@@ -17,7 +17,7 @@ import {AdapterOptions, CoordinatorVersion, NetworkOptions, NetworkParameters, S
 import {Driver, EmberIncomingMessage} from '../driver';
 import {EmberEUI64, EmberStatus} from '../driver/types';
 
-const NS = 'zh:ezsp';
+const NS = 'zh:blz';
 
 const autoDetectDefinitions = [
     {manufacturer: 'ITEAD', vendorId: '1a86', productId: '55d4'}, // Sonoff ZBDongle-E
@@ -146,7 +146,7 @@ class EZSPAdapter extends Adapter {
      */
     public async start(): Promise<StartResult> {
         logger.warning(
-            `'ezsp' driver is deprecated and will only remain to provide support for older firmware (pre 7.4.x). Migration to 'ember' is recommended. If using Zigbee2MQTT see https://github.com/Koenkk/zigbee2mqtt/discussions/21462`,
+            `'blz' driver is deprecated and will only remain to provide support for older firmware (pre 7.4.x). Migration to 'ember' is recommended. If using Zigbee2MQTT see https://github.com/Koenkk/zigbee2mqtt/discussions/21462`,
             NS,
         );
         return await this.driver.startup();
@@ -190,7 +190,7 @@ class EZSPAdapter extends Adapter {
     }
 
     public async permitJoin(seconds: number, networkAddress?: number): Promise<void> {
-        if (!this.driver.ezsp.isInitialized()) {
+        if (!this.driver.blz.isInitialized()) {
             return;
         }
 
@@ -498,7 +498,7 @@ class EZSPAdapter extends Adapter {
     }
 
     public async backup(): Promise<Models.Backup> {
-        assert(this.driver.ezsp.isInitialized(), 'Cannot make backup when ezsp is not initialized');
+        assert(this.driver.blz.isInitialized(), 'Cannot make backup when blz is not initialized');
         return await this.driver.backupMan.createBackup();
     }
 
