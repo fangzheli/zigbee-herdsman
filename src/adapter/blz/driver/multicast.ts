@@ -2,11 +2,11 @@
 
 import {logger} from '../../../utils/logger';
 import {Driver} from './driver';
-import {EzspConfigId} from './types';
+import {BlzConfigId} from './types';
 import {EmberStatus} from './types/named';
 import {EmberMulticastTableEntry} from './types/struct';
 
-const NS = 'zh:ezsp:cast';
+const NS = 'zh:blz:cast';
 
 export class Multicast {
     TABLE_SIZE = 16;
@@ -23,9 +23,9 @@ export class Multicast {
     }
 
     private async _initialize(): Promise<void> {
-        const size = await this.driver.ezsp.getConfigurationValue(EzspConfigId.CONFIG_MULTICAST_TABLE_SIZE);
+        const size = await this.driver.blz.getConfigurationValue(BlzConfigId.CONFIG_MULTICAST_TABLE_SIZE);
         for (let i = 0; i < size; i++) {
-            const entry = await this.driver.ezsp.getMulticastTableEntry(i);
+            const entry = await this.driver.blz.getMulticastTableEntry(i);
             logger.debug(`MulticastTableEntry[${i}] = ${entry}`, NS);
             if (entry.endpoint !== 0) {
                 this._multicast[entry.multicastId] = [entry, i];
@@ -58,7 +58,7 @@ export class Multicast {
             entry.endpoint = endpoint;
             entry.multicastId = group_id;
             entry.networkIndex = 0;
-            const status = await this.driver.ezsp.setMulticastTableEntry(idx, entry);
+            const status = await this.driver.blz.setMulticastTableEntry(idx, entry);
             if (status !== EmberStatus.SUCCESS) {
                 logger.error(`Set MulticastTableEntry #${idx} for ${entry.multicastId} multicast id: ${status}`, NS);
                 this._available.push(idx);

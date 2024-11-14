@@ -81,24 +81,24 @@ export class EmberEUI64 extends fixed_list(8, basic.uint8_t) {
 
 export class EmberLibraryStatus extends basic.uint8_t {}
 
-export class SecureEzspSecurityType extends basic.uint32_t {}
+export class SecureBlzSecurityType extends basic.uint32_t {}
 
-export class SecureEzspSecurityLevel extends basic.uint8_t {}
+export class SecureBlzSecurityLevel extends basic.uint8_t {}
 
 export class EmberGpSecurityLevel extends basic.uint8_t {}
 
 export class EmberGpKeyType extends basic.uint8_t {}
 
-export class SecureEzspRandomNumber extends basic.uint64_t {}
+export class SecureBlzRandomNumber extends basic.uint64_t {}
 
-export class SecureEzspSessionId extends basic.uint64_t {}
+export class SecureBlzSessionId extends basic.uint64_t {}
 
 export class Bool extends basic.uint8_t {
     static false = 0x00; // An alias for zero, used for clarity.
     static true = 0x01; // An alias for one, used for clarity.
 }
 
-export class EzspConfigId extends basic.uint8_t {
+export class BlzConfigId extends basic.uint8_t {
     // Identifies a configuration value.
 
     // The number of packet buffers available to the stack.  When set to the
@@ -264,122 +264,47 @@ export class EzspConfigId extends basic.uint8_t {
     static CONFIG_TC_REJOINS_USING_WELL_KNOWN_KEY_TIMEOUT_S = 0x38;
 }
 
-export class EzspValueId extends basic.uint8_t {
-    // Identifies a value.
+export class BlzValueId extends basic.uint8_t {
+    // BLZ Value ID enumeration.
 
-    // The contents of the node data stack token.
-    static VALUE_TOKEN_STACK_NODE_DATA = 0x00;
-    // The types of MAC passthrough messages that the host wishes to receive.
-    static VALUE_MAC_PASSTHROUGH_FLAGS = 0x01;
-    // The source address used to filter legacy EmberNet messages when the
-    // MAC_PASSTHROUGH_EMBERNET_SOURCE flag is set in
-    // VALUE_MAC_PASSTHROUGH_FLAGS.
-    static VALUE_EMBERNET_PASSTHROUGH_SOURCE_ADDRESS = 0x02;
-    // The number of available message buffers.
-    static VALUE_FREE_BUFFERS = 0x03;
-    // Selects sending synchronous callbacks in ezsp-uart.
-    static VALUE_UART_SYNCH_CALLBACKS = 0x04;
-    // The maximum incoming transfer size for the local node.
-    static VALUE_MAXIMUM_INCOMING_TRANSFER_SIZE = 0x05;
-    // The maximum outgoing transfer size for the local node.
-    static VALUE_MAXIMUM_OUTGOING_TRANSFER_SIZE = 0x06;
-    // A boolean indicating whether stack tokens are written to persistent
-    // storage as they change.
-    static VALUE_STACK_TOKEN_WRITING = 0x07;
-    // A read-only value indicating whether the stack is currently performing a
-    // rejoin.
-    static VALUE_STACK_IS_PERFORMING_REJOIN = 0x08;
-    // A list of EmberMacFilterMatchData values.
-    static VALUE_MAC_FILTER_LIST = 0x09;
-    // The Ember Extended Security Bitmask.
-    static VALUE_EXTENDED_SECURITY_BITMASK = 0x0a;
-    // The node short ID.
-    static VALUE_NODE_SHORT_ID = 0x0b;
-    // The descriptor capability of the local node.
-    static VALUE_DESCRIPTOR_CAPABILITY = 0x0c;
-    // The stack device request sequence number of the local node.
-    static VALUE_STACK_DEVICE_REQUEST_SEQUENCE_NUMBER = 0x0d;
-    // Enable or disable radio hold-off.
-    static VALUE_RADIO_HOLD_OFF = 0x0e;
-    // The flags field associated with the endpoint data.
-    static VALUE_ENDPOINT_FLAGS = 0x0f;
-    // Enable/disable the Mfg security config key settings.
-    static VALUE_MFG_SECURITY_CONFIG = 0x10;
-    // Retrieves the version information from the stack on the NCP.
-    static VALUE_VERSION_INFO = 0x11;
-    // This will get/set the rejoin reason noted by the host for a subsequent
-    // call to emberFindAndRejoinNetwork(). After a call to
-    // emberFindAndRejoinNetwork() the host's rejoin reason will be set to
-    // REJOIN_REASON_NONE. The NCP will store the rejoin reason used by the
-    // call to emberFindAndRejoinNetwork()
-    static VALUE_NEXT_HOST_REJOIN_REASON = 0x12;
-    // This is the reason that the last rejoin took place. This value may only
-    // be retrieved, not set. The rejoin may have been initiated by the stack
-    // (NCP) or the application (host). If a host initiated a rejoin the reason
-    // will be set by default to REJOIN_DUE_TO_APP_EVENT_1. If the application
-    // wishes to denote its own rejoin reasons it can do so by calling
-    // ezspSetValue(VALUE_HOST_REJOIN_REASON, REJOIN_DUE_TO_APP_EVENT_X). X is a
-    // number corresponding to one of the app events defined. If the NCP
-    // initiated a rejoin it will record this value internally for retrieval by
-    // ezspGetValue(VALUE_REAL_REJOIN_REASON).
-    static VALUE_LAST_REJOIN_REASON = 0x13;
-    // The next ZigBee sequence number.
-    static VALUE_NEXT_ZIGBEE_SEQUENCE_NUMBER = 0x14;
-    // CCA energy detect threshold for radio.
-    static VALUE_CCA_THRESHOLD = 0x15;
-    // The threshold value for a counter
-    static VALUE_SET_COUNTER_THRESHOLD = 0x17;
-    // Resets all counters thresholds to 0xFF
-    static VALUE_RESET_COUNTER_THRESHOLDS = 0x18;
-    // Clears all the counters
-    static VALUE_CLEAR_COUNTERS = 0x19;
-    // The device RF4CE base channel
-    static VALUE_RF4CE_BASE_CHANNEL = 0x1a;
-    // The RF4CE device types supported by the node
-    static VALUE_RF4CE_SUPPORTED_DEVICE_TYPES_LIST = 0x1b;
-    // The RF4CE profiles supported by the node
-    static VALUE_RF4CE_SUPPORTED_PROFILES_LIST = 0x1c;
-    // Setting this byte enables R21 behavior on the NCP.
-    static VALUE_ENABLE_R21_BEHAVIOR = 0x29;
-    // Configure the antenna mode(0-primary,1-secondary,2- toggle on tx ack
-    // fail).
-    static VALUE_ANTENNA_MODE = 0x30;
-    // The GDP binding recipient parameters
-    static VALUE_RF4CE_GDP_BINDING_RECIPIENT_PARAMETERS = 0x1d;
-    // The GDP binding push button stimulus received pending flag
-    static VALUE_RF4CE_GDP_PUSH_BUTTON_STIMULUS_RECEIVED_PENDING_FLAG = 0x1e;
-    // The GDP originator proxy flag in the advanced binding options
-    static VALUE_RF4CE_GDP_BINDING_PROXY_FLAG = 0x1f;
-    // The GDP application specific user s join unti_VALUE_RF4CE_MSO_USER_STRING
-    // 0x21 The MSO user string
-    static VALUE_RF4CE_GDP_APPLICATION_SPECIFIC_USER_STRING = 0x20;
-    // The MSO user string
-    static VALUE_RF4CE_MSO_USER_STRING = 0x21;
-    // The MSO binding recipient parameters
-    static VALUE_RF4CE_MSO_BINDING_RECIPIENT_PARAMETERS = 0x22;
-    // The NWK layer security frame counter value
-    static VALUE_NWK_FRAME_COUNTER = 0x23;
-    // The APS layer security frame counter value
-    static VALUE_APS_FRAME_COUNTER = 0x24;
-    // Sets the device type to use on the next rejoin using device type
-    static VALUE_RETRY_DEVICE_TYPE = 0x25;
-    // The device RF4CE base channel
-    static VALUE_RF4CE_BASE_CHANNEL2 = 0x26;
-    // The RF4CE device types supported by the node
-    static VALUE_RF4CE_SUPPORTED_DEVICE_TYPES_LIST2 = 0x27;
-    // The RF4CE profiles supported by the node
-    static VALUE_RF4CE_SUPPORTED_PROFILES_LIST2 = 0x28;
-    // Enable or disable packet traffic arbitration.
-    static VALUE_ENABLE_PTA = 0x31;
-    // Set packet traffic arbitration configuration options.
-    static VALUE_PTA_OPTIONS = 0x32;
-    // Configure manufacturing library options(0-non-CSMA transmits,1-CSMA transmits).
-    static VALUE_MFGLIB_OPTIONS = 0x33;
-
-    static VALUE_END_DEVICE_KEEP_ALIVE_SUPPORT_MODE = 0x3f;
+    // BLZ version
+    static BLZ_VALUE_ID_BLZ_VERSION = 0x00;
+    // Stack version
+    static BLZ_VALUE_ID_STACK_VERSION = 0x01;
+    // Neighbor table size
+    static BLZ_VALUE_ID_NEIGHBOR_TABLE_SIZE = 0x02;
+    // Source route table size
+    static BLZ_VALUE_ID_SOURCE_ROUTE_TABLE_SIZE = 0x03;
+    // Routing table size
+    static BLZ_VALUE_ID_ROUTE_TABLE_SIZE = 0x04;
+    // Route discovery table size
+    static BLZ_VALUE_ID_DISCOVERY_TABLE_SIZE = 0x05;
+    // Address map table size
+    static BLZ_VALUE_ID_ADDRESS_TABLE_SIZE = 0x06;
+    // Group table size
+    static BLZ_VALUE_ID_MULTICAST_TABLE_SIZE = 0x07;
+    // Broadcast table size
+    static BLZ_VALUE_ID_BROADCAST_TABLE_SIZE = 0x08;
+    // Binding table size
+    static BLZ_VALUE_ID_BINDING_TABLE_SIZE = 0x09;
+    // Max end device supported
+    static BLZ_VALUE_ID_MAX_END_DEVICE_CHILDREN = 0x0A;
+    // Indirect message timeout value
+    static BLZ_VALUE_ID_INDIRECT_TRANSMISSION_TIMEOUT = 0x0B;
+    // End device timeout value
+    static BLZ_VALUE_ID_END_DEVICE_BIND_TIMEOUT = 0x0C;
+    // Device Unique TC Link key table size
+    static BLZ_VALUE_ID_UNIQUE_TC_LINK_KEY_TABLE_SIZE = 0x0D;
+    // Trust center address
+    static BLZ_VALUE_ID_TRUST_CENTER_ADDRESS = 0x0F;
+    // MAC address of NCP
+    static BLZ_VALUE_ID_MAC_ADDRESS = 0x20;
+    // Application version
+    static BLZ_VALUE_ID_APP_VERSION = 0x21;
 }
 
-export class EzspExtendedValueId extends basic.uint8_t {
+
+export class BlzExtendedValueId extends basic.uint8_t {
     // Identifies a value based on specified characteristics. Each set of
     // characteristics is unique to that value and is specified during the call
     // to get the extended value.
@@ -397,7 +322,7 @@ export class EzspExtendedValueId extends basic.uint8_t {
     static EXTENDED_VALUE_GET_SOURCE_ROUTE_OVERHEAD = 0x02;
 }
 
-export class EzspEndpointFlags extends basic.uint16_t {
+export class BlzEndpointFlags extends basic.uint16_t {
     // Flags associated with the endpoint data configured on the NCP.
 
     // Indicates that the endpoint is disabled and NOT discoverable via ZDO.
@@ -422,7 +347,7 @@ export class EmberConfigTxPowerMode extends basic.uint16_t {
     static TX_POWER_MODE_ALTERNATE = 0x02;
 }
 
-export class EzspPolicyId extends basic.uint8_t {
+export class BlzPolicyId extends basic.uint8_t {
     // Identifies a policy.
 
     // Controls trust center behavior.
@@ -451,7 +376,7 @@ export class EzspPolicyId extends basic.uint8_t {
     static TC_REJOINS_USING_WELL_KNOWN_KEY_POLICY = 0x09;
 }
 
-export class EzspDecisionId extends basic.uint16_t {
+export class BlzDecisionId extends basic.uint16_t {
     // Identifies a policy decision.
 
     // Send the network key in the clear to all joining and rejoining devices.
@@ -528,8 +453,8 @@ export class EzspDecisionId extends basic.uint16_t {
     static PACKET_VALIDATE_LIBRARY_CHECKS_DISABLED = 0x63;
 }
 
-export class EzspMfgTokenId extends basic.uint8_t {
-    // Manufacturing token IDs used by ezspGetMfgToken().
+export class BlzMfgTokenId extends basic.uint8_t {
+    // Manufacturing token IDs used by blzGetMfgToken().
 
     // Custom version (2 bytes).
     static MFG_CUSTOM_VERSION = 0x00;
@@ -565,7 +490,7 @@ export class EzspMfgTokenId extends basic.uint8_t {
     static MFG_CTUNE = 0x0d;
 }
 
-export class EzspStatus extends basic.uint8_t {
+export class BlzStatus extends basic.uint8_t {
     // Status values used by EZSP.
 
     // Success.
@@ -1809,7 +1734,7 @@ export class EmberApsOption extends basic.uint16_t {
     static APS_OPTION_FRAGMENT = 0x8000;
 }
 
-export class EzspNetworkScanType extends basic.uint8_t {
+export class BlzNetworkScanType extends basic.uint8_t {
     // Network scan types.
 
     // An energy scan scans each channel for its RSSI value.
@@ -2194,17 +2119,17 @@ export class EmberZllKeyIndex extends basic.uint8_t {
     static ZLL_KEY_INDEX_CERTIFICATION = 0x0f;
 }
 
-export class EzspZllNetworkOperation extends basic.uint8_t {
+export class BlzZllNetworkOperation extends basic.uint8_t {
     // Differentiates among ZLL network operations.
 
     static ZLL_FORM_NETWORK = 0x00; // ZLL form network command.
     static ZLL_JOIN_TARGET = 0x01; // ZLL join target command.
 }
 
-export class EzspSourceRouteOverheadInformation extends basic.uint8_t {
+export class BlzSourceRouteOverheadInformation extends basic.uint8_t {
     // Validates Source Route Overhead Information cached.
 
-    // Ezsp source route overhead unknown
+    // Blz source route overhead unknown
     static SOURCE_ROUTE_OVERHEAD_UNKNOWN = 0xff;
 }
 
@@ -2295,7 +2220,7 @@ export class EmberZDOCmd extends basic.uint16_t {
     static Mgmt_NWK_Update_rsp = 0x8038;
 }
 
-export class EzspDecisionBitmask extends basic.uint16_t {
+export class BlzDecisionBitmask extends basic.uint16_t {
     // EZSP Decision bitmask.
 
     // Disallow joins and rejoins.
