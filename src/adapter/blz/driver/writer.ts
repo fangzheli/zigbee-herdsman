@@ -1,12 +1,11 @@
 /* istanbul ignore file */
 
 import * as stream from 'stream';
-
-import {logger} from '../../../utils/logger';
+import { logger } from '../../../utils/logger';
 import * as consts from './consts';
-import {crc16ccitt} from './utils';
+import { crc16ccitt } from './utils';
 
-const NS = 'zh:ezsp:uart';
+const NS = 'zh:blz:uart';
 
 export class Writer extends stream.Readable {
     public writeBuffer(buffer: Buffer): void {
@@ -16,35 +15,55 @@ export class Writer extends stream.Readable {
 
     public _read(): void {}
 
-    public sendACK(ackNum: number): void {
-        /* Construct a acknowledgement frame */
-        const ackFrame = this.makeFrame(0b10000000 | ackNum);
-        this.writeBuffer(ackFrame);
+    public sendACK(ackSeq: number): void {
+        const control = 0x80; // ACK control byte
+        const frame = this.makeFrame(control, 0, ackSeq, 0x0001);
+        this.writeBuffer(frame);
     }
 
-    public sendNAK(ackNum: number): void {
-        /* Construct a negative acknowledgement frame */
-        const nakFrame = this.makeFrame(0b10100000 | ackNum);
-        this.writeBuffer(nakFrame);
+    public sendData(
+        data: Buffer,
+        seq: number,
+        ackSeq: number,
+        frameId: number,
+        isRetransmission = false
+    ): void {
+        const control = this.makeControlByte(seq, ackSeq, isRetransmission);
+        const frame = this.makeFrame(control, seq, ackSeq, frameId, data);
+        this.writeBuffer(frame);
     }
 
-    public sendReset(): void {
-        /* Construct a reset frame */
-        const rstFrame = Buffer.concat([Buffer.from([consts.CANCEL]), this.makeFrame(0xc0)]);
-        this.writeBuffer(rstFrame);
+    public sendReset(seq: number, ackSeq: number): void {
+        const control = this.makeControlByte(seq, ackSeq, false);
+        const frame = this.makeFrame(control, seq, ackSeq, 0x0003); // RESET frameId
+        this.writeBuffer(frame);
     }
 
-    public sendData(data: Buffer, seq: number, rxmit: number, ackSeq: number): void {
-        /* Construct a data frame */
-        const control = (seq << 4) | (rxmit << 3) | ackSeq;
-        const dataFrame = this.makeFrame(control, data);
-        this.writeBuffer(dataFrame);
+    private makeFrame(
+        control: number,
+        seq: number,
+        ackSeq: number,
+        frameId: number,
+        data?: Buffer
+    ): Buffer {
+        const frameBuffer = [
+            control,
+            (seq & 0x0F) | ((ackSeq & 0x0F) << 4),
+            frameId & 0xFF,
+            (frameId >> 8) & 0xFF,
+            ...(data || []),
+        ];
+
+        const crc = crc16ccitt(Buffer.from(frameBuffer), 0xFFFF);
+        frameBuffer.push(crc >> 8);
+        frameBuffer.push(crc & 0xFF);
+
+        return Buffer.from([consts.START, ...this.stuff(frameBuffer), consts.END]);
     }
 
     private *stuff(buffer: number[]): Generator<number> {
-        /* Byte stuff (escape) a string for transmission */
         for (const byte of buffer) {
-            if (consts.RESERVED.includes(byte)) {
+            if ([consts.START, consts.END, consts.ESCAPE].includes(byte)) {
                 yield consts.ESCAPE;
                 yield byte ^ consts.STUFF;
             } else {
@@ -53,12 +72,7 @@ export class Writer extends stream.Readable {
         }
     }
 
-    private makeFrame(control: number, data?: Buffer): Buffer {
-        /* Construct a frame */
-        const frm = [control, ...(data || [])];
-        const crc = crc16ccitt(frm, 65535);
-        frm.push(crc >> 8);
-        frm.push(crc % 256);
-        return Buffer.from([...this.stuff(frm), consts.FLAG]);
+    private makeControlByte(seq: number, ackSeq: number, isRetransmission: boolean): number {
+        return ((seq & 0x0F) << 4) | (ackSeq & 0x0F) | (isRetransmission ? 0x01 : 0x00);
     }
 }

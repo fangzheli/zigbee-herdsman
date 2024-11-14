@@ -6,52 +6,49 @@ import {logger} from '../../../utils/logger';
 import * as consts from './consts';
 import Frame from './frame';
 
-const NS = 'zh:ezsp:uart';
+const NS = 'zh:blz:uart';
 
 export class Parser extends stream.Transform {
     private tail: Buffer[];
 
     public constructor() {
         super();
-
         this.tail = [];
     }
 
     public _transform(chunk: Buffer, _: string, cb: () => void): void {
-        if (chunk.indexOf(consts.CANCEL) >= 0) {
-            this.reset();
-            chunk = chunk.subarray(chunk.lastIndexOf(consts.CANCEL) + 1);
-        }
-
-        if (chunk.indexOf(consts.SUBSTITUTE) >= 0) {
-            this.reset();
-            chunk = chunk.subarray(chunk.indexOf(consts.FLAG) + 1);
-        }
-
         logger.debug(`<-- [${chunk.toString('hex')}]`, NS);
 
-        let delimiterPlace = chunk.indexOf(consts.FLAG);
+        // Append the new chunk to the tail for processing
+        this.tail.push(chunk);
+        let buffer = Buffer.concat(this.tail);
 
-        while (delimiterPlace >= 0) {
-            const buffer = chunk.subarray(0, delimiterPlace + 1);
-            const frameBuffer = Buffer.from([...this.unstuff(Buffer.concat([...this.tail, buffer]))]);
-            this.reset();
+        let startPlace = buffer.indexOf(consts.START);
+        let endPlace = buffer.indexOf(consts.END, startPlace + 1);
+
+        while (startPlace >= 0 && endPlace > startPlace) {
+            // Extract a complete frame from START to END
+            const frameBuffer = buffer.subarray(startPlace + 1, endPlace); // Exclude delimiters
 
             try {
-                const frame = Frame.fromBuffer(frameBuffer);
+                const unstuffedBuffer = Buffer.from([...this.unstuff(frameBuffer)]);
+                const frame = Frame.fromBuffer(unstuffedBuffer);
 
                 if (frame) {
-                    this.emit('parsed', frame);
+                    this.emit('parsed', frame); // Emit the parsed frame
                 }
             } catch (error) {
                 logger.debug(`<-- error ${error}`, NS);
             }
 
-            chunk = chunk.subarray(delimiterPlace + 1);
-            delimiterPlace = chunk.indexOf(consts.FLAG);
+            // Remove the processed part and search for the next frame
+            buffer = buffer.subarray(endPlace + 1);
+            startPlace = buffer.indexOf(consts.START);
+            endPlace = buffer.indexOf(consts.END, startPlace + 1);
         }
 
-        this.tail.push(chunk);
+        // Save unprocessed data for the next chunk
+        this.tail = [buffer];
         cb();
     }
 
@@ -65,8 +62,6 @@ export class Parser extends stream.Transform {
             } else {
                 if (byte === consts.ESCAPE) {
                     escaped = true;
-                } else if (byte === consts.XOFF || byte === consts.XON) {
-                    // skip
                 } else {
                     yield byte;
                 }
@@ -75,7 +70,8 @@ export class Parser extends stream.Transform {
     }
 
     public reset(): void {
-        // clear tail
+        // Clear tail
         this.tail.length = 0;
     }
 }
+

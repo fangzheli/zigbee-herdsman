@@ -3,7 +3,7 @@
 import * as basic from './basic';
 import * as named from './named';
 
-export class EzspStruct {
+export class BlzStruct {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, obj: any): Buffer {
         return Buffer.concat(
@@ -32,7 +32,7 @@ export class EzspStruct {
     }
 }
 
-export class EmberNetworkParameters extends EzspStruct {
+export class EmberNetworkParameters extends BlzStruct {
     // @ts-expect-error set via _fields
     public extendedPanId: Buffer;
     // @ts-expect-error set via _fields
@@ -78,7 +78,7 @@ export class EmberNetworkParameters extends EzspStruct {
     ];
 }
 
-export class EmberZigbeeNetwork extends EzspStruct {
+export class EmberZigbeeNetwork extends BlzStruct {
     // The parameters of a ZigBee network.
     static _fields = [
         // The 802.15.4 channel associated with the network.
@@ -96,7 +96,7 @@ export class EmberZigbeeNetwork extends EzspStruct {
     ];
 }
 
-export class EmberApsFrame extends EzspStruct {
+export class EmberApsFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public profileId: number;
     // @ts-expect-error set via _fields
@@ -129,7 +129,7 @@ export class EmberApsFrame extends EzspStruct {
     ];
 }
 
-export class EmberBindingTableEntry extends EzspStruct {
+export class EmberBindingTableEntry extends BlzStruct {
     // An entry in the binding table.
     static _fields = [
         // The type of binding.
@@ -153,7 +153,7 @@ export class EmberBindingTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberMulticastTableEntry extends EzspStruct {
+export class EmberMulticastTableEntry extends BlzStruct {
     // @ts-expect-error set via _fields
     public multicastId: number;
     // @ts-expect-error set via _fields
@@ -174,7 +174,7 @@ export class EmberMulticastTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberKeyData extends EzspStruct {
+export class EmberKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // A 128- bit key.
@@ -184,7 +184,7 @@ export class EmberKeyData extends EzspStruct {
     ];
 }
 
-export class EmberCertificateData extends EzspStruct {
+export class EmberCertificateData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The implicit certificate used in CBKE.
@@ -194,7 +194,7 @@ export class EmberCertificateData extends EzspStruct {
     ];
 }
 
-export class EmberPublicKeyData extends EzspStruct {
+export class EmberPublicKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The public key data used in CBKE.
@@ -204,7 +204,7 @@ export class EmberPublicKeyData extends EzspStruct {
     ];
 }
 
-export class EmberPrivateKeyData extends EzspStruct {
+export class EmberPrivateKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The private key data used in CBKE.
@@ -214,7 +214,7 @@ export class EmberPrivateKeyData extends EzspStruct {
     ];
 }
 
-export class EmberSmacData extends EzspStruct {
+export class EmberSmacData extends BlzStruct {
     // The Shared Message Authentication Code data used in CBKE.
     static _fields = [
         // The Shared Message Authentication Code data.
@@ -222,7 +222,7 @@ export class EmberSmacData extends EzspStruct {
     ];
 }
 
-export class EmberSignatureData extends EzspStruct {
+export class EmberSignatureData extends BlzStruct {
     // An ECDSA signature
     static _fields = [
         // The signature data.
@@ -230,7 +230,7 @@ export class EmberSignatureData extends EzspStruct {
     ];
 }
 
-export class EmberCertificate283k1Data extends EzspStruct {
+export class EmberCertificate283k1Data extends BlzStruct {
     // The implicit certificate used in CBKE.
     static _fields = [
         // The 283k1 certificate data.
@@ -238,7 +238,7 @@ export class EmberCertificate283k1Data extends EzspStruct {
     ];
 }
 
-export class EmberPublicKey283k1Data extends EzspStruct {
+export class EmberPublicKey283k1Data extends BlzStruct {
     // The public key data used in CBKE.
     static _fields = [
         // The 283k1 public key data.
@@ -246,7 +246,7 @@ export class EmberPublicKey283k1Data extends EzspStruct {
     ];
 }
 
-export class EmberPrivateKey283k1Data extends EzspStruct {
+export class EmberPrivateKey283k1Data extends BlzStruct {
     // The private key data used in CBKE.
     static _fields = [
         // The 283k1 private key data.
@@ -254,7 +254,7 @@ export class EmberPrivateKey283k1Data extends EzspStruct {
     ];
 }
 
-export class EmberSignature283k1Data extends EzspStruct {
+export class EmberSignature283k1Data extends BlzStruct {
     // An ECDSA signature
     static _fields = [
         // The 283k1 signature data.
@@ -262,7 +262,7 @@ export class EmberSignature283k1Data extends EzspStruct {
     ];
 }
 
-export class EmberMessageDigest extends EzspStruct {
+export class EmberMessageDigest extends BlzStruct {
     // The calculated digest of a message
     static _fields = [
         // The calculated digest of a message.
@@ -270,7 +270,7 @@ export class EmberMessageDigest extends EzspStruct {
     ];
 }
 
-export class EmberAesMmoHashContext extends EzspStruct {
+export class EmberAesMmoHashContext extends BlzStruct {
     // @ts-expect-error set via _fields
     public result: Buffer;
     // @ts-expect-error set via _fields
@@ -284,7 +284,7 @@ export class EmberAesMmoHashContext extends EzspStruct {
     ];
 }
 
-export class EmberNeighborTableEntry extends EzspStruct {
+export class EmberNeighborTableEntry extends BlzStruct {
     // A neighbor table entry stores information about the reliability of RF
     // links to and from neighboring nodes.
     static _fields = [
@@ -310,7 +310,7 @@ export class EmberNeighborTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberRouteTableEntry extends EzspStruct {
+export class EmberRouteTableEntry extends BlzStruct {
     // A route table entry stores information about the next hop along the route
     // to the destination.
     static _fields = [
@@ -335,7 +335,7 @@ export class EmberRouteTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberInitialSecurityState extends EzspStruct {
+export class EmberInitialSecurityState extends BlzStruct {
     // @ts-expect-error set via _fields
     public bitmask: number;
     // @ts-expect-error set via _fields
@@ -378,7 +378,7 @@ export class EmberInitialSecurityState extends EzspStruct {
     ];
 }
 
-export class EmberCurrentSecurityState extends EzspStruct {
+export class EmberCurrentSecurityState extends BlzStruct {
     // The security options and information currently used by the stack.
     static _fields = [
         // A bitmask indicating the security options currently in use by a
@@ -389,7 +389,7 @@ export class EmberCurrentSecurityState extends EzspStruct {
     ];
 }
 
-export class EmberKeyStruct extends EzspStruct {
+export class EmberKeyStruct extends BlzStruct {
     // @ts-expect-error set via _fields
     public key: EmberKeyData;
     // @ts-expect-error set via _fields
@@ -416,7 +416,7 @@ export class EmberKeyStruct extends EzspStruct {
     ];
 }
 
-export class EmberNetworkInitStruct extends EzspStruct {
+export class EmberNetworkInitStruct extends BlzStruct {
     // Network Initialization parameters.
     static _fields = [
         // Configuration options for network init.
@@ -424,7 +424,7 @@ export class EmberNetworkInitStruct extends EzspStruct {
     ];
 }
 
-export class EmberZllSecurityAlgorithmData extends EzspStruct {
+export class EmberZllSecurityAlgorithmData extends BlzStruct {
     // Data associated with the ZLL security algorithm.
     static _fields = [
         // Transaction identifier.
@@ -436,7 +436,7 @@ export class EmberZllSecurityAlgorithmData extends EzspStruct {
     ];
 }
 
-export class EmberZllNetwork extends EzspStruct {
+export class EmberZllNetwork extends BlzStruct {
     // The parameters of a ZLL network.
     static _fields = [
         // The parameters of a ZigBee network.
@@ -460,7 +460,7 @@ export class EmberZllNetwork extends EzspStruct {
     ];
 }
 
-export class EmberZllInitialSecurityState extends EzspStruct {
+export class EmberZllInitialSecurityState extends BlzStruct {
     // Describes the initial security features and requirements that will be
     // used when forming or joining ZLL networks.
     static _fields = [
@@ -476,7 +476,7 @@ export class EmberZllInitialSecurityState extends EzspStruct {
     ];
 }
 
-export class EmberZllDeviceInfoRecord extends EzspStruct {
+export class EmberZllDeviceInfoRecord extends BlzStruct {
     // Information about a specific ZLL Device.
     static _fields = [
         // EUI64 associated with the device.
@@ -494,7 +494,7 @@ export class EmberZllDeviceInfoRecord extends EzspStruct {
     ];
 }
 
-export class EmberZllAddressAssignment extends EzspStruct {
+export class EmberZllAddressAssignment extends BlzStruct {
     // ZLL address assignment data.
     static _fields = [
         // Relevant node id.
@@ -514,7 +514,7 @@ export class EmberZllAddressAssignment extends EzspStruct {
     ];
 }
 
-export class EmberTokTypeStackZllData extends EzspStruct {
+export class EmberTokTypeStackZllData extends BlzStruct {
     // Public API for ZLL stack data token.
     static _fields = [
         // Token bitmask.
@@ -534,7 +534,7 @@ export class EmberTokTypeStackZllData extends EzspStruct {
     ];
 }
 
-export class EmberTokTypeStackZllSecurity extends EzspStruct {
+export class EmberTokTypeStackZllSecurity extends BlzStruct {
     // Public API for ZLL stack security token.
     static _fields = [
         // Token bitmask.
@@ -548,7 +548,7 @@ export class EmberTokTypeStackZllSecurity extends EzspStruct {
     ];
 }
 
-export class EmberRf4ceVendorInfo extends EzspStruct {
+export class EmberRf4ceVendorInfo extends BlzStruct {
     // The RF4CE vendor information block.
     static _fields = [
         // The vendor identifier field shall contain the vendor identifier of
@@ -559,7 +559,7 @@ export class EmberRf4ceVendorInfo extends EzspStruct {
     ];
 }
 
-export class EmberRf4ceApplicationInfo extends EzspStruct {
+export class EmberRf4ceApplicationInfo extends BlzStruct {
     // The RF4CE application information block.
     static _fields = [
         // The application capabilities field shall contain information relating
@@ -577,7 +577,7 @@ export class EmberRf4ceApplicationInfo extends EzspStruct {
     ];
 }
 
-export class EmberRf4cePairingTableEntry extends EzspStruct {
+export class EmberRf4cePairingTableEntry extends BlzStruct {
     // The internal representation of an RF4CE pairing table entry.
     static _fields = [
         // The link key to be used to secure this pairing link.
@@ -609,7 +609,7 @@ export class EmberRf4cePairingTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberGpAddress extends EzspStruct {
+export class EmberGpAddress extends BlzStruct {
     // A GP address structure.
     static _fields = [
         // The GPD's EUI64.
@@ -623,7 +623,7 @@ export class EmberGpAddress extends EzspStruct {
     ];
 }
 
-export class EmberGpSinkListEntry extends EzspStruct {
+export class EmberGpSinkListEntry extends BlzStruct {
     // A sink list entry
     static _fields = [
         // The sink list type.
@@ -635,7 +635,7 @@ export class EmberGpSinkListEntry extends EzspStruct {
     ];
 }
 
-export class EmberNodeDescriptor extends EzspStruct {
+export class EmberNodeDescriptor extends BlzStruct {
     static _fields = [
         ['byte1', basic.uint8_t],
         ['byte2', basic.uint8_t],
@@ -649,7 +649,7 @@ export class EmberNodeDescriptor extends EzspStruct {
     ];
 }
 
-export class EmberSimpleDescriptor extends EzspStruct {
+export class EmberSimpleDescriptor extends BlzStruct {
     static _fields = [
         ['endpoint', basic.uint8_t],
         ['profileid', basic.uint16_t],
@@ -660,7 +660,7 @@ export class EmberSimpleDescriptor extends EzspStruct {
     ];
 }
 
-export class EmberMultiAddress extends EzspStruct {
+export class EmberMultiAddress extends BlzStruct {
     static fields3 = [
         ['addrmode', basic.uint8_t],
         ['ieee', named.EmberEUI64],
@@ -686,7 +686,7 @@ export class EmberMultiAddress extends EzspStruct {
     }
 }
 
-export class EmberNeighbor extends EzspStruct {
+export class EmberNeighbor extends BlzStruct {
     static _fields = [
         ['extendedpanid', basic.fixed_list(8, basic.uint8_t)],
         ['ieee', named.EmberEUI64],
@@ -698,7 +698,7 @@ export class EmberNeighbor extends EzspStruct {
     ];
 }
 
-export class EmberNeighbors extends EzspStruct {
+export class EmberNeighbors extends BlzStruct {
     static _fields = [
         ['entries', basic.uint8_t],
         ['startindex', basic.uint8_t],
@@ -706,7 +706,7 @@ export class EmberNeighbors extends EzspStruct {
     ];
 }
 
-export class EmberRoutingTableEntry extends EzspStruct {
+export class EmberRoutingTableEntry extends BlzStruct {
     static _fields = [
         ['destination', basic.uint16_t],
         ['status', basic.uint8_t],
@@ -714,7 +714,7 @@ export class EmberRoutingTableEntry extends EzspStruct {
     ];
 }
 
-export class EmberRoutingTable extends EzspStruct {
+export class EmberRoutingTable extends BlzStruct {
     static _fields = [
         ['entries', basic.uint8_t],
         ['startindex', basic.uint8_t],
@@ -722,7 +722,7 @@ export class EmberRoutingTable extends EzspStruct {
     ];
 }
 
-export class EmberRawFrame extends EzspStruct {
+export class EmberRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public ieeeFrameControl: number;
     // @ts-expect-error set via _fields
@@ -758,7 +758,7 @@ export class EmberRawFrame extends EzspStruct {
     ];
 }
 
-export class EmberIeeeRawFrame extends EzspStruct {
+export class EmberIeeeRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public ieeeFrameControl: number;
     // @ts-expect-error set via _fields
@@ -793,7 +793,7 @@ export class EmberIeeeRawFrame extends EzspStruct {
     ];
 }
 
-export class EmberSecurityManagerContext extends EzspStruct {
+export class EmberSecurityManagerContext extends BlzStruct {
     // Context for Zigbee Security Manager operations.
     // @ts-expect-error set via _fields
     public type: named.EmberKeyType;
@@ -828,7 +828,7 @@ export class EmberSecurityManagerContext extends EzspStruct {
 }
 
 /** This data structure contains the metadata pertaining to an network key */
-export class EmberSecurityManagerNetworkKeyInfo extends EzspStruct {
+export class EmberSecurityManagerNetworkKeyInfo extends BlzStruct {
     // @ts-expect-error set via _fields
     public networkKeySet: number; // boolean
     // @ts-expect-error set via _fields

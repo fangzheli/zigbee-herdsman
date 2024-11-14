@@ -9,9 +9,9 @@ import {uint32MaskToChannels} from '../../../zspec/utils';
 import {Driver} from '../driver';
 import {EmberKeyData, EmberKeyStruct, EmberKeyType, EmberNetworkParameters, EmberSecurityManagerNetworkKeyInfo} from '../driver/types';
 
-const NS = 'zh:ezsp:backup';
+const NS = 'zh:blz:backup';
 
-export class EZSPAdapterBackup {
+export class BLZAdapterBackup {
     private driver: Driver;
     private defaultPath: string;
 
@@ -22,9 +22,9 @@ export class EZSPAdapterBackup {
 
     public async createBackup(): Promise<Models.Backup> {
         logger.debug('creating backup', NS);
-        const version: number = await this.driver.ezsp.version();
+        const version: number = await this.driver.blz.version();
         const linkResult = await this.driver.getKey(EmberKeyType.TRUST_CENTER_LINK_KEY);
-        const netParams = await this.driver.ezsp.execCommand('getNetworkParameters');
+        const netParams = await this.driver.blz.execCommand('getNetworkParameters');
         const networkParams: EmberNetworkParameters = netParams.parameters;
         const netResult = await this.driver.getKey(EmberKeyType.CURRENT_NETWORK_KEY);
         let tclKey: Buffer;
@@ -47,11 +47,11 @@ export class EZSPAdapterBackup {
             netKeyFrameCounter = networkKeyInfo.networkKeyFrameCounter;
         }
 
-        const ieee = (await this.driver.ezsp.execCommand('getEui64')).eui64;
+        const ieee = (await this.driver.blz.execCommand('getEui64')).eui64;
         /* return backup structure */
         /* istanbul ignore next */
         return {
-            ezsp: {
+            blz: {
                 version: version,
                 hashed_tclk: tclKey,
             },
@@ -93,7 +93,7 @@ export class EZSPAdapterBackup {
             if (data.metadata?.version !== 1) {
                 throw new Error(`Unsupported open coordinator backup version (version=${data.metadata?.version})`);
             }
-            if (!data.metadata.internal?.ezspVersion) {
+            if (!data.metadata.internal?.blzVersion) {
                 throw new Error(`This open coordinator backup format not for EZSP adapter`);
             }
             return BackupUtils.fromUnifiedBackup(data);
