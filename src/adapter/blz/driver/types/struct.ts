@@ -32,19 +32,19 @@ export class BlzStruct {
     }
 }
 
-export class EmberNetworkParameters extends BlzStruct {
+export class BlzNetworkParameters extends BlzStruct {
     // @ts-expect-error set via _fields
     public extendedPanId: Buffer;
     // @ts-expect-error set via _fields
     public panId: number;
     // @ts-expect-error set via _fields
-    public radioTxPower: number;
+    public TxPower: number;
     // @ts-expect-error set via _fields
-    public radioChannel: number;
+    public Channel: number;
     // @ts-expect-error set via _fields
-    public joinMethod: named.EmberJoinMethod;
+    public joinMethod: named.BlzJoinMethod;
     // @ts-expect-error set via _fields
-    public nwkManagerId: named.EmberNodeId;
+    public nwkManagerId: named.BlzNodeId;
     // @ts-expect-error set via _fields
     public nwkUpdateId: number;
     // @ts-expect-error set via _fields
@@ -56,15 +56,15 @@ export class EmberNetworkParameters extends BlzStruct {
         // The network's PAN identifier.
         ['panId', basic.uint16_t],
         // A power setting, in dBm.
-        ['radioTxPower', basic.uint8_t],
+        ['TxPower', basic.uint8_t],
         // A radio channel.
-        ['radioChannel', basic.uint8_t],
+        ['Channel', basic.uint8_t],
         // The method used to initially join the network.
-        ['joinMethod', named.EmberJoinMethod],
+        ['joinMethod', named.BlzJoinMethod],
         // NWK Manager ID. The ID of the network manager in the current network.
         // This may only be set at joining when using USE_NWK_COMMISSIONING as
         // the join method.
-        ['nwkManagerId', named.EmberNodeId],
+        ['nwkManagerId', named.BlzNodeId],
         // NWK Update ID. The value of the ZigBee nwkUpdateId known by the
         // stack. This is used to determine the newest instance of the network
         // after a PAN ID or channel change. This may only be set at joining
@@ -78,7 +78,7 @@ export class EmberNetworkParameters extends BlzStruct {
     ];
 }
 
-export class EmberZigbeeNetwork extends BlzStruct {
+export class BlzZigbeeNetwork extends BlzStruct {
     // The parameters of a ZigBee network.
     static _fields = [
         // The 802.15.4 channel associated with the network.
@@ -96,7 +96,7 @@ export class EmberZigbeeNetwork extends BlzStruct {
     ];
 }
 
-export class EmberApsFrame extends BlzStruct {
+export class BlzApsFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public profileId: number;
     // @ts-expect-error set via _fields
@@ -108,7 +108,7 @@ export class EmberApsFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public destinationEndpoint: number;
     public groupId?: number;
-    public options?: named.EmberApsOption;
+    public options?: named.BlzApsOption;
 
     // ZigBee APS frame parameters.
     static _fields = [
@@ -121,7 +121,7 @@ export class EmberApsFrame extends BlzStruct {
         // The destination endpoint.
         ['destinationEndpoint', basic.uint8_t],
         // A bitmask of options.
-        ['options', named.EmberApsOption],
+        ['options', named.BlzApsOption],
         // The group ID for this message, if it is multicast mode.
         ['groupId', basic.uint16_t],
         // The sequence number.
@@ -129,11 +129,11 @@ export class EmberApsFrame extends BlzStruct {
     ];
 }
 
-export class EmberBindingTableEntry extends BlzStruct {
+export class BlzBindingTableEntry extends BlzStruct {
     // An entry in the binding table.
     static _fields = [
         // The type of binding.
-        ['type', named.EmberBindingType],
+        ['type', named.BlzBindingType],
         // The endpoint on the local node.
         ['local', basic.uint8_t],
         // A cluster ID that matches one from the local endpoint's simple
@@ -147,13 +147,13 @@ export class EmberBindingTableEntry extends BlzStruct {
         ['remote', basic.uint8_t],
         // A 64- bit identifier.This is either the destination EUI64 [for
         // unicasts] or the 64- bit group address [for multicasts].
-        ['identifier', named.EmberEUI64],
+        ['identifier', named.BlzEUI64],
         // The index of the network the binding belongs to.
         ['networkIndex', basic.uint8_t],
     ];
 }
 
-export class EmberMulticastTableEntry extends BlzStruct {
+export class BlzMulticastTableEntry extends BlzStruct {
     // @ts-expect-error set via _fields
     public multicastId: number;
     // @ts-expect-error set via _fields
@@ -165,7 +165,7 @@ export class EmberMulticastTableEntry extends BlzStruct {
     // multicast group will receive messages sent to that multicast group.
     static _fields = [
         // The multicast group ID.
-        ['multicastId', named.EmberMulticastId],
+        ['multicastId', named.BlzMulticastId],
         // The endpoint that is a member, or 0 if this entry is not in use[the
         // ZDO is not a member of any multicast groups.]
         ['endpoint', basic.uint8_t],
@@ -174,7 +174,7 @@ export class EmberMulticastTableEntry extends BlzStruct {
     ];
 }
 
-export class EmberKeyData extends BlzStruct {
+export class BlzKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // A 128- bit key.
@@ -184,7 +184,7 @@ export class EmberKeyData extends BlzStruct {
     ];
 }
 
-export class EmberCertificateData extends BlzStruct {
+export class BlzCertificateData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The implicit certificate used in CBKE.
@@ -194,7 +194,7 @@ export class EmberCertificateData extends BlzStruct {
     ];
 }
 
-export class EmberPublicKeyData extends BlzStruct {
+export class BlzPublicKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The public key data used in CBKE.
@@ -204,7 +204,7 @@ export class EmberPublicKeyData extends BlzStruct {
     ];
 }
 
-export class EmberPrivateKeyData extends BlzStruct {
+export class BlzPrivateKeyData extends BlzStruct {
     // @ts-expect-error set via _fields
     public contents: Buffer;
     // The private key data used in CBKE.
@@ -214,7 +214,7 @@ export class EmberPrivateKeyData extends BlzStruct {
     ];
 }
 
-export class EmberSmacData extends BlzStruct {
+export class BlzSmacData extends BlzStruct {
     // The Shared Message Authentication Code data used in CBKE.
     static _fields = [
         // The Shared Message Authentication Code data.
@@ -222,7 +222,7 @@ export class EmberSmacData extends BlzStruct {
     ];
 }
 
-export class EmberSignatureData extends BlzStruct {
+export class BlzSignatureData extends BlzStruct {
     // An ECDSA signature
     static _fields = [
         // The signature data.
@@ -230,7 +230,7 @@ export class EmberSignatureData extends BlzStruct {
     ];
 }
 
-export class EmberCertificate283k1Data extends BlzStruct {
+export class BlzCertificate283k1Data extends BlzStruct {
     // The implicit certificate used in CBKE.
     static _fields = [
         // The 283k1 certificate data.
@@ -238,7 +238,7 @@ export class EmberCertificate283k1Data extends BlzStruct {
     ];
 }
 
-export class EmberPublicKey283k1Data extends BlzStruct {
+export class BlzPublicKey283k1Data extends BlzStruct {
     // The public key data used in CBKE.
     static _fields = [
         // The 283k1 public key data.
@@ -246,7 +246,7 @@ export class EmberPublicKey283k1Data extends BlzStruct {
     ];
 }
 
-export class EmberPrivateKey283k1Data extends BlzStruct {
+export class BlzPrivateKey283k1Data extends BlzStruct {
     // The private key data used in CBKE.
     static _fields = [
         // The 283k1 private key data.
@@ -254,7 +254,7 @@ export class EmberPrivateKey283k1Data extends BlzStruct {
     ];
 }
 
-export class EmberSignature283k1Data extends BlzStruct {
+export class BlzSignature283k1Data extends BlzStruct {
     // An ECDSA signature
     static _fields = [
         // The 283k1 signature data.
@@ -262,7 +262,7 @@ export class EmberSignature283k1Data extends BlzStruct {
     ];
 }
 
-export class EmberMessageDigest extends BlzStruct {
+export class BlzMessageDigest extends BlzStruct {
     // The calculated digest of a message
     static _fields = [
         // The calculated digest of a message.
@@ -270,7 +270,7 @@ export class EmberMessageDigest extends BlzStruct {
     ];
 }
 
-export class EmberAesMmoHashContext extends BlzStruct {
+export class BlzAesMmoHashContext extends BlzStruct {
     // @ts-expect-error set via _fields
     public result: Buffer;
     // @ts-expect-error set via _fields
@@ -284,7 +284,7 @@ export class EmberAesMmoHashContext extends BlzStruct {
     ];
 }
 
-export class EmberNeighborTableEntry extends BlzStruct {
+export class BlzNeighborTableEntry extends BlzStruct {
     // A neighbor table entry stores information about the reliability of RF
     // links to and from neighboring nodes.
     static _fields = [
@@ -306,11 +306,11 @@ export class EmberNeighborTableEntry extends BlzStruct {
         // last received from this neighbor. The aging period is 16 seconds.
         ['age', basic.uint8_t],
         // The 8 byte EUI64 of the neighbor.
-        ['longId', named.EmberEUI64],
+        ['longId', named.BlzEUI64],
     ];
 }
 
-export class EmberRouteTableEntry extends BlzStruct {
+export class BlzRouteTableEntry extends BlzStruct {
     // A route table entry stores information about the next hop along the route
     // to the destination.
     static _fields = [
@@ -335,17 +335,17 @@ export class EmberRouteTableEntry extends BlzStruct {
     ];
 }
 
-export class EmberInitialSecurityState extends BlzStruct {
+export class BlzInitialSecurityState extends BlzStruct {
     // @ts-expect-error set via _fields
     public bitmask: number;
     // @ts-expect-error set via _fields
-    public preconfiguredKey: EmberKeyData;
+    public preconfiguredKey: BlzKeyData;
     // @ts-expect-error set via _fields
-    public networkKey: EmberKeyData;
+    public networkKey: BlzKeyData;
     // @ts-expect-error set via _fields
     public networkKeySequenceNumber: number;
     // @ts-expect-error set via _fields
-    public preconfiguredTrustCenterEui64: named.EmberEUI64;
+    public preconfiguredTrustCenterEui64: named.BlzEUI64;
 
     // The security data used to set the configuration for the stack, or the
     // retrieved configuration currently in use.
@@ -353,17 +353,17 @@ export class EmberInitialSecurityState extends BlzStruct {
         // A bitmask indicating the security state used to indicate what the
         // security configuration will be when the device forms or joins the
         // network.
-        ['bitmask', named.EmberInitialSecurityBitmask],
+        ['bitmask', named.BlzInitialSecurityBitmask],
         // The pre-configured Key data that should be used when forming or
         // joining the network. The security bitmask must be set with the
         // HAVE_PRECONFIGURED_KEY bit to indicate that the key contains valid
         // data.
-        ['preconfiguredKey', EmberKeyData],
+        ['preconfiguredKey', BlzKeyData],
         // The Network Key that should be used by the Trust Center when it forms
         // the network, or the Network Key currently in use by a joined device.
         // The security bitmask must be set with HAVE_NETWORK_KEY to indicate
         // that the key contains valid data.
-        ['networkKey', EmberKeyData],
+        ['networkKey', BlzKeyData],
         // The sequence number associated with the network key. This is only
         // valid if the HAVE_NETWORK_KEY has been set in the security bitmask.
         ['networkKeySequenceNumber', basic.uint8_t],
@@ -371,27 +371,27 @@ export class EmberInitialSecurityState extends BlzStruct {
         // be joined. It is usually NOT set prior to joining the network and
         // instead it is learned during the joining message exchange. This field
         // is only examined if HAVE_TRUST_CENTER_EUI64 is set in the
-        // EmberInitialSecurityState::bitmask. Most devices should clear that
+        // BlzInitialSecurityState::bitmask. Most devices should clear that
         // bit and leave this field alone. This field must be set when using
         // commissioning mode.
-        ['preconfiguredTrustCenterEui64', named.EmberEUI64],
+        ['preconfiguredTrustCenterEui64', named.BlzEUI64],
     ];
 }
 
-export class EmberCurrentSecurityState extends BlzStruct {
+export class BlzCurrentSecurityState extends BlzStruct {
     // The security options and information currently used by the stack.
     static _fields = [
         // A bitmask indicating the security options currently in use by a
         // device joined in the network.
-        ['bitmask', named.EmberCurrentSecurityBitmask],
+        ['bitmask', named.BlzCurrentSecurityBitmask],
         // The IEEE Address of the Trust Center device.
-        ['trustCenterLongAddress', named.EmberEUI64],
+        ['trustCenterLongAddress', named.BlzEUI64],
     ];
 }
 
-export class EmberKeyStruct extends BlzStruct {
+export class BlzKeyStruct extends BlzStruct {
     // @ts-expect-error set via _fields
-    public key: EmberKeyData;
+    public key: BlzKeyData;
     // @ts-expect-error set via _fields
     public outgoingFrameCounter: number;
     // @ts-expect-error set via _fields
@@ -400,11 +400,11 @@ export class EmberKeyStruct extends BlzStruct {
     static _fields = [
         // A bitmask indicating the presence of data within the various fields
         // in the structure.
-        ['bitmask', named.EmberKeyStructBitmask],
+        ['bitmask', named.BlzKeyStructBitmask],
         // The type of the key.
-        ['type', named.EmberKeyType],
+        ['type', named.BlzKeyType],
         // The actual key data.
-        ['key', EmberKeyData],
+        ['key', BlzKeyData],
         // The outgoing frame counter associated with the key.
         ['outgoingFrameCounter', basic.uint32_t],
         // The frame counter of the partner device associated with the key.
@@ -412,19 +412,19 @@ export class EmberKeyStruct extends BlzStruct {
         // The sequence number associated with the key.
         ['sequenceNumber', basic.uint8_t],
         // The IEEE address of the partner device also in possession of the key.
-        ['partnerEUI64', named.EmberEUI64],
+        ['partnerEUI64', named.BlzEUI64],
     ];
 }
 
-export class EmberNetworkInitStruct extends BlzStruct {
+export class BlzNetworkInitStruct extends BlzStruct {
     // Network Initialization parameters.
     static _fields = [
         // Configuration options for network init.
-        ['bitmask', named.EmberNetworkInitBitmask],
+        ['bitmask', named.BlzNetworkInitBitmask],
     ];
 }
 
-export class EmberZllSecurityAlgorithmData extends BlzStruct {
+export class BlzZllSecurityAlgorithmData extends BlzStruct {
     // Data associated with the ZLL security algorithm.
     static _fields = [
         // Transaction identifier.
@@ -436,21 +436,21 @@ export class EmberZllSecurityAlgorithmData extends BlzStruct {
     ];
 }
 
-export class EmberZllNetwork extends BlzStruct {
+export class BlzZllNetwork extends BlzStruct {
     // The parameters of a ZLL network.
     static _fields = [
         // The parameters of a ZigBee network.
-        ['zigbeeNetwork', EmberZigbeeNetwork],
+        ['zigbeeNetwork', BlzZigbeeNetwork],
         // Data associated with the ZLL security algorithm.
-        ['securityAlgorithm', EmberZllSecurityAlgorithmData],
+        ['securityAlgorithm', BlzZllSecurityAlgorithmData],
         // Associated EUI64.
-        ['eui64', named.EmberEUI64],
+        ['eui64', named.BlzEUI64],
         // The node id.
-        ['nodeId', named.EmberNodeId],
+        ['nodeId', named.BlzNodeId],
         // The ZLL state.
-        ['state', named.EmberZllState],
+        ['state', named.BlzZllState],
         // The node type.
-        ['nodeType', named.EmberNodeType],
+        ['nodeType', named.BlzNodeType],
         // The number of sub devices.
         ['numberSubDevices', basic.uint8_t],
         // The total number of group identifiers.
@@ -460,27 +460,27 @@ export class EmberZllNetwork extends BlzStruct {
     ];
 }
 
-export class EmberZllInitialSecurityState extends BlzStruct {
+export class BlzZllInitialSecurityState extends BlzStruct {
     // Describes the initial security features and requirements that will be
     // used when forming or joining ZLL networks.
     static _fields = [
         // Unused bitmask; reserved for future use.
         ['bitmask', basic.uint32_t],
         // The key encryption algorithm advertised by the application.
-        ['keyIndex', named.EmberZllKeyIndex],
+        ['keyIndex', named.BlzZllKeyIndex],
         // The encryption key for use by algorithms that require it.
-        ['encryptionKey', EmberKeyData],
+        ['encryptionKey', BlzKeyData],
         // The pre-configured link key used during classical ZigBee
         // commissioning.
-        ['preconfiguredKey', EmberKeyData],
+        ['preconfiguredKey', BlzKeyData],
     ];
 }
 
-export class EmberZllDeviceInfoRecord extends BlzStruct {
+export class BlzZllDeviceInfoRecord extends BlzStruct {
     // Information about a specific ZLL Device.
     static _fields = [
         // EUI64 associated with the device.
-        ['ieeeAddress', named.EmberEUI64],
+        ['ieeeAddress', named.BlzEUI64],
         // Endpoint id.
         ['endpointId', basic.uint8_t],
         // Profile id.
@@ -494,27 +494,27 @@ export class EmberZllDeviceInfoRecord extends BlzStruct {
     ];
 }
 
-export class EmberZllAddressAssignment extends BlzStruct {
+export class BlzZllAddressAssignment extends BlzStruct {
     // ZLL address assignment data.
     static _fields = [
         // Relevant node id.
-        ['nodeId', named.EmberNodeId],
+        ['nodeId', named.BlzNodeId],
         // Minimum free node id.
-        ['freeNodeIdMin', named.EmberNodeId],
+        ['freeNodeIdMin', named.BlzNodeId],
         // Maximum free node id.
-        ['freeNodeIdMax', named.EmberNodeId],
+        ['freeNodeIdMax', named.BlzNodeId],
         // Minimum group id.
-        ['groupIdMin', named.EmberMulticastId],
+        ['groupIdMin', named.BlzMulticastId],
         // Maximum group id.
-        ['groupIdMax', named.EmberMulticastId],
+        ['groupIdMax', named.BlzMulticastId],
         // Minimum free group id.
-        ['freeGroupIdMin', named.EmberMulticastId],
+        ['freeGroupIdMin', named.BlzMulticastId],
         // Maximum free group id.
-        ['freeGroupIdMax', named.EmberMulticastId],
+        ['freeGroupIdMax', named.BlzMulticastId],
     ];
 }
 
-export class EmberTokTypeStackZllData extends BlzStruct {
+export class BlzTokTypeStackZllData extends BlzStruct {
     // Public API for ZLL stack data token.
     static _fields = [
         // Token bitmask.
@@ -534,7 +534,7 @@ export class EmberTokTypeStackZllData extends BlzStruct {
     ];
 }
 
-export class EmberTokTypeStackZllSecurity extends BlzStruct {
+export class BlzTokTypeStackZllSecurity extends BlzStruct {
     // Public API for ZLL stack security token.
     static _fields = [
         // Token bitmask.
@@ -548,7 +548,7 @@ export class EmberTokTypeStackZllSecurity extends BlzStruct {
     ];
 }
 
-export class EmberRf4ceVendorInfo extends BlzStruct {
+export class BlzRf4ceVendorInfo extends BlzStruct {
     // The RF4CE vendor information block.
     static _fields = [
         // The vendor identifier field shall contain the vendor identifier of
@@ -559,12 +559,12 @@ export class EmberRf4ceVendorInfo extends BlzStruct {
     ];
 }
 
-export class EmberRf4ceApplicationInfo extends BlzStruct {
+export class BlzRf4ceApplicationInfo extends BlzStruct {
     // The RF4CE application information block.
     static _fields = [
         // The application capabilities field shall contain information relating
         // to the capabilities of the application of the node.
-        ['capabilities', named.EmberRf4ceApplicationCapabilities],
+        ['capabilities', named.BlzRf4ceApplicationCapabilities],
         // The user string field shall contain the user specified identification
         // string.
         ['userString', basic.fixed_list(15, basic.uint8_t)],
@@ -577,21 +577,21 @@ export class EmberRf4ceApplicationInfo extends BlzStruct {
     ];
 }
 
-export class EmberRf4cePairingTableEntry extends BlzStruct {
+export class BlzRf4cePairingTableEntry extends BlzStruct {
     // The internal representation of an RF4CE pairing table entry.
     static _fields = [
         // The link key to be used to secure this pairing link.
-        ['securityLinkKey', EmberKeyData],
+        ['securityLinkKey', BlzKeyData],
         // The IEEE address of the destination device.
-        ['destLongId', named.EmberEUI64],
+        ['destLongId', named.BlzEUI64],
         // The frame counter last received from the recipient node.
         ['frameCounter', basic.uint32_t],
         // The network address to be assumed by the source device.
-        ['sourceNodeId', named.EmberNodeId],
+        ['sourceNodeId', named.BlzNodeId],
         // The PAN identifier of the destination device.
-        ['destPanId', named.EmberPanId],
+        ['destPanId', named.BlzPanId],
         // The network address of the destination device.
-        ['destNodeId', named.EmberNodeId],
+        ['destNodeId', named.BlzNodeId],
         // The vendor ID of the destination device.
         ['destVendorId', basic.uint16_t],
         // The list of profiles supported by the destination device.
@@ -609,11 +609,11 @@ export class EmberRf4cePairingTableEntry extends BlzStruct {
     ];
 }
 
-export class EmberGpAddress extends BlzStruct {
+export class BlzGpAddress extends BlzStruct {
     // A GP address structure.
     static _fields = [
         // The GPD's EUI64.
-        ['gpdIeeeAddress', named.EmberEUI64],
+        ['gpdIeeeAddress', named.BlzEUI64],
         // The GPD's source ID.
         ['sourceId', basic.uint32_t],
         // The GPD Application ID.
@@ -623,19 +623,19 @@ export class EmberGpAddress extends BlzStruct {
     ];
 }
 
-export class EmberGpSinkListEntry extends BlzStruct {
+export class BlzGpSinkListEntry extends BlzStruct {
     // A sink list entry
     static _fields = [
         // The sink list type.
         ['type', basic.uint8_t],
         // The EUI64 of the target sink.
-        ['sinkEUI', named.EmberEUI64],
+        ['sinkEUI', named.BlzEUI64],
         // The short address of the target sink.
-        ['sinkNodeId', named.EmberNodeId],
+        ['sinkNodeId', named.BlzNodeId],
     ];
 }
 
-export class EmberNodeDescriptor extends BlzStruct {
+export class BlzNodeDescriptor extends BlzStruct {
     static _fields = [
         ['byte1', basic.uint8_t],
         ['byte2', basic.uint8_t],
@@ -649,7 +649,7 @@ export class EmberNodeDescriptor extends BlzStruct {
     ];
 }
 
-export class EmberSimpleDescriptor extends BlzStruct {
+export class BlzSimpleDescriptor extends BlzStruct {
     static _fields = [
         ['endpoint', basic.uint8_t],
         ['profileid', basic.uint16_t],
@@ -660,15 +660,15 @@ export class EmberSimpleDescriptor extends BlzStruct {
     ];
 }
 
-export class EmberMultiAddress extends BlzStruct {
+export class BlzMultiAddress extends BlzStruct {
     static fields3 = [
         ['addrmode', basic.uint8_t],
-        ['ieee', named.EmberEUI64],
+        ['ieee', named.BlzEUI64],
         ['endpoint', basic.uint8_t],
     ];
     static fields1 = [
         ['addrmode', basic.uint8_t],
-        ['nwk', named.EmberNodeId],
+        ['nwk', named.BlzNodeId],
     ];
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, obj: any): Buffer {
@@ -686,11 +686,11 @@ export class EmberMultiAddress extends BlzStruct {
     }
 }
 
-export class EmberNeighbor extends BlzStruct {
+export class BlzNeighbor extends BlzStruct {
     static _fields = [
         ['extendedpanid', basic.fixed_list(8, basic.uint8_t)],
-        ['ieee', named.EmberEUI64],
-        ['nodeid', named.EmberNodeId],
+        ['ieee', named.BlzEUI64],
+        ['nodeid', named.BlzNodeId],
         ['packed', basic.uint8_t],
         ['permitjoining', basic.uint8_t],
         ['depth', basic.uint8_t],
@@ -698,15 +698,15 @@ export class EmberNeighbor extends BlzStruct {
     ];
 }
 
-export class EmberNeighbors extends BlzStruct {
+export class BlzNeighbors extends BlzStruct {
     static _fields = [
         ['entries', basic.uint8_t],
         ['startindex', basic.uint8_t],
-        ['neighbors', basic.LVList(EmberNeighbor)],
+        ['neighbors', basic.LVList(BlzNeighbor)],
     ];
 }
 
-export class EmberRoutingTableEntry extends BlzStruct {
+export class BlzRoutingTableEntry extends BlzStruct {
     static _fields = [
         ['destination', basic.uint16_t],
         ['status', basic.uint8_t],
@@ -714,15 +714,15 @@ export class EmberRoutingTableEntry extends BlzStruct {
     ];
 }
 
-export class EmberRoutingTable extends BlzStruct {
+export class BlzRoutingTable extends BlzStruct {
     static _fields = [
         ['entries', basic.uint8_t],
         ['startindex', basic.uint8_t],
-        ['table', basic.LVList(EmberRoutingTableEntry)],
+        ['table', basic.LVList(BlzRoutingTableEntry)],
     ];
 }
 
-export class EmberRawFrame extends BlzStruct {
+export class BlzRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public ieeeFrameControl: number;
     // @ts-expect-error set via _fields
@@ -730,11 +730,11 @@ export class EmberRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public destPanId: number;
     // @ts-expect-error set via _fields
-    public destNodeId: named.EmberNodeId;
+    public destNodeId: named.BlzNodeId;
     // @ts-expect-error set via _fields
     public sourcePanId: number;
     // @ts-expect-error set via _fields
-    public ieeeAddress: named.EmberEUI64;
+    public ieeeAddress: named.BlzEUI64;
     // @ts-expect-error set via _fields
     public nwkFrameControl: number;
     // @ts-expect-error set via _fields
@@ -747,10 +747,10 @@ export class EmberRawFrame extends BlzStruct {
     static _fields = [
         ['ieeeFrameControl', basic.uint16_t],
         ['sequence', basic.uint8_t],
-        ['destPanId', named.EmberPanId],
-        ['destNodeId', named.EmberNodeId],
-        ['sourcePanId', named.EmberPanId],
-        ['ieeeAddress', named.EmberEUI64],
+        ['destPanId', named.BlzPanId],
+        ['destNodeId', named.BlzNodeId],
+        ['sourcePanId', named.BlzPanId],
+        ['ieeeAddress', named.BlzEUI64],
         ['nwkFrameControl', basic.uint16_t],
         ['appFrameControl', basic.uint8_t],
         ['clusterId', basic.uint16_t],
@@ -758,7 +758,7 @@ export class EmberRawFrame extends BlzStruct {
     ];
 }
 
-export class EmberIeeeRawFrame extends BlzStruct {
+export class BlzIeeeRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public ieeeFrameControl: number;
     // @ts-expect-error set via _fields
@@ -766,11 +766,11 @@ export class EmberIeeeRawFrame extends BlzStruct {
     // @ts-expect-error set via _fields
     public destPanId: number;
     // @ts-expect-error set via _fields
-    public destAddress: named.EmberEUI64;
+    public destAddress: named.BlzEUI64;
     // @ts-expect-error set via _fields
     public sourcePanId: number;
     // @ts-expect-error set via _fields
-    public sourceAddress: named.EmberEUI64;
+    public sourceAddress: named.BlzEUI64;
     // @ts-expect-error set via _fields
     public nwkFrameControl: number;
     // @ts-expect-error set via _fields
@@ -782,10 +782,10 @@ export class EmberIeeeRawFrame extends BlzStruct {
     static _fields = [
         ['ieeeFrameControl', basic.uint16_t],
         ['sequence', basic.uint8_t],
-        ['destPanId', named.EmberPanId],
-        ['destAddress', named.EmberEUI64],
-        ['sourcePanId', named.EmberPanId],
-        ['sourceAddress', named.EmberEUI64],
+        ['destPanId', named.BlzPanId],
+        ['destAddress', named.BlzEUI64],
+        ['sourcePanId', named.BlzPanId],
+        ['sourceAddress', named.BlzEUI64],
         ['nwkFrameControl', basic.uint16_t],
         ['appFrameControl', basic.uint8_t],
         ['clusterId', basic.uint16_t],
@@ -793,16 +793,16 @@ export class EmberIeeeRawFrame extends BlzStruct {
     ];
 }
 
-export class EmberSecurityManagerContext extends BlzStruct {
+export class BlzSecurityManagerContext extends BlzStruct {
     // Context for Zigbee Security Manager operations.
     // @ts-expect-error set via _fields
-    public type: named.EmberKeyType;
+    public type: named.BlzKeyType;
     // @ts-expect-error set via _fields
     public index: number;
     // @ts-expect-error set via _fields
-    public derivedType: named.EmberDerivedKeyType;
+    public derivedType: named.BlzDerivedKeyType;
     // @ts-expect-error set via _fields
-    public eui64: named.EmberEUI64;
+    public eui64: named.BlzEUI64;
     // @ts-expect-error set via _fields
     public multiNetworkIndex: number;
     // @ts-expect-error set via _fields
@@ -811,13 +811,13 @@ export class EmberSecurityManagerContext extends BlzStruct {
     public psaKeyAlgPermission: basic.uint32_t;
     static _fields = [
         // The type of key being referenced.
-        ['type', named.EmberKeyType],
+        ['type', named.BlzKeyType],
         // The index of the referenced key.
         ['index', basic.uint8_t],
         // The type of key derivation operation to perform on a key.
-        ['derivedType', named.EmberDerivedKeyType],
+        ['derivedType', named.BlzDerivedKeyType],
         // The EUI64 associated with this key.
-        ['eui64', named.EmberEUI64],
+        ['eui64', named.BlzEUI64],
         // Multi-network index.
         ['multiNetworkIndex', basic.uint8_t],
         // Flag bitmask.
@@ -828,7 +828,7 @@ export class EmberSecurityManagerContext extends BlzStruct {
 }
 
 /** This data structure contains the metadata pertaining to an network key */
-export class EmberSecurityManagerNetworkKeyInfo extends BlzStruct {
+export class BlzSecurityManagerNetworkKeyInfo extends BlzStruct {
     // @ts-expect-error set via _fields
     public networkKeySet: number; // boolean
     // @ts-expect-error set via _fields

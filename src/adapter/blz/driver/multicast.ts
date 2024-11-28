@@ -3,8 +3,8 @@
 import {logger} from '../../../utils/logger';
 import {Driver} from './driver';
 import {BlzConfigId} from './types';
-import {EmberStatus} from './types/named';
-import {EmberMulticastTableEntry} from './types/struct';
+import {BlzStatus} from './types/named';
+import {BlzMulticastTableEntry} from './types/struct';
 
 const NS = 'zh:blz:cast';
 
@@ -46,20 +46,20 @@ export class Multicast {
         }
     }
 
-    public async subscribe(group_id: number, endpoint: number): Promise<EmberStatus> {
+    public async subscribe(group_id: number, endpoint: number): Promise<BlzStatus> {
         if (this._multicast[group_id] !== undefined) {
             logger.debug(`${group_id} is already subscribed`, NS);
-            return EmberStatus.SUCCESS;
+            return BlzStatus.SUCCESS;
         }
 
         try {
             const idx = this._available.pop();
-            const entry: EmberMulticastTableEntry = new EmberMulticastTableEntry();
+            const entry: BlzMulticastTableEntry = new BlzMulticastTableEntry();
             entry.endpoint = endpoint;
             entry.multicastId = group_id;
             entry.networkIndex = 0;
             const status = await this.driver.blz.setMulticastTableEntry(idx, entry);
-            if (status !== EmberStatus.SUCCESS) {
+            if (status !== BlzStatus.SUCCESS) {
                 logger.error(`Set MulticastTableEntry #${idx} for ${entry.multicastId} multicast id: ${status}`, NS);
                 this._available.push(idx);
                 return status;
@@ -70,7 +70,7 @@ export class Multicast {
             return status;
         } catch (error) {
             logger.error(`No more available slots MulticastId subscription (${(error as Error).stack})`, NS);
-            return EmberStatus.INDEX_OUT_OF_RANGE;
+            return BlzStatus.INDEX_OUT_OF_RANGE;
         }
     }
 }

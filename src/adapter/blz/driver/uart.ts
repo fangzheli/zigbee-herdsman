@@ -27,11 +27,11 @@ enum NcpResetCode {
     ERROR_UNKNOWN_EM3XX_ERROR = 0x80,
 }
 
-type EZSPPacket = {
+type BLZPacket = {
     sequence: number;
 };
 
-type EZSPPacketMatcher = {
+type BLZPacketMatcher = {
     sequence: number;
 };
 
@@ -45,14 +45,14 @@ export class SerialDriver extends EventEmitter {
     private recvSeq = 0; // next frame number to receive
     private ackSeq = 0; // next number after the last accepted frame
     private rejectCondition = false;
-    private waitress: Waitress<EZSPPacket, EZSPPacketMatcher>;
+    private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
     private queue: Queue;
 
     constructor() {
         super();
         this.initialized = false;
         this.queue = new Queue(1);
-        this.waitress = new Waitress<EZSPPacket, EZSPPacketMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
+        this.waitress = new Waitress<BLZPacket, BLZPacketMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
         this.writer = new Writer();
         this.parser = new Parser();
     }
@@ -68,7 +68,7 @@ export class SerialDriver extends EventEmitter {
     private async openSerialPort(path: string, baudRate: number, rtscts: boolean): Promise<void> {
         const options = {
             path,
-            baudRate: typeof baudRate === 'number' ? baudRate : 115200,
+            baudRate: typeof baudRate === 'number' ? baudRate : 2000000,
             rtscts: typeof rtscts === 'boolean' ? rtscts : false,
             autoOpen: false,
             parity: 'none',
@@ -76,13 +76,6 @@ export class SerialDriver extends EventEmitter {
             xon: false,
             xoff: false,
         };
-
-        // enable software flow control if RTS/CTS not enabled in config
-        if (!options.rtscts) {
-            logger.debug(`RTS/CTS config is off, enabling software flow control.`, NS);
-            options.xon = true;
-            options.xoff = true;
-        }
 
         logger.debug(`Opening SerialPort with ${JSON.stringify(options)}`, NS);
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -160,8 +153,9 @@ export class SerialDriver extends EventEmitter {
 
     private async onParsed(frame: Frame): Promise<void> {
         try {
-            if ((frame.control & 0x80) === 0) frame.checkCRC();
-
+            if ((frame.control & 0x80) !== 0) {
+                frame.checkCRC();
+            }
             const frmNum = frame.sequence & 0x0F;
             const reTx = frame.control & 0x01;
 
@@ -191,25 +185,24 @@ export class SerialDriver extends EventEmitter {
     }
 
     private handleDATA(frame: Frame): void {
-        this.writer.sendACK(this.recvSeq);
-
-        if (frame.control & 0x01) {
-            logger.debug(`Ignoring retransmitted frame: ${frame}`, NS);
-            return;
-        }
-
-        this.emit('received', frame.payload);
+        this.writer.sendACK(frame.sequence & 0x07);
+        this.emit('received', frame);
     }
 
     private handleACK(frame: Frame): void {
-        const ackSeq = frame.control & 0x0F;
-        this.waitress.resolve({ sequence: ackSeq });
-        logger.debug(`<-- ACK (${ackSeq}): ${frame}`, NS);
+        const ackSeq = frame.control & 0x70 >> 4;
+        const handled = this.waitress.resolve({ sequence: ackSeq });
+        if (!handled) {
+            logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
+            }
+        else{
+            logger.debug(`<-- ACK (${ackSeq}): ${frame}`, NS);
+        }
     }
 
     private handleResetAck(frame: Frame): void {
-        this.waitress.resolve({ sequence: -1 });
         logger.debug(`<-- RESET_ACK: ${frame}`, NS);
+        this.waitress.resolve({sequence: -1});
     }
 
     private async handleError(frame: Frame): Promise<void> {
@@ -274,9 +267,6 @@ export class SerialDriver extends EventEmitter {
     private onPortClose(err: boolean | Error): void {
         logger.debug(`Port closed. Error? ${err}`, NS);
 
-        // on error: serialport passes an Error object (in case of disconnect)
-        //           net.Socket passes a boolean (in case of a transmission error)
-        // try to reset instead of failing immediately
         if (err != null && err !== false) {
             this.emit('reset');
         } else {
@@ -302,14 +292,13 @@ export class SerialDriver extends EventEmitter {
 
             try {
                 const waiter = this.waitFor(seq);
-                this.writer.sendData(data, seq, ackSeq, frameId, isRetransmission);
+                this.writer.sendData(data, seq, ackSeq, frameId, true, isRetransmission);
                 this.sendSeq = (seq + 1) & 0x0F;
                 await waiter.start().promise;
                 return;
             } catch (e) {
                 logger.error(
-                    `Attempt ${attempt + 1} failed for seq ${seq}: ${e}`,
-                    NS
+                    `Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS
                 );
 
                 if (attempt === retries) {
@@ -320,15 +309,15 @@ export class SerialDriver extends EventEmitter {
         }
     }
 
-    public waitFor(sequence: number, timeout = 3000): {start: () => {promise: Promise<EZSPPacket>; ID: number}; ID: number} {
+    public waitFor(sequence: number, timeout = 3000): {start: () => {promise: Promise<BLZPacket>; ID: number}; ID: number} {
         return this.waitress.waitFor({sequence}, timeout);
     }
 
-    private waitressTimeoutFormatter(matcher: EZSPPacketMatcher, timeout: number): string {
+    private waitressTimeoutFormatter(matcher: BLZPacketMatcher, timeout: number): string {
         return `${JSON.stringify(matcher)} after ${timeout}ms`;
     }
 
-    private waitressValidator(payload: EZSPPacket, matcher: EZSPPacketMatcher): boolean {
+    private waitressValidator(payload: BLZPacket, matcher: BLZPacketMatcher): boolean {
         return payload.sequence === matcher.sequence;
     }
 }
