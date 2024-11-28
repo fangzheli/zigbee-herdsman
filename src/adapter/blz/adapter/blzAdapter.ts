@@ -14,8 +14,8 @@ import {ZclPayload} from '../../events';
 import SerialPortUtils from '../../serialPortUtils';
 import SocketPortUtils from '../../socketPortUtils';
 import {AdapterOptions, CoordinatorVersion, NetworkOptions, NetworkParameters, SerialPortOptions, StartResult} from '../../tstype';
-import {Driver, EmberIncomingMessage} from '../driver';
-import {EmberEUI64, EmberStatus} from '../driver/types';
+import {Driver, BlzIncomingMessage} from '../driver';
+import {BlzEUI64, BlzStatus} from '../driver/types';
 
 const NS = 'zh:blz';
 
@@ -32,7 +32,7 @@ interface WaitressMatcher {
     commandIdentifier: number;
 }
 
-class EZSPAdapter extends Adapter {
+class BLZAdapter extends Adapter {
     private driver: Driver;
     private waitress: Waitress<ZclPayload, WaitressMatcher>;
     private interpanLock: boolean;
@@ -59,7 +59,7 @@ class EZSPAdapter extends Adapter {
         this.driver.on('incomingMessage', this.processMessage.bind(this));
     }
 
-    private async processMessage(frame: EmberIncomingMessage): Promise<void> {
+    private async processMessage(frame: BlzIncomingMessage): Promise<void> {
         logger.debug(() => `processMessage: ${JSON.stringify(frame)}`, NS);
 
         if (frame.apsFrame.profileId == Zdo.ZDO_PROFILE_ID) {
@@ -123,7 +123,7 @@ class EZSPAdapter extends Adapter {
         }
     }
 
-    private async handleDeviceJoin(nwk: number, ieee: EmberEUI64): Promise<void> {
+    private async handleDeviceJoin(nwk: number, ieee: BlzEUI64): Promise<void> {
         logger.debug(() => `Device join request received: ${nwk} ${ieee.toString()}`, NS);
 
         this.emit('deviceJoined', {
@@ -132,7 +132,7 @@ class EZSPAdapter extends Adapter {
         });
     }
 
-    private handleDeviceLeft(nwk: number, ieee: EmberEUI64): void {
+    private handleDeviceLeft(nwk: number, ieee: BlzEUI64): void {
         logger.debug(() => `Device left network request received: ${nwk} ${ieee.toString()}`, NS);
 
         this.emit('deviceLeave', {
@@ -145,10 +145,6 @@ class EZSPAdapter extends Adapter {
      * Adapter methods
      */
     public async start(): Promise<StartResult> {
-        logger.warning(
-            `'blz' driver is deprecated and will only remain to provide support for older firmware (pre 7.4.x). Migration to 'ember' is recommended. If using Zigbee2MQTT see https://github.com/Koenkk/zigbee2mqtt/discussions/21462`,
-            NS,
-        );
         return await this.driver.startup();
     }
 
@@ -197,11 +193,11 @@ class EZSPAdapter extends Adapter {
         const clusterId = Zdo.ClusterId.PERMIT_JOINING_REQUEST;
 
         if (networkAddress) {
-            // specific device that is not `Coordinator`
-            await this.queue.execute<void>(async () => {
-                this.checkInterpanLock();
-                await this.driver.preJoining(seconds);
-            });
+            // // specific device that is not `Coordinator`
+            // await this.queue.execute<void>(async () => {
+            //     this.checkInterpanLock();
+            //     await this.driver.preJoining(seconds);
+            // });
 
             // `authentication`: TC significance always 1 (zb specs)
             const zdoPayload = Zdo.Buffalo.buildRequest(this.hasZdoMessageOverhead, clusterId, seconds, 1, []);
@@ -215,14 +211,14 @@ class EZSPAdapter extends Adapter {
             }
         } else {
             // coordinator-only (0), or all
-            await this.queue.execute<void>(async () => {
-                this.checkInterpanLock();
-                await this.driver.preJoining(seconds);
-            });
+            // await this.queue.execute<void>(async () => {
+            //     this.checkInterpanLock();
+            //     await this.driver.preJoining(seconds);
+            // });
 
             const result = await this.driver.permitJoining(seconds);
 
-            if (result.status !== EmberStatus.SUCCESS) {
+            if (result.status !== BlzStatus.SUCCESS) {
                 throw new Error(`[ZDO] Failed coordinator permit joining request with status=${result.status}.`);
             }
 
@@ -239,14 +235,11 @@ class EZSPAdapter extends Adapter {
     }
 
     public async getCoordinatorVersion(): Promise<CoordinatorVersion> {
-        return {type: `EZSP v${this.driver.version.product}`, meta: this.driver.version};
+        return {type: `BLZ v${this.driver.blz.version.product}`, meta: this.driver.blz.version};
     }
 
     public async addInstallCode(ieeeAddress: string, key: Buffer): Promise<void> {
-        if ([8, 10, 14, 16, 18].indexOf(key.length) === -1) {
-            throw new Error('Wrong install code length');
-        }
-        await this.driver.addInstallCode(ieeeAddress, key);
+        throw new Error('Not supported');
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -405,7 +398,7 @@ class EZSPAdapter extends Adapter {
         frame.destinationEndpoint = endpoint;
         frame.groupId = 0;
 
-        this.driver.setNode(networkAddress, new EmberEUI64(ieeeAddr));
+        this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
         const dataConfirmResult = await this.driver.request(networkAddress, frame, zclFrame.toBuffer());
         if (!dataConfirmResult) {
             if (response != null) {
@@ -489,7 +482,7 @@ class EZSPAdapter extends Adapter {
         return {
             panID: this.driver.networkParams.panId,
             extendedPanID: this.driver.networkParams.extendedPanId[0],
-            channel: this.driver.networkParams.radioChannel,
+            channel: this.driver.networkParams.Channel,
         };
     }
 
@@ -503,13 +496,7 @@ class EZSPAdapter extends Adapter {
     }
 
     public async restoreChannelInterPAN(): Promise<void> {
-        return await this.queue.execute<void>(async () => {
-            const channel = (await this.getNetworkParameters()).channel;
-            await this.driver.setChannel(channel);
-            // Give adapter some time to restore, otherwise stuff crashes
-            await Wait(3000);
-            this.interpanLock = false;
-        });
+        throw new Error('Not supported');
     }
 
     private checkInterpanLock(): void {
@@ -519,68 +506,19 @@ class EZSPAdapter extends Adapter {
     }
 
     public async sendZclFrameInterPANToIeeeAddr(zclFrame: Zcl.Frame, ieeeAddr: string): Promise<void> {
-        return await this.queue.execute<void>(async () => {
-            logger.debug(`sendZclFrameInterPANToIeeeAddr to ${ieeeAddr}`, NS);
-            const frame = this.driver.makeEmberIeeeRawFrame();
-            frame.ieeeFrameControl = 0xcc21;
-            frame.destPanId = 0xffff;
-            frame.destAddress = new EmberEUI64(ieeeAddr);
-            frame.sourcePanId = this.driver.networkParams.panId;
-            frame.sourceAddress = this.driver.ieee;
-            frame.nwkFrameControl = 0x000b;
-            frame.appFrameControl = 0x03;
-            frame.clusterId = zclFrame.cluster.ID;
-            frame.profileId = 0xc05e;
-
-            await this.driver.ieeerawrequest(frame, zclFrame.toBuffer());
-        });
+        throw new Error('Not supported');
     }
 
     public async sendZclFrameInterPANBroadcast(zclFrame: Zcl.Frame, timeout: number): Promise<ZclPayload> {
-        return await this.queue.execute<ZclPayload>(async () => {
-            logger.debug(`sendZclFrameInterPANBroadcast`, NS);
-            const command = zclFrame.command;
-
-            if (command.response == undefined) {
-                throw new Error(`Command '${command.name}' has no response, cannot wait for response`);
-            }
-
-            const response = this.waitForInternal(undefined, 0xfe, undefined, zclFrame.cluster.ID, command.response, timeout);
-
-            try {
-                const frame = this.driver.makeEmberRawFrame();
-                frame.ieeeFrameControl = 0xc801;
-                frame.destPanId = 0xffff;
-                frame.destNodeId = 0xffff;
-                frame.sourcePanId = this.driver.networkParams.panId;
-                frame.ieeeAddress = this.driver.ieee;
-                frame.nwkFrameControl = 0x000b;
-                frame.appFrameControl = 0x0b;
-                frame.clusterId = zclFrame.cluster.ID;
-                frame.profileId = 0xc05e;
-
-                await this.driver.rawrequest(frame, zclFrame.toBuffer());
-            } catch (error) {
-                response.cancel();
-                throw error;
-            }
-
-            return await response.start().promise;
-        });
+        throw new Error('Not supported');
     }
 
     public async setTransmitPower(value: number): Promise<void> {
-        logger.debug(`setTransmitPower to ${value}`, NS);
-        return await this.queue.execute<void>(async () => {
-            await this.driver.setRadioPower(value);
-        });
+        throw new Error('Not supported');
     }
 
     public async setChannelInterPAN(channel: number): Promise<void> {
-        return await this.queue.execute<void>(async () => {
-            this.interpanLock = true;
-            await this.driver.setChannel(channel);
-        });
+        throw new Error('Not supported');
     }
 
     private waitForInternal(
@@ -640,4 +578,4 @@ class EZSPAdapter extends Adapter {
     }
 }
 
-export default EZSPAdapter;
+export default BLZAdapter;

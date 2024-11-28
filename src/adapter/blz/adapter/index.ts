@@ -1,3 +1,3 @@
-import EZSPAdapter from './blzAdapter';
+import BLZAdapter from './blzAdapter';
 
-export {EZSPAdapter};
+export {BLZAdapter};

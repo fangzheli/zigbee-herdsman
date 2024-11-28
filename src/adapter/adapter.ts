@@ -64,6 +64,7 @@ export abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
             zstack: ['./z-stack/adapter/zStackAdapter', 'ZStackAdapter'],
             zboss: ['./zboss/adapter/zbossAdapter', 'ZBOSSAdapter'],
             zigate: ['./zigate/adapter/zigateAdapter', 'ZiGateAdapter'],
+            blz: ['./blz/adapter/blzAdapter', 'BLZAdapter'],
         };
         const [adapter, path] = await discoverAdapter(serialPortOptions.adapter, serialPortOptions.path);
         const detectedAdapter = adapterLookup[adapter];

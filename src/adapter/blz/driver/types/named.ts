@@ -18,19 +18,19 @@ export class NcpResetCode extends basic.uint8_t {
     static ERROR_UNKNOWN_EM3XX_ERROR = 0x80;
 }
 
-export class EmberRf4ceTxOption extends basic.uint8_t {}
+export class BlzRf4ceTxOption extends basic.uint8_t {}
 
-export class EmberRf4ceNodeCapabilities extends basic.uint8_t {}
+export class BlzRf4ceNodeCapabilities extends basic.uint8_t {}
 
-export class EmberRf4ceApplicationCapabilities extends basic.uint8_t {}
+export class BlzRf4ceApplicationCapabilities extends basic.uint8_t {}
 
-export class EmberNodeId extends basic.uint16_t {}
+export class BlzNodeId extends basic.uint16_t {}
 
-export class EmberPanId extends basic.uint16_t {}
+export class BlzPanId extends basic.uint16_t {}
 
-export class EmberMulticastId extends basic.uint16_t {}
+export class BlzMulticastId extends basic.uint16_t {}
 
-export class EmberEUI64 extends fixed_list(8, basic.uint8_t) {
+export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     constructor(private _value: ArrayLike<number> | string) {
         super();
         if (typeof _value === 'string') {
@@ -56,9 +56,9 @@ export class EmberEUI64 extends fixed_list(8, basic.uint8_t) {
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: number[] | EmberEUI64): Buffer {
-        if (value instanceof EmberEUI64) {
-            value = (value as EmberEUI64).value as number[];
+    static serialize(cls: any, value: number[] | BlzEUI64): Buffer {
+        if (value instanceof BlzEUI64) {
+            value = (value as BlzEUI64).value as number[];
         }
         // console.assert(cls._length === value.length);
 
@@ -79,15 +79,15 @@ export class EmberEUI64 extends fixed_list(8, basic.uint8_t) {
     }
 }
 
-export class EmberLibraryStatus extends basic.uint8_t {}
+export class BlzLibraryStatus extends basic.uint8_t {}
 
 export class SecureBlzSecurityType extends basic.uint32_t {}
 
 export class SecureBlzSecurityLevel extends basic.uint8_t {}
 
-export class EmberGpSecurityLevel extends basic.uint8_t {}
+export class BlzGpSecurityLevel extends basic.uint8_t {}
 
-export class EmberGpKeyType extends basic.uint8_t {}
+export class BlzGpKeyType extends basic.uint8_t {}
 
 export class SecureBlzRandomNumber extends basic.uint64_t {}
 
@@ -213,7 +213,7 @@ export class BlzConfigId extends basic.uint8_t {
     static CONFIG_CERTIFICATE_TABLE_SIZE = 0x29;
     // This is a bitmask that controls which incoming ZDO request messages are
     // passed to the application. The bits are defined in the
-    // EmberZdoConfigurationFlags enumeration. To see if the application is
+    // BlzZdoConfigurationFlags enumeration. To see if the application is
     // required to send a ZDO response in reply to an incoming message, the
     // application must check the APS options bitfield within the
     // incomingMessageHandler callback to see if the
@@ -331,7 +331,7 @@ export class BlzEndpointFlags extends basic.uint16_t {
     static ENDPOINT_ENABLED = 0x01;
 }
 
-export class EmberConfigTxPowerMode extends basic.uint16_t {
+export class BlzConfigTxPowerMode extends basic.uint16_t {
     // Values for CONFIG_TX_POWER_MODE.
 
     // Normal power mode and bi-directional RF transmitter output.
@@ -648,348 +648,6 @@ export class BlzStatus extends basic.uint8_t {
     static ASH_ACK_SENT = 0x7e;
     // No reset or error
     static NO_ERROR = 0xff;
-}
-
-export class EmberStatus extends basic.uint8_t {
-    // Return type for stack functions.
-
-    // The generic 'no error' message.
-    static SUCCESS = 0x00;
-    // The generic 'fatal error' message.
-    static ERR_FATAL = 0x01;
-    // An invalid value was passed as an argument to a function
-    static BAD_ARGUMENT = 0x02;
-    // The manufacturing and stack token format in nonvolatile memory is
-    // different than what the stack expects (returned at initialization).
-    static EEPROM_MFG_STACK_VERSION_MISMATCH = 0x04;
-    // The static memory definitions in ember-staticmemory.h are incompatible
-    // with this stack version.
-    static INCOMPATIBLE_STATIC_MEMORY_DEFINITIONS = 0x05;
-    // The manufacturing token format in non-volatile memory is different than
-    // what the stack expects (returned at initialization).
-    static EEPROM_MFG_VERSION_MISMATCH = 0x06;
-    // The stack token format in non-volatile memory is different than what the
-    // stack expects (returned at initialization).
-    static EEPROM_STACK_VERSION_MISMATCH = 0x07;
-    // There are no more buffers.
-    static NO_BUFFERS = 0x18;
-    // Specified an invalid baud rate.
-    static SERIAL_INVALID_BAUD_RATE = 0x20;
-    // Specified an invalid serial port.
-    static SERIAL_INVALID_PORT = 0x21;
-    // Tried to send too much data.
-    static SERIAL_TX_OVERFLOW = 0x22;
-    // There was not enough space to store a received character and the
-    // character was dropped.
-    static SERIAL_RX_OVERFLOW = 0x23;
-    // Detected a UART framing error.
-    static SERIAL_RX_FRAME_ERROR = 0x24;
-    // Detected a UART parity error.
-    static SERIAL_RX_PARITY_ERROR = 0x25;
-    // There is no received data to process.
-    static SERIAL_RX_EMPTY = 0x26;
-    // The receive interrupt was not handled in time, and a character was
-    // dropped.
-    static SERIAL_RX_OVERRUN_ERROR = 0x27;
-    // The MAC transmit queue is full.
-    static MAC_TRANSMIT_QUEUE_FULL = 0x39;
-    // MAC header FCR error on receive.
-    static MAC_UNKNOWN_HEADER_TYPE = 0x3a;
-    // The MAC can't complete this task because it is scanning.
-    static MAC_SCANNING = 0x3d;
-    // No pending data exists for device doing a data poll.
-    static MAC_NO_DATA = 0x31;
-    // Attempt to scan when we are joined to a network.
-    static MAC_JOINED_NETWORK = 0x32;
-    // Scan duration must be 0 to 14 inclusive. Attempt was made to scan with an
-    // incorrect duration value.
-    static MAC_BAD_SCAN_DURATION = 0x33;
-    // emberStartScan was called with an incorrect scan type.
-    static MAC_INCORRECT_SCAN_TYPE = 0x34;
-    // emberStartScan was called with an invalid channel mask.
-    static MAC_INVALID_CHANNEL_MASK = 0x35;
-    // Failed to scan current channel because we were unable to transmit the
-    // relevant MAC command.
-    static MAC_COMMAND_TRANSMIT_FAILURE = 0x36;
-    // We expected to receive an ACK following the transmission, but the MAC
-    // level ACK was never received.
-    static MAC_NO_ACK_RECEIVED = 0x40;
-    // Indirect data message timed out before polled.
-    static MAC_INDIRECT_TIMEOUT = 0x42;
-    // The Simulated EEPROM is telling the application that there is at least
-    // one flash page to be erased.  The GREEN status means the current page has
-    // not filled above the ERASE_CRITICAL_THRESHOLD.  The application should
-    // call the function halSimEepromErasePage when it can to erase a page.
-    static SIM_EEPROM_ERASE_PAGE_GREEN = 0x43;
-    // The Simulated EEPROM is telling the application that there is at least
-    // one flash page to be erased.  The RED status means the current page has
-    // filled above the ERASE_CRITICAL_THRESHOLD. Due to the shrinking
-    // availability of write space, there is a danger of data loss. The
-    // application must call the function halSimEepromErasePage as soon as
-    // possible to erase a page.
-    static SIM_EEPROM_ERASE_PAGE_RED = 0x44;
-    // The Simulated EEPROM has run out of room to write any new data and the
-    // data trying to be set has been lost. This error code is the result of
-    // ignoring the SIM_EEPROM_ERASE_PAGE_RED error code.  The application must
-    // call the function halSimEepromErasePage to make room for any further
-    // calls to set a token.
-    static SIM_EEPROM_FULL = 0x45;
-    // A fatal error has occurred while trying to write data to the Flash. The
-    // target memory attempting to be programmed is already programmed. The
-    // flash write routines were asked to flip a bit from a 0 to 1, which is
-    // physically impossible and the write was therefore inhibited. The data in
-    // the flash cannot be trusted after this error.
-    static ERR_FLASH_WRITE_INHIBITED = 0x46;
-    // A fatal error has occurred while trying to write data to the Flash and
-    // the write verification has failed. The data in the flash cannot be
-    // trusted after this error, and it is possible this error is the result of
-    // exceeding the life cycles of the flash.
-    static ERR_FLASH_VERIFY_FAILED = 0x47;
-    // Attempt 1 to initialize the Simulated EEPROM has failed. This failure
-    // means the information already stored in Flash (or a lack thereof), is
-    // fatally incompatible with the token information compiled into the code
-    // image being run.
-    static SIM_EEPROM_INIT_1_FAILED = 0x48;
-    // Attempt 2 to initialize the Simulated EEPROM has failed. This failure
-    // means Attempt 1 failed, and the token system failed to properly reload
-    // default tokens and reset the Simulated EEPROM.
-    static SIM_EEPROM_INIT_2_FAILED = 0x49;
-    // Attempt 3 to initialize the Simulated EEPROM has failed. This failure
-    // means one or both of the tokens TOKEN_MFG_NVDATA_VERSION or
-    // TOKEN_STACK_NVDATA_VERSION were incorrect and the token system failed to
-    // properly reload default tokens and reset the Simulated EEPROM.
-    static SIM_EEPROM_INIT_3_FAILED = 0x4a;
-    // A fatal error has occurred while trying to write data to the flash,
-    // possibly due to write protection or an invalid address. The data in the
-    // flash cannot be trusted after this error, and it is possible this error
-    // is the result of exceeding the life cycles of the flash.
-    static ERR_FLASH_PROG_FAIL = 0x4b;
-    // A fatal error has occurred while trying to erase flash, possibly due to
-    // write protection. The data in the flash cannot be trusted after this
-    // error, and it is possible this error is the result of exceeding the life
-    // cycles of the flash.
-    static ERR_FLASH_ERASE_FAIL = 0x4c;
-    // The bootloader received an invalid message (failed attempt to go into
-    // bootloader).
-    static ERR_BOOTLOADER_TRAP_TABLE_BAD = 0x58;
-    // Bootloader received an invalid message (failed attempt to go into
-    // bootloader).
-    static ERR_BOOTLOADER_TRAP_UNKNOWN = 0x59;
-    // The bootloader cannot complete the bootload operation because either an
-    // image was not found or the image exceeded memory bounds.
-    static ERR_BOOTLOADER_NO_IMAGE = 0x5a;
-    // The APS layer attempted to send or deliver a message, but it failed.
-    static DELIVERY_FAILED = 0x66;
-    // This binding index is out of range of the current binding table.
-    static BINDING_INDEX_OUT_OF_RANGE = 0x69;
-    // This address table index is out of range for the current address table.
-    static ADDRESS_TABLE_INDEX_OUT_OF_RANGE = 0x6a;
-    // An invalid binding table index was given to a function.
-    static INVALID_BINDING_INDEX = 0x6c;
-    // The API call is not allowed given the current state of the stack.
-    static INVALID_CALL = 0x70;
-    // The link cost to a node is not known.
-    static COST_NOT_KNOWN = 0x71;
-    // The maximum number of in-flight messages (i.e.
-    // APS_UNICAST_MESSAGE_COUNT) has been reached.
-    static MAX_MESSAGE_LIMIT_REACHED = 0x72;
-    // The message to be transmitted is too big to fit into a single over-the-
-    // air packet.
-    static MESSAGE_TOO_LONG = 0x74;
-    // The application is trying to delete or overwrite a binding that is in
-    // use.
-    static BINDING_IS_ACTIVE = 0x75;
-    // The application is trying to overwrite an address table entry that is in
-    // use.
-    static ADDRESS_TABLE_ENTRY_IS_ACTIVE = 0x76;
-    // Conversion is complete.
-    static ADC_CONVERSION_DONE = 0x80;
-    // Conversion cannot be done because a request is being processed.
-    static ADC_CONVERSION_BUSY = 0x81;
-    // Conversion is deferred until the current request has been processed.
-    static ADC_CONVERSION_DEFERRED = 0x82;
-    // No results are pending.
-    static ADC_NO_CONVERSION_PENDING = 0x84;
-    // Sleeping (for a duration) has been abnormally interrupted and exited
-    // prematurely.
-    static SLEEP_INTERRUPTED = 0x85;
-    // The transmit hardware buffer underflowed.
-    static PHY_TX_UNDERFLOW = 0x88;
-    // The transmit hardware did not finish transmitting a packet.
-    static PHY_TX_INCOMPLETE = 0x89;
-    // An unsupported channel setting was specified.
-    static PHY_INVALID_CHANNEL = 0x8a;
-    // An unsupported power setting was specified.
-    static PHY_INVALID_POWER = 0x8b;
-    // The packet cannot be transmitted because the physical MAC layer is
-    // currently transmitting a packet.  (This is used for the MAC backoff
-    // algorithm.) PHY_TX_CCA_FAIL 0x8D The transmit attempt failed because all
-    // CCA attempts indicated that the channel was busy
-    static PHY_TX_BUSY = 0x8c;
-    // The software installed on the hardware doesn't recognize the hardware
-    // radio type.
-    static PHY_OSCILLATOR_CHECK_FAILED = 0x8e;
-    // The expected ACK was received after the last transmission.
-    static PHY_ACK_RECEIVED = 0x8f;
-    // The stack software has completed initialization and is ready to send and
-    // receive packets over the air.
-    static NETWORK_UP = 0x90;
-    // The network is not operating.
-    static NETWORK_DOWN = 0x91;
-    // An attempt to join a network failed.
-    static JOIN_FAILED = 0x94;
-    // After moving, a mobile node's attempt to re-establish contact with the
-    // network failed.
-    static MOVE_FAILED = 0x96;
-    // An attempt to join as a router failed due to a ZigBee versus ZigBee Pro
-    // incompatibility. ZigBee devices joining ZigBee Pro networks (or vice
-    // versa) must join as End Devices, not Routers.
-    static CANNOT_JOIN_AS_ROUTER = 0x98;
-    // The local node ID has changed. The application can obtain the new node ID
-    // by calling emberGetNodeId().
-    static NODE_ID_CHANGED = 0x99;
-    // The local PAN ID has changed. The application can obtain the new PAN ID
-    // by calling emberGetPanId().
-    static PAN_ID_CHANGED = 0x9a;
-    // An attempt to join or rejoin the network failed because no router beacons
-    // could be heard by the joining node.
-    static NO_BEACONS = 0xab;
-    // An attempt was made to join a Secured Network using a pre-configured key,
-    // but the Trust Center sent back a Network Key in-the-clear when an
-    // encrypted Network Key was required.
-    static RECEIVED_KEY_IN_THE_CLEAR = 0xac;
-    // An attempt was made to join a Secured Network, but the device did not
-    // receive a Network Key.
-    static NO_NETWORK_KEY_RECEIVED = 0xad;
-    // After a device joined a Secured Network, a Link Key was requested but no
-    // response was ever received.
-    static NO_LINK_KEY_RECEIVED = 0xae;
-    // An attempt was made to join a Secured Network without a pre-configured
-    // key, but the Trust Center sent encrypted data using a pre-configured key.
-    static PRECONFIGURED_KEY_REQUIRED = 0xaf;
-    // The node has not joined a network.
-    static NOT_JOINED = 0x93;
-    // The chosen security level (the value of SECURITY_LEVEL) is not supported
-    // by the stack.
-    static INVALID_SECURITY_LEVEL = 0x95;
-    // A message cannot be sent because the network is currently overloaded.
-    static NETWORK_BUSY = 0xa1;
-    // The application tried to send a message using an endpoint that it has not
-    // defined.
-    static INVALID_ENDPOINT = 0xa3;
-    // The application tried to use a binding that has been remotely modified
-    // and the change has not yet been reported to the application.
-    static BINDING_HAS_CHANGED = 0xa4;
-    // An attempt to generate random bytes failed because of insufficient random
-    // data from the radio.
-    static INSUFFICIENT_RANDOM_DATA = 0xa5;
-    // There was an error in trying to encrypt at the APS Level. This could
-    // result from either an inability to determine the long address of the
-    // recipient from the short address (no entry in the binding table) or there
-    // is no link key entry in the table associated with the destination, or
-    // there was a failure to load the correct key into the encryption core.
-    // TRUST_CENTER_MASTER_KEY_NOT_SET 0xA7 There was an attempt to form a
-    // network using commercial security without setting the Trust Center master
-    // key first.
-    static APS_ENCRYPTION_ERROR = 0xa6;
-    // There was an attempt to form or join a network with security without
-    // calling emberSetInitialSecurityState() first.
-    static SECURITY_STATE_NOT_SET = 0xa8;
-    // There was an attempt to set an entry in the key table using an invalid
-    // long address. An entry cannot be set using either the local device's or
-    // Trust Center's IEEE address. Or an entry already exists in the table with
-    // the same IEEE address. An Address of all zeros or all F's are not valid
-    // addresses in 802.15.4.
-    static KEY_TABLE_INVALID_ADDRESS = 0xb3;
-    // There was an attempt to set a security configuration that is not valid
-    // given the other security settings.
-    static SECURITY_CONFIGURATION_INVALID = 0xb7;
-    // There was an attempt to broadcast a key switch too quickly after
-    // broadcasting the next network key. The Trust Center must wait at least a
-    // period equal to the broadcast timeout so that all routers have a chance
-    // to receive the broadcast of the new network key.
-    static TOO_SOON_FOR_SWITCH_KEY = 0xb8;
-    // The message could not be sent because the link key corresponding to the
-    // destination is not authorized for use in APS data messages. APS Commands
-    // (sent by the stack) are allowed. To use it for encryption of APS data
-    // messages it must be authorized using a key agreement protocol (such as
-    // CBKE).
-    static KEY_NOT_AUTHORIZED = 0xbb;
-    // The security data provided was not valid, or an integrity check failed.
-    static SECURITY_DATA_INVALID = 0xbd;
-    // A ZigBee route error command frame was received indicating that a source
-    // routed message from this node failed en route.
-    static SOURCE_ROUTE_FAILURE = 0xa9;
-    // A ZigBee route error command frame was received indicating that a message
-    // sent to this node along a many-to-one route failed en route. The route
-    // error frame was delivered by an ad-hoc search for a functioning route.
-    static MANY_TO_ONE_ROUTE_FAILURE = 0xaa;
-    // A critical and fatal error indicating that the version of the stack
-    // trying to run does not match with the chip it is running on. The software
-    // (stack) on the chip must be replaced with software that is compatible
-    // with the chip.
-    static STACK_AND_HARDWARE_MISMATCH = 0xb0;
-    // An index was passed into the function that was larger than the valid
-    // range.
-    static INDEX_OUT_OF_RANGE = 0xb1;
-    // There are no empty entries left in the table.
-    static TABLE_FULL = 0xb4;
-    // The requested table entry has been erased and contains no valid data.
-    static TABLE_ENTRY_ERASED = 0xb6;
-    // The requested function cannot be executed because the library that
-    // contains the necessary functionality is not present.
-    static LIBRARY_NOT_PRESENT = 0xb5;
-    // The stack accepted the command and is currently processing the request.
-    // The results will be returned via an appropriate handler.
-    static OPERATION_IN_PROGRESS = 0xba;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_0 = 0xf0;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_1 = 0xf1;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_2 = 0xf2;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_3 = 0xf3;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_4 = 0xf4;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_5 = 0xf5;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_6 = 0xf6;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_7 = 0xf7;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_8 = 0xf8;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_9 = 0xf9;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_10 = 0xfa;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_11 = 0xfb;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_12 = 0xfc;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_13 = 0xfd;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_14 = 0xfe;
-    // This error is reserved for customer application use.  This will never be
-    // returned from any portion of the network stack or HAL.
-    static APPLICATION_ERROR_15 = 0xff;
 }
 
 /** define global status variable. */
@@ -1553,7 +1211,7 @@ export class SLStatus extends basic.uint32_t {
     static SL_STATUS_WIFI_TX_LIFETIME_EXCEEDED = 0x0b20;
 }
 
-export class EmberStackError extends basic.uint8_t {
+export class BlzStackError extends basic.uint8_t {
     // Error codes that a router uses to notify the message initiator about a broken route.
     static EMBER_ROUTE_ERROR_NO_ROUTE_AVAILABLE = 0x00;
     static EMBER_ROUTE_ERROR_TREE_LINK_FAILURE = 0x01;
@@ -1578,7 +1236,7 @@ export class EmberStackError extends basic.uint8_t {
     static ZIGBEE_NETWORK_STATUS_UNKNOWN_COMMAND = 0x13;
 }
 
-export class EmberEventUnits extends basic.uint8_t {
+export class BlzEventUnits extends basic.uint8_t {
     // Either marks an event as inactive or specifies the units for the event
     // execution time.
 
@@ -1594,7 +1252,7 @@ export class EmberEventUnits extends basic.uint8_t {
     static EVENT_MINUTE_TIME = 0x03;
 }
 
-export class EmberNodeType extends basic.uint8_t {
+export class BlzNodeType extends basic.uint8_t {
     // The type of the node.
 
     // Device is not joined.
@@ -1612,7 +1270,7 @@ export class EmberNodeType extends basic.uint8_t {
     static MOBILE_END_DEVICE = 0x05;
 }
 
-export class EmberNetworkStatus extends basic.uint8_t {
+export class BlzNetworkStatus extends basic.uint8_t {
     // The possible join states for a node.
 
     // The node is not associated with a network in any way.
@@ -1628,7 +1286,7 @@ export class EmberNetworkStatus extends basic.uint8_t {
     static LEAVING_NETWORK = 0x04;
 }
 
-export class EmberIncomingMessageType extends basic.uint8_t {
+export class BlzIncomingMessageType extends basic.uint8_t {
     // Incoming message types.
 
     // Unicast.
@@ -1647,40 +1305,52 @@ export class EmberIncomingMessageType extends basic.uint8_t {
     static INCOMING_MANY_TO_ONE_ROUTE_REQUEST = 0x06;
 }
 
-export class EmberOutgoingMessageType extends basic.uint8_t {
-    // Outgoing message types.
+// export class BlzOutgoingMessageType extends basic.uint8_t {
+//     // Outgoing message types.
 
-    // Unicast sent directly to an EmberNodeId.
-    static OUTGOING_DIRECT = 0x00;
-    // Unicast sent using an entry in the address table.
-    static OUTGOING_VIA_ADDRESS_TABLE = 0x01;
-    // Unicast sent using an entry in the binding table.
-    static OUTGOING_VIA_BINDING = 0x02;
-    // Multicast message. This value is passed to emberMessageSentHandler()
-    // only. It may not be passed to emberSendUnicast().
-    static OUTGOING_MULTICAST = 0x03;
-    // Broadcast message. This value is passed to emberMessageSentHandler()
-    // only. It may not be passed to emberSendUnicast().
-    static OUTGOING_BROADCAST = 0x04;
+//     // Unicast sent directly to an BlzNodeId.
+//     static OUTGOING_DIRECT = 0x00;
+//     // Unicast sent using an entry in the address table.
+//     static OUTGOING_VIA_ADDRESS_TABLE = 0x01;
+//     // Unicast sent using an entry in the binding table.
+//     static OUTGOING_VIA_BINDING = 0x02;
+//     // Multicast message. This value is passed to emberMessageSentHandler()
+//     // only. It may not be passed to emberSendUnicast().
+//     static OUTGOING_MULTICAST = 0x03;
+//     // Broadcast message. This value is passed to emberMessageSentHandler()
+//     // only. It may not be passed to emberSendUnicast().
+//     static OUTGOING_BROADCAST = 0x04;
+// }
+
+export class BlzOutgoingMessageType extends basic.uint8_t {
+    // Message types.
+
+    // Unicast message type.
+    static BLZ_MSG_TYPE_UNICAST = 0x01;
+    // Multicast message type.
+    static BLZ_MSG_TYPE_MULTICAST = 0x02;
+    // Broadcast message type.
+    static BLZ_MSG_TYPE_BROADCAST = 0x03;
 }
 
-export class EmberMacPassthroughType extends basic.uint8_t {
+
+export class BlzMacPassthroughType extends basic.uint8_t {
     // MAC passthrough message type flags.
 
     // No MAC passthrough messages.
     static MAC_PASSTHROUGH_NONE = 0x00;
     // SE InterPAN messages.
     static MAC_PASSTHROUGH_SE_INTERPAN = 0x01;
-    // Legacy EmberNet messages.
+    // Legacy BlzNet messages.
     static MAC_PASSTHROUGH_EMBERNET = 0x02;
-    // Legacy EmberNet messages filtered by their source address.
+    // Legacy BlzNet messages filtered by their source address.
     static MAC_PASSTHROUGH_EMBERNET_SOURCE = 0x04;
     static MAC_PASSTHROUGH_APPLICATION = 0x08;
     static MAC_PASSTHROUGH_CUSTOM = 0x10;
     static MAC_PASSTHROUGH_INTERNAL = 0x80;
 }
 
-export class EmberBindingType extends basic.uint8_t {
+export class BlzBindingType extends basic.uint8_t {
     // Binding types.
 
     // A binding that is currently not in use.
@@ -1695,7 +1365,7 @@ export class EmberBindingType extends basic.uint8_t {
     static MULTICAST_BINDING = 0x03;
 }
 
-export class EmberApsOption extends basic.uint16_t {
+export class BlzApsOption extends basic.uint16_t {
     // Options to use when sending a message.
 
     // No options.
@@ -1721,7 +1391,7 @@ export class EmberApsOption extends basic.uint16_t {
     static APS_OPTION_ENABLE_ADDRESS_DISCOVERY = 0x1000;
     // Reserved.
     static APS_OPTION_POLL_RESPONSE = 0x2000;
-    // This incoming message is a ZDO request not handled by the EmberZNet
+    // This incoming message is a ZDO request not handled by the BlzZNet
     // stack, and the application is responsible for sending a ZDO response.
     // This flag is used only when the ZDO is configured to have requests
     // handled by the application. See the CONFIG_APPLICATION_ZDO_FLAGS
@@ -1743,7 +1413,7 @@ export class BlzNetworkScanType extends basic.uint8_t {
     static ACTIVE_SCAN = 0x01;
 }
 
-export class EmberJoinDecision extends basic.uint8_t {
+export class BlzJoinDecision extends basic.uint8_t {
     // Decision made by the trust center when a node attempts to join.
 
     // Allow the node to join. The joining node should have a pre-configured
@@ -1759,7 +1429,7 @@ export class EmberJoinDecision extends basic.uint8_t {
     static NO_ACTION = 0x03;
 }
 
-export class EmberInitialSecurityBitmask extends basic.uint16_t {
+export class BlzInitialSecurityBitmask extends basic.uint16_t {
     // This is the Initial Security Bitmask that controls the use of various
     // security features.
 
@@ -1809,19 +1479,19 @@ export class EmberInitialSecurityBitmask extends basic.uint16_t {
     // fail.
     static GET_PRECONFIGURED_KEY_FROM_INSTALL_CODE = 0x2000;
     // This denotes that the
-    // ::EmberInitialSecurityState::preconfiguredTrustCenterEui64 has a value in
+    // ::BlzInitialSecurityState::preconfiguredTrustCenterEui64 has a value in
     // it containing the trust center EUI64. The device will only join a network
     // and accept commands from a trust center with that EUI64. Normally this
     // bit is NOT set, and the EUI64 of the trust center is learned during the
     // join process. When commissioning a device to join onto an existing
     // network, which is using a trust center, and without sending any messages,
     // this bit must be set and the field
-    // ::EmberInitialSecurityState::preconfiguredTrustCenterEui64 must be
+    // ::BlzInitialSecurityState::preconfiguredTrustCenterEui64 must be
     // populated with the appropriate EUI64.
     static HAVE_TRUST_CENTER_EUI64 = 0x0040;
 }
 
-export class EmberCurrentSecurityBitmask extends basic.uint16_t {
+export class BlzCurrentSecurityBitmask extends basic.uint16_t {
     // This is the Current Security Bitmask that details the use of various
     // security features.
 
@@ -1843,7 +1513,7 @@ export class EmberCurrentSecurityBitmask extends basic.uint16_t {
     static TRUST_CENTER_USES_HASHED_LINK_KEY = 0x0084;
 }
 
-export class EmberKeyType extends basic.uint8_t {
+export class BlzKeyType extends basic.uint8_t {
     // Describes the type of ZigBee security key.
 
     // A shared key between the Trust Center and a device.
@@ -1863,8 +1533,8 @@ export class EmberKeyType extends basic.uint8_t {
     static APPLICATION_MASTER_KEY = 0x06;
 }
 
-export class EmberKeyStructBitmask extends basic.uint16_t {
-    // Describes the presence of valid data within the EmberKeyStruct structure.
+export class BlzKeyStructBitmask extends basic.uint16_t {
+    // Describes the presence of valid data within the BlzKeyStruct structure.
 
     // The key has a sequence number associated with it.
     static KEY_HAS_SEQUENCE_NUMBER = 0x0001;
@@ -1876,7 +1546,7 @@ export class EmberKeyStructBitmask extends basic.uint16_t {
     static KEY_HAS_PARTNER_EUI64 = 0x0008;
 }
 
-export class EmberDeviceUpdate extends basic.uint8_t {
+export class BlzDeviceUpdate extends basic.uint8_t {
     // The status of the device update.
 
     static STANDARD_SECURITY_SECURED_REJOIN = 0x0;
@@ -1888,7 +1558,7 @@ export class EmberDeviceUpdate extends basic.uint8_t {
     static HIGH_SECURITY_UNSECURED_REJOIN = 0x7;
 }
 
-export class EmberKeyStatus extends basic.uint8_t {
+export class BlzKeyStatus extends basic.uint8_t {
     // The status of the attempt to establish a key.
 
     static APP_LINK_KEY_ESTABLISHED = 0x01;
@@ -1910,7 +1580,7 @@ export class EmberKeyStatus extends basic.uint8_t {
     static TC_REJECTED_APP_KEY_REQUEST = 0x11;
 }
 
-export class EmberCounterType extends basic.uint8_t {
+export class BlzCounterType extends basic.uint8_t {
     // Defines the events reported to the application by the
     // readAndClearCounters command.
 
@@ -2009,16 +1679,16 @@ export class EmberCounterType extends basic.uint8_t {
     static COUNTER_PTA_LO_PRI_TX_ABORTED = 38;
     // The number of aborted high priority packet traffic arbitration transmissions.
     static COUNTER_PTA_HI_PRI_TX_ABORTED = 39;
-    // A placeholder giving the number of Ember counter types.
+    // A placeholder giving the number of Blz counter types.
     static COUNTER_TYPE_COUNT = 40;
 }
 
-export class EmberJoinMethod extends basic.uint8_t {
+export class BlzJoinMethod extends basic.uint8_t {
     // The type of method used for joining.
 
     // Normally devices use MAC Association to join a network, which respects
     // the "permit joining" flag in the MAC Beacon. For mobile nodes this value
-    // causes the device to use an Ember Mobile Node Join, which is functionally
+    // causes the device to use an Blz Mobile Node Join, which is functionally
     // equivalent to a MAC association. This value should be used by default.
     static USE_MAC_ASSOCIATION = 0x0;
     // For those networks where the "permit joining" flag is never turned on,
@@ -2026,9 +1696,9 @@ export class EmberJoinMethod extends basic.uint8_t {
     // to be sent without NWK security and the Trust Center will be asked to
     // send the NWK key to the device. The NWK key sent to the device can be
     // encrypted with the device's corresponding Trust Center link key. That is
-    // determined by the ::EmberJoinDecision on the Trust Center returned by the
+    // determined by the ::BlzJoinDecision on the Trust Center returned by the
     // ::emberTrustCenterJoinHandler(). For a mobile node this value will cause
-    // it to use an Ember Mobile node rejoin, which is functionally equivalent.
+    // it to use an Blz Mobile node rejoin, which is functionally equivalent.
     static USE_NWK_REJOIN = 0x1;
     // For those networks where the "permit joining" flag is never turned on,
     // they will need to use a NWK Rejoin. If those devices have been
@@ -2043,7 +1713,7 @@ export class EmberJoinMethod extends basic.uint8_t {
     static USE_NWK_COMMISSIONING = 0x3;
 }
 
-export class EmberZdoConfigurationFlags extends basic.uint8_t {
+export class BlzZdoConfigurationFlags extends basic.uint8_t {
     // Flags for controlling which incoming ZDO requests are passed to the
     // application. To see if the application is required to send a ZDO response
     // to an incoming message, the application must check the APS options
@@ -2052,13 +1722,13 @@ export class EmberZdoConfigurationFlags extends basic.uint8_t {
 
     // Set this flag in order to receive supported ZDO request messages via the
     // incomingMessageHandler callback. A supported ZDO request is one that is
-    // handled by the EmberZNet stack. The stack will continue to handle the
+    // handled by the BlzZNet stack. The stack will continue to handle the
     // request and send the appropriate ZDO response even if this configuration
     // option is enabled.
     static APP_RECEIVES_SUPPORTED_ZDO_REQUESTS = 0x01;
     // Set this flag in order to receive unsupported ZDO request messages via
     // the incomingMessageHandler callback. An unsupported ZDO request is one
-    // that is not handled by the EmberZNet stack, other than to send a 'not
+    // that is not handled by the BlzZNet stack, other than to send a 'not
     // supported' ZDO response. If this configuration option is enabled, the
     // stack will no longer send any ZDO response, and it is the application's
     // responsibility to do so.
@@ -2078,7 +1748,7 @@ export class EmberZdoConfigurationFlags extends basic.uint8_t {
     static APP_HANDLES_ZDO_BINDING_REQUESTS = 0x08;
 }
 
-export class EmberConcentratorType extends basic.uint16_t {
+export class BlzConcentratorType extends basic.uint16_t {
     // Type of concentrator.
 
     // A concentrator with insufficient memory to store source routes for the
@@ -2091,7 +1761,7 @@ export class EmberConcentratorType extends basic.uint16_t {
     static HIGH_RAM_CONCENTRATOR = 0xfff9;
 }
 
-export class EmberZllState extends basic.uint16_t {
+export class BlzZllState extends basic.uint16_t {
     // ZLL device state identifier.
 
     // No state.
@@ -2108,7 +1778,7 @@ export class EmberZllState extends basic.uint16_t {
     static ZLL_STATE_NON_ZLL_NETWORK = 0x0100;
 }
 
-export class EmberZllKeyIndex extends basic.uint8_t {
+export class BlzZllKeyIndex extends basic.uint8_t {
     // ZLL key encryption algorithm enumeration.
 
     // Key encryption algorithm for use during development.
@@ -2133,7 +1803,7 @@ export class BlzSourceRouteOverheadInformation extends basic.uint8_t {
     static SOURCE_ROUTE_OVERHEAD_UNKNOWN = 0xff;
 }
 
-export class EmberNetworkInitBitmask extends basic.uint16_t {
+export class BlzNetworkInitBitmask extends basic.uint16_t {
     // Bitmask options for emberNetworkInit().
 
     // No options for Network Init
@@ -2143,7 +1813,7 @@ export class EmberNetworkInitBitmask extends basic.uint16_t {
     static NETWORK_INIT_PARENT_INFO_IN_TOKEN = 0x0001;
 }
 
-export class EmberZDOCmd extends basic.uint16_t {
+export class BlzZDOCmd extends basic.uint16_t {
     // Device and Service Discovery Server Requests
     static NWK_addr_req = 0x0000;
     static IEEE_addr_req = 0x0001;
@@ -2239,7 +1909,7 @@ export class BlzDecisionBitmask extends basic.uint16_t {
     static DEFER_JOINS = 0x0020;
 }
 
-export class EmberDerivedKeyType extends basic.uint8_t {
+export class BlzDerivedKeyType extends basic.uint8_t {
     // Derived keys are calculated when performing Zigbee crypto operations.
     // The stack makes use of these derivations.
 
