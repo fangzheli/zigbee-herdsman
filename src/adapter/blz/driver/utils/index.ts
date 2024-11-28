@@ -2,8 +2,8 @@
 
 import {randomBytes} from 'crypto';
 
-import {EmberEUI64, EmberInitialSecurityBitmask} from '../types/named';
-import {EmberInitialSecurityState, EmberKeyData} from '../types/struct';
+import {BlzEUI64, BlzInitialSecurityBitmask} from '../types/named';
+import {BlzInitialSecurityState, BlzKeyData} from '../types/struct';
 import crc16ccitt from './crc16ccitt';
 
 if (!Symbol.asyncIterator) {
@@ -11,22 +11,22 @@ if (!Symbol.asyncIterator) {
     (<any>Symbol).asyncIterator = Symbol.for('Symbol.asyncIterator');
 }
 
-function ember_security(networkKey: Buffer): EmberInitialSecurityState {
-    const isc: EmberInitialSecurityState = new EmberInitialSecurityState();
+function blz_security(networkKey: Buffer): BlzInitialSecurityState {
+    const isc: BlzInitialSecurityState = new BlzInitialSecurityState();
     isc.bitmask =
-        EmberInitialSecurityBitmask.HAVE_PRECONFIGURED_KEY |
-        EmberInitialSecurityBitmask.TRUST_CENTER_GLOBAL_LINK_KEY |
-        EmberInitialSecurityBitmask.HAVE_NETWORK_KEY |
-        //EmberInitialSecurityBitmask.PRECONFIGURED_NETWORK_KEY_MODE |
-        EmberInitialSecurityBitmask.REQUIRE_ENCRYPTED_KEY |
-        EmberInitialSecurityBitmask.TRUST_CENTER_USES_HASHED_LINK_KEY;
-    isc.preconfiguredKey = new EmberKeyData();
+        BlzInitialSecurityBitmask.HAVE_PRECONFIGURED_KEY |
+        BlzInitialSecurityBitmask.TRUST_CENTER_GLOBAL_LINK_KEY |
+        BlzInitialSecurityBitmask.HAVE_NETWORK_KEY |
+        //BlzInitialSecurityBitmask.PRECONFIGURED_NETWORK_KEY_MODE |
+        BlzInitialSecurityBitmask.REQUIRE_ENCRYPTED_KEY |
+        BlzInitialSecurityBitmask.TRUST_CENTER_USES_HASHED_LINK_KEY;
+    isc.preconfiguredKey = new BlzKeyData();
     isc.preconfiguredKey.contents = randomBytes(16);
-    isc.networkKey = new EmberKeyData();
+    isc.networkKey = new BlzKeyData();
     isc.networkKey.contents = networkKey;
     isc.networkKeySequenceNumber = 0;
-    isc.preconfiguredTrustCenterEui64 = new EmberEUI64([0, 0, 0, 0, 0, 0, 0, 0]);
+    isc.preconfiguredTrustCenterEui64 = new BlzEUI64([0, 0, 0, 0, 0, 0, 0, 0]);
     return isc;
 }
 
-export {crc16ccitt, ember_security};
+export {crc16ccitt, blz_security};

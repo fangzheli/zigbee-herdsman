@@ -7,7 +7,8 @@ import {BackupUtils} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import {uint32MaskToChannels} from '../../../zspec/utils';
 import {Driver} from '../driver';
-import {EmberKeyData, EmberKeyStruct, EmberKeyType, EmberNetworkParameters, EmberSecurityManagerNetworkKeyInfo} from '../driver/types';
+import {BlzValueId} from '../driver/types/named';
+import {BlzKeyData, BlzKeyStruct, BlzKeyType, BlzNetworkParameters, BlzSecurityManagerNetworkKeyInfo} from '../driver/types';
 
 const NS = 'zh:blz:backup';
 
@@ -22,54 +23,52 @@ export class BLZAdapterBackup {
 
     public async createBackup(): Promise<Models.Backup> {
         logger.debug('creating backup', NS);
-        const version: number = await this.driver.blz.version();
-        const linkResult = await this.driver.getKey(EmberKeyType.TRUST_CENTER_LINK_KEY);
+        const version: number = await this.driver.blz.version.product;
+        const linkResult = await this.driver.getGlobalTcLinkKey();
         const netParams = await this.driver.blz.execCommand('getNetworkParameters');
-        const networkParams: EmberNetworkParameters = netParams.parameters;
-        const netResult = await this.driver.getKey(EmberKeyType.CURRENT_NETWORK_KEY);
+        const netResult = await this.driver.getNetworkKeyInfo();
         let tclKey: Buffer;
         let netKey: Buffer;
         let netKeySequenceNumber: number = 0;
         let netKeyFrameCounter: number = 0;
 
-        if (version < 13) {
-            tclKey = Buffer.from((linkResult.keyStruct as EmberKeyStruct).key.contents);
-            netKey = Buffer.from((netResult.keyStruct as EmberKeyStruct).key.contents);
-            netKeySequenceNumber = (netResult.keyStruct as EmberKeyStruct).sequenceNumber;
-            netKeyFrameCounter = (netResult.keyStruct as EmberKeyStruct).outgoingFrameCounter;
-        } else {
-            tclKey = Buffer.from((linkResult.keyData as EmberKeyData).contents);
-            netKey = Buffer.from((netResult.keyData as EmberKeyData).contents);
-            // get rest of info from second cmd in EZSP 13+
-            const netKeyInfoResult = await this.driver.getNetworkKeyInfo();
-            const networkKeyInfo: EmberSecurityManagerNetworkKeyInfo = netKeyInfoResult.networkKeyInfo;
-            netKeySequenceNumber = networkKeyInfo.networkKeySequenceNumber;
-            netKeyFrameCounter = networkKeyInfo.networkKeyFrameCounter;
-        }
+        tclKey = Buffer.from(linkResult.linkKey);
+        netKey = Buffer.from(netResult.nwkKey);
+        netKeySequenceNumber = netResult.nwkKeySeqNum;
+        netKeyFrameCounter = netResult.outgoingFrameCounter;
 
-        const ieee = (await this.driver.blz.execCommand('getEui64')).eui64;
+        // tclKey = Buffer.from((linkResult.keyData as BlzKeyData).contents);
+        // netKey = Buffer.from((netResult.keyData as BlzKeyData).contents);
+        // // get rest of info from second cmd in EZSP 13+
+        // const netKeyInfoResult = await this.driver.getNetworkKeyInfo();
+        // const networkKeyInfo: BlzSecurityManagerNetworkKeyInfo = netKeyInfoResult.networkKeyInfo;
+        // netKeySequenceNumber = networkKeyInfo.networkKeySequenceNumber;
+        // netKeyFrameCounter = networkKeyInfo.networkKeyFrameCounter;
+
+        const ieee = (await this.driver.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value;
         /* return backup structure */
         /* istanbul ignore next */
         return {
             blz: {
                 version: version,
-                hashed_tclk: tclKey,
+                tclk: tclKey,
+                tclkFrameCounter: linkResult.outgoingFrameCounter,
             },
             networkOptions: {
-                panId: networkParams.panId,
-                extendedPanId: Buffer.from(networkParams.extendedPanId),
-                channelList: uint32MaskToChannels(networkParams.channels),
+                panId: netParams.panId,
+                extendedPanId: Buffer.from(netParams.extendedPanId),
+                channelList: uint32MaskToChannels(netParams.channels),
                 networkKey: netKey,
                 networkKeyDistribute: true,
             },
-            logicalChannel: networkParams.radioChannel,
+            logicalChannel: netParams.Channel,
             networkKeyInfo: {
                 sequenceNumber: netKeySequenceNumber,
                 frameCounter: netKeyFrameCounter,
             },
             securityLevel: 5,
-            networkUpdateId: networkParams.nwkUpdateId,
-            coordinatorIeeeAddress: ieee,
+            networkUpdateId: netParams.nwkUpdateId,
+            coordinatorIeeeAddress: Buffer.from(ieee),
             devices: [],
         };
     }
@@ -94,7 +93,7 @@ export class BLZAdapterBackup {
                 throw new Error(`Unsupported open coordinator backup version (version=${data.metadata?.version})`);
             }
             if (!data.metadata.internal?.blzVersion) {
-                throw new Error(`This open coordinator backup format not for EZSP adapter`);
+                throw new Error(`This open coordinator backup format not for BLZ adapter`);
             }
             return BackupUtils.fromUnifiedBackup(data);
         } else {

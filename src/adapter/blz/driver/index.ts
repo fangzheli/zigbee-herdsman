@@ -1,4 +1,4 @@
-import {Driver, EmberIncomingMessage} from './driver';
+import {Driver, BlzIncomingMessage} from './driver';
 import {Blz} from './blz';
 
-export {Blz, Driver, EmberIncomingMessage};
+export {Blz, Driver, BlzIncomingMessage};

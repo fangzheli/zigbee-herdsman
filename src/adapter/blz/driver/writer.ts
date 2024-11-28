@@ -26,15 +26,20 @@ export class Writer extends stream.Readable {
         seq: number,
         ackSeq: number,
         frameId: number,
-        isRetransmission = false
+        isRetransmission: boolean = false,
+        isDebug: boolean = false
     ): void {
-        const control = this.makeControlByte(seq, ackSeq, isRetransmission);
+        const control = this.makeControlByte(isDebug, isRetransmission);
         const frame = this.makeFrame(control, seq, ackSeq, frameId, data);
         this.writeBuffer(frame);
     }
 
-    public sendReset(seq: number, ackSeq: number): void {
-        const control = this.makeControlByte(seq, ackSeq, false);
+    public sendReset(seq: number, 
+        ackSeq: number, 
+        isRetransmission: boolean = false,
+        isDebug: boolean = false
+    ): void {
+        const control = this.makeControlByte(isDebug, isRetransmission);
         const frame = this.makeFrame(control, seq, ackSeq, 0x0003); // RESET frameId
         this.writeBuffer(frame);
     }
@@ -48,7 +53,7 @@ export class Writer extends stream.Readable {
     ): Buffer {
         const frameBuffer = [
             control,
-            (seq & 0x0F) | ((ackSeq & 0x0F) << 4),
+            ((ackSeq & 0x07) << 4 | (seq & 0x07)),
             frameId & 0xFF,
             (frameId >> 8) & 0xFF,
             ...(data || []),
@@ -72,7 +77,7 @@ export class Writer extends stream.Readable {
         }
     }
 
-    private makeControlByte(seq: number, ackSeq: number, isRetransmission: boolean): number {
-        return ((seq & 0x0F) << 4) | (ackSeq & 0x0F) | (isRetransmission ? 0x01 : 0x00);
+    private makeControlByte(isDebug: boolean=false, isRetransmission: boolean): number {
+        return ((isDebug ? consts.DEBUG : 0x00) | (isRetransmission ? consts.RETX : 0x00));
     }
 }
