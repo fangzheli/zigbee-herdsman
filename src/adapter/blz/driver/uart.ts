@@ -185,8 +185,16 @@ export class SerialDriver extends EventEmitter {
     }
 
     private handleDATA(frame: Frame): void {
+        const ackSeq = frame.control & 0x70 >> 4;
+        const handled = this.waitress.resolve({ sequence: ackSeq });
+        if (!handled) {
+            logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
+            }
+        else{
+            logger.debug(`<-- DATA (${ackSeq}): ${frame}`, NS);
+        }
         this.writer.sendACK(frame.sequence & 0x07);
-        this.emit('received', frame);
+        this.emit('received', frame.buffer);
     }
 
     private handleACK(frame: Frame): void {
@@ -202,7 +210,7 @@ export class SerialDriver extends EventEmitter {
 
     private handleResetAck(frame: Frame): void {
         logger.debug(`<-- RESET_ACK: ${frame}`, NS);
-        this.waitress.resolve({sequence: -1});
+        // this.waitress.resolve({frameId: -1});
     }
 
     private async handleError(frame: Frame): Promise<void> {
@@ -218,9 +226,9 @@ export class SerialDriver extends EventEmitter {
 
         return this.queue.execute(async () => {
             try {
-                const waiter = this.waitFor(-1, 10000);
+                // const waiter = this.waitFor(-1, 10000);
                 this.writer.sendReset(this.sendSeq, this.recvSeq);
-                await waiter.start().promise;
+                // await waiter.start().promise;
             } catch (e) {
                 logger.error(`Reset failed: ${e}`, NS);
                 this.emit('reset');
