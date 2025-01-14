@@ -28,11 +28,11 @@ enum NcpResetCode {
 }
 
 type BLZPacket = {
-    sequence: number;
+    frameId: number;
 };
 
 type BLZPacketMatcher = {
-    sequence: number;
+    frameId: number;
 };
 
 export class SerialDriver extends EventEmitter {
@@ -186,7 +186,7 @@ export class SerialDriver extends EventEmitter {
 
     private handleDATA(frame: Frame): void {
         const ackSeq = frame.control & 0x70 >> 4;
-        const handled = this.waitress.resolve({ sequence: ackSeq });
+        const handled = this.waitress.resolve({ frameId: frame.frameId });
         if (!handled) {
             logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
             }
@@ -199,7 +199,7 @@ export class SerialDriver extends EventEmitter {
 
     private handleACK(frame: Frame): void {
         const ackSeq = frame.control & 0x70 >> 4;
-        const handled = this.waitress.resolve({ sequence: ackSeq });
+        const handled = this.waitress.resolve({ frameId: frame.frameId });
         if (!handled) {
             logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
             }
@@ -299,7 +299,7 @@ export class SerialDriver extends EventEmitter {
             const isRetransmission = attempt > 0;
 
             try {
-                const waiter = this.waitFor(seq);
+                const waiter = this.waitFor(frameId);
                 this.writer.sendData(data, seq, ackSeq, frameId, true, isRetransmission);
                 this.sendSeq = (seq + 1) & 0x0F;
                 await waiter.start().promise;
@@ -317,8 +317,8 @@ export class SerialDriver extends EventEmitter {
         }
     }
 
-    public waitFor(sequence: number, timeout = 3000): {start: () => {promise: Promise<BLZPacket>; ID: number}; ID: number} {
-        return this.waitress.waitFor({sequence}, timeout);
+    public waitFor(frameId: number, timeout = 3000): {start: () => {promise: Promise<BLZPacket>; ID: number}; ID: number} {
+        return this.waitress.waitFor({frameId}, timeout);
     }
 
     private waitressTimeoutFormatter(matcher: BLZPacketMatcher, timeout: number): string {
@@ -326,6 +326,6 @@ export class SerialDriver extends EventEmitter {
     }
 
     private waitressValidator(payload: BLZPacket, matcher: BLZPacketMatcher): boolean {
-        return payload.sequence === matcher.sequence;
+        return payload.frameId === matcher.frameId;
     }
 }
