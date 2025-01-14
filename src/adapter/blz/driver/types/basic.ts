@@ -15,8 +15,29 @@ export class int_t {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
-        return [cls._signed ? data.readIntLE(0, cls._size) : data.readUIntLE(0, cls._size), data.subarray(cls._size)];
+        if (data.length < cls._size) {
+            throw new RangeError(
+                `Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`
+            );
+        }
+    
+        let value;
+        if (cls._size <= 6) {
+            // Use native readIntLE or readUIntLE for sizes up to 6 bytes
+            value = cls._signed ? data.readIntLE(0, cls._size) : data.readUIntLE(0, cls._size);
+        } else if (cls._size === 8) {
+            // hotfix for 64-bit integers
+            // Use BigInt for 64-bit integers
+            value = cls._signed
+                ? BigInt.asIntN(64, data.readBigInt64LE(0))
+                : BigInt.asUintN(64, data.readBigUInt64LE(0));
+        } else {
+            throw new Error(`Unsupported size: ${cls._size}`);
+        }
+    
+        return [value, data.subarray(cls._size)];
     }
+    
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static valueToName(cls: any, value: any): string {
