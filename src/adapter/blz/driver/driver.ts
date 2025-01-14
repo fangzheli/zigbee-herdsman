@@ -16,7 +16,6 @@ import * as TsType from './../../tstype';
 import {ParamsDesc} from './commands';
 // Import Blz and BLZFrameData instead of Ezsp and EZSPFrameData
 import {Blz, BLZFrameData} from './blz';
-import {Multicast} from './multicast';
 // Update imports to BLZ-specific types
 import {BlzApsOption, BlzJoinDecision, BlzKeyData, BlzNodeType, BlzStatus, uint8_t, uint16_t, uint32_t, Bytes} from './types';
 import {

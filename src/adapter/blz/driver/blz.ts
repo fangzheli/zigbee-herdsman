@@ -340,8 +340,11 @@ export class Blz extends EventEmitter {
     }
 
     private onFrameReceived(data: Buffer): void {
+        if (!Buffer.isBuffer(data)) {
+            logger.error(`Data is not a Buffer. Converting...`, NS);
+            data = Buffer.from(data);
+        }
         logger.debug(`<== Frame: ${data.toString('hex')}`, NS);
-
         let frameId: number;
         frameId = data.readUInt16LE(2)
         const sequence = (data[1] & 0x70) >> 4;
@@ -421,23 +424,24 @@ export class Blz extends EventEmitter {
     }
 
     async networkInit(): Promise<boolean> {
-        const waiter = this.waitFor('stackStatusHandler');
-        const response = await waiter.start().promise;
+        logger.debug('Set up stack status handler before initial the network', NS);
+        // const waiter = this.waitFor('stackStatusHandler');
+        // const response = await waiter.start().promise;
         const result = await this.execCommand('networkInit');
 
-        if (response.payload.status !== BlzStatus.SUCCESS) {
-            logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
+        // if (response.payload.status !== BlzStatus.SUCCESS) {
+        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
 
-            throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        }
+        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
+        // }
 
         logger.debug(`Network init result: ${JSON.stringify(result)}`, NS);
 
-        if (result.status !== BlzStatus.SUCCESS) {
-            this.waitress.remove(waiter.ID);
-            logger.error('Failure to init network', NS);
-            return false;
-        }
+        // if (result.status !== BlzStatus.SUCCESS) {
+        //     this.waitress.remove(waiter.ID);
+        //     logger.error('Failure to init network', NS);
+        //     return false;
+        // }
 
         return result.status == BlzStatus.SUCCESS;
     }
@@ -559,7 +563,7 @@ export class Blz extends EventEmitter {
 
     public async getVersion(): Promise<void> {
         // Retrieve version info specific to BLZ
-        let verInfo = await this.getValue(BlzValueId.BLZ_VALUE_ID_BLZ_VERSION);
+        let verInfo = await this.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION);
         // Parse version info according to BLZ's format
         // Update parsing logic if necessary
         let build, major, minor, patch;
@@ -647,20 +651,20 @@ export class Blz extends EventEmitter {
             return;
         }
 
-        try {
-            await this.execCommand('nop');
-        } catch (error) {
-            logger.error(`Watchdog heartbeat timeout ${error}`, NS);
+        // try {
+        //     await this.execCommand('nop');
+        // } catch (error) {
+        //     logger.error(`Watchdog heartbeat timeout ${error}`, NS);
 
-            if (!this.inResetingProcess) {
-                this.failures += 1;
+        //     if (!this.inResetingProcess) {
+        //         this.failures += 1;
 
-                if (this.failures > MAX_WATCHDOG_FAILURES) {
-                    this.failures = 0;
+        //         if (this.failures > MAX_WATCHDOG_FAILURES) {
+        //             this.failures = 0;
 
-                    this.emit('reset');
-                }
-            }
-        }
+        //             this.emit('reset');
+        //         }
+        //     }
+        // }
     }
 }

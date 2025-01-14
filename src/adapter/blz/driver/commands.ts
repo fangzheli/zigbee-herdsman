@@ -174,8 +174,8 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
             appFlags: uint8_t,
             inputClusterCount: uint8_t,
             outputClusterCount: uint8_t,
-            inputClusterList: [uint16_t],
-            outputClusterList: [uint16_t],
+            inputClusterList: WordList,
+            outputClusterList: WordList,
         },
         response: {
             status: BlzStatus,
