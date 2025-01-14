@@ -194,19 +194,19 @@ export class Driver extends EventEmitter {
 
         // await this.blz.version();
         // Add endpoints as per BLZ requirements
-        await this.addEndpoint({
-            inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a, 0x0300],
-            outputClusters: [
-                0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400, 0x0402, 0x0405, 0x0406, 0x0500, 0x0b01, 0x0b03, 0x0b04,
-                0x0702, 0x1000, 0xfc01, 0xfc02,
-            ],
-        });
-        await this.addEndpoint({
-            endpoint: 242,
-            profileId: 0xa1e0,
-            deviceId: 0x61,
-            outputClusters: [0x0021],
-        });
+        // await this.addEndpoint({
+        //     inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a, 0x0300],
+        //     outputClusters: [
+        //         0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400, 0x0402, 0x0405, 0x0406, 0x0500, 0x0b01, 0x0b03, 0x0b04,
+        //         0x0702, 0x1000, 0xfc01, 0xfc02,
+        //     ],
+        // });
+        // await this.addEndpoint({
+        //     endpoint: 242,
+        //     profileId: 0xa1e0,
+        //     deviceId: 0x61,
+        //     outputClusters: [0x0021],
+        // });
 
         // // Retrieve version info specific to BLZ
         // let verInfo = await this.blz.getValue(BlzValueId.BLZ_VALUE_ID_BLZ_VERSION);
