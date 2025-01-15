@@ -3,15 +3,49 @@ export class int_t {
     static _signed = true;
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: number): Buffer {
-        const buffer = Buffer.alloc(cls._size, 0);
-        if (cls._signed) {
-            buffer.writeIntLE(value, 0, cls._size);
-        } else {
-            buffer.writeUIntLE(value, 0, cls._size);
+    static serialize(cls: any, value: number | bigint | Buffer): Buffer {
+        if (cls._size > 8) {
+            throw new Error(`Unsupported size: ${cls._size}`);
         }
+    
+        // If value is a Buffer, convert to a number or BigInt
+        if (Buffer.isBuffer(value)) {
+            if (cls._size <= 6) {
+                value = cls._signed ? value.readIntLE(0, cls._size) : value.readUIntLE(0, cls._size);
+            } else if (cls._size === 8) {
+                value = cls._signed ? value.readBigInt64LE(0) : value.readBigUInt64LE(0);
+            } else {
+                throw new Error(`Unsupported size for Buffer conversion: ${cls._size}`);
+            }
+        }
+    
+        // Ensure value is a valid number or BigInt
+        if (typeof value !== 'number' && typeof value !== 'bigint') {
+            throw new TypeError(`Value must be a number, BigInt, or Buffer. Received: ${typeof value}`);
+        }
+    
+        const buffer = Buffer.alloc(cls._size, 0);
+    
+        if (cls._size <= 6) {
+            if (cls._signed) {
+                buffer.writeIntLE(Number(value), 0, cls._size);
+            } else {
+                buffer.writeUIntLE(Number(value), 0, cls._size);
+            }
+        } else if (cls._size === 8) {
+            if (typeof value !== 'bigint') {
+                value = BigInt(value); // Convert number to BigInt if necessary
+            }
+            if (cls._signed) {
+                buffer.writeBigInt64LE(value, 0);
+            } else {
+                buffer.writeBigUInt64LE(value, 0);
+            }
+        }
+    
         return buffer;
     }
+    
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
