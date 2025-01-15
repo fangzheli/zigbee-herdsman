@@ -447,25 +447,25 @@ export class Blz extends EventEmitter {
     }
 
     async leaveNetwork(): Promise<number> {
-        const waiter = this.waitFor('stackStatusHandler');
-        const response = await waiter.start().promise;
+        // const waiter = this.waitFor('stackStatusHandler');
+        // const response = await waiter.start().promise;
         const result = await this.execCommand('leaveNetwork');
 
-        if (response.payload.status !== BlzStatus.SUCCESS) {
-            logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
+        // if (response.payload.status !== BlzStatus.SUCCESS) {
+        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
 
-            throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        }
+        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
+        // }
 
         logger.debug(`Network leave result: ${JSON.stringify(result)}`, NS);
 
         if (result.status !== BlzStatus.SUCCESS) {
-            this.waitress.remove(waiter.ID);
+            // this.waitress.remove(waiter.ID);
             logger.debug('Failure to leave network', NS);
             throw new Error('Failure to leave network: ' + JSON.stringify(result));
         }
 
-        return response.payload.status;
+        return result.status;
     }
 
     async setValue(valueId: t.BlzValueId, value: number): Promise<BLZFrameData> {

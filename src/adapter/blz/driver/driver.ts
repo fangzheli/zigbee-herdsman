@@ -208,27 +208,10 @@ export class Driver extends EventEmitter {
         //     outputClusters: [0x0021],
         // });
 
-        // // Retrieve version info specific to BLZ
-        // let verInfo = await this.blz.getValue(BlzValueId.BLZ_VALUE_ID_BLZ_VERSION);
-        // // Parse version info according to BLZ's format
-        // // Update parsing logic if necessary
-        // let build, major, minor, patch;
-        // [build, verInfo] = uint16_t.deserialize(uint16_t, verInfo);
-        // [major, verInfo] = uint8_t.deserialize(uint8_t, verInfo);
-        // [minor, verInfo] = uint8_t.deserialize(uint8_t, verInfo);
-        // [patch, verInfo] = uint8_t.deserialize(uint8_t, verInfo);
-        // const vers = `${major}.${minor}.${patch}.${build}`;
-        // logger.debug(`BLZ version: ${vers}`, NS);
-        // this.version = {
-        //     product: 1,
-        //     major: `${major}`,
-        //     minor: `${minor}`,
-        //     patch: `${patch} `,
-        //     build: `${build}`,
-        // };
         await this.blz.getVersion();
 
         if (await this.needsToBeInitialised(this.nwkOpt)) {
+            logger.info('The network setup need to be initialized', NS);
             // need to check the backup
             const restore = await this.needsToBeRestore(this.nwkOpt);
 
@@ -254,21 +237,23 @@ export class Driver extends EventEmitter {
                 result = 'restored';
             } else {
                 // reset
-                logger.info('Form network', NS);
+                logger.info('Form a new network', NS);
                 await this.formNetwork(false);
                 result = 'reset';
             }
         }
-
+        logger.info('The Zigbee network is formed', NS);
         // const state = (await this.blz.execCommand('networkState')).status;
         // logger.debug(`Network state ${state}`, NS);
 
         const netParams = await this.blz.execCommand('getNetworkParameters');
-
-        if (netParams.status != BlzStatus.SUCCESS) {
+        logger.info(`Command (getNetworkParameters) returned: ${netParams.status}`, NS);
+        if (netParams.status !== BlzStatus.SUCCESS) {
             logger.error(`Command (getNetworkParameters) returned unexpected state: ${netParams.status}`, NS);
         }
-
+        logger.info(`PanId: ${netParams.panId}`, NS);
+        logger.info(`extenedPanId: ${netParams.extPanId}`, NS);
+        this.networkParams = new BlzNetworkParameters();
         this.networkParams.extendedPanId = netParams.extPanId;
         this.networkParams.panId = netParams.panId;
         this.networkParams.Channel = netParams.channel;
@@ -277,9 +262,9 @@ export class Driver extends EventEmitter {
         const ieee = (await this.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value;
         this.ieee = new BlzEUI64(ieee);
         const nwk = (await this.blz.execCommand('getNodeIdByEui64', {eui64: ieee})).nodeId;
-        logger.debug('Network ready', NS);
         this.blz.on('frame', this.handleFrame.bind(this));
         logger.debug(`BLZ nwk=${nwk}, IEEE=0x${this.ieee}`, NS);
+        logger.debug('Network ready', NS);
         // Retrieve keys using BLZ-specific commands
         // const linkResult = await this.getKey(BlzKeyType.TRUST_CENTER_LINK_KEY);
         // logger.debug(`TRUST_CENTER_LINK_KEY: ${JSON.stringify(linkResult)}`, NS);
