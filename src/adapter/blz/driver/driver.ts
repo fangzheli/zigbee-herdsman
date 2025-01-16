@@ -65,7 +65,7 @@ type BlzFrame = {
 type BlzWaitressMatcher = {
     address: number | string;
     clusterId: number;
-    sequence: number;
+    // sequence: number;
 };
 
 type IeeeMfg = {
@@ -242,6 +242,8 @@ export class Driver extends EventEmitter {
                 result = 'reset';
             }
         }
+        await Wait(3000);
+        // TODO: make sure the stack is running
         logger.info('The Zigbee network is formed', NS);
         // const state = (await this.blz.execCommand('networkState')).status;
         // logger.debug(`Network state ${state}`, NS);
@@ -417,13 +419,31 @@ export class Driver extends EventEmitter {
                 break;
             }
             case frameName === 'deviceJoinCallback': {
+                logger.debug(`Device joined callback is received`, NS);
                 this.handleNodeJoined(frame.nodeId, frame.eui64);
                 break;
                 }
             case frameName === 'nwkStatusCallback': {
+                logger.debug(`Network status callback called is received`, NS);
                 this.handleNetworkStatus(frame.status, frame.networkAddress, frame.ieeeAddress);
                 break;
                 }
+            case frameName === 'apsDataConfirm': {
+                if (frame.status === BlzStatus.SUCCESS) {
+                    logger.debug(`APS confirmed`, NS);
+                } else {
+                    logger.error(`APS Request failed`, NS);
+                }
+                break;
+                }
+            case frameName === 'stackStatusHandler': {
+                if (frame.status === BlzStatus.SUCCESS) {
+                    logger.debug(`Stack status is success`, NS);
+                } else {
+                    logger.error(`Stack status failed`, NS);
+                }
+                break;
+            }
             default:
                 logger.debug(`Unhandled frame ${frameName}`, NS);
         }
@@ -511,9 +531,10 @@ export class Driver extends EventEmitter {
                         }
                     }
                     nwk = nodeId;
-                } else {
-                    eui64 = await this.networkIdToEUI64(nwk);
                 }
+                // else {
+                //     eui64 = await this.networkIdToEUI64(nwk);
+                // }
 
                 // if (extendedTimeout) {
                 //     await this.blz.execCommand('setExtendedTimeout', {remoteEui64: eui64, extendedTimeout: true});
@@ -527,7 +548,7 @@ export class Driver extends EventEmitter {
                     apsFrame.sourceEndpoint,                    // srcEp
                     apsFrame.destinationEndpoint,               // dstEp
                     0,                                          // txOptions
-                    5,                                        // radius
+                    5,                                          // radius
                     seq,                                        // messageTag
                     data.length,                                // payloadLen
                     data                                        // payload
@@ -680,10 +701,12 @@ export class Driver extends EventEmitter {
     public waitFor(
         address: number | string,
         clusterId: number,
-        sequence: number,
+        // sequence: number,
         timeout = 10000,
     ): ReturnType<typeof this.waitress.waitFor> & {cancel: () => void} {
-        const waiter = this.waitress.waitFor({address, clusterId, sequence}, timeout);
+        // const waiter = this.waitress.waitFor({address, clusterId, sequence}, timeout);
+        const waiter = this.waitress.waitFor({address, clusterId}, timeout);
+        // blz doesn't have sequence number in the frame
 
         return {...waiter, cancel: () => this.waitress.remove(waiter.ID)};
     }
@@ -693,10 +716,12 @@ export class Driver extends EventEmitter {
     }
 
     private waitressValidator(payload: BlzFrame, matcher: BlzWaitressMatcher): boolean {
+        logger.debug(`waitressValidator: payload.address=${payload.address}, matcher.address=${matcher.address}, payload.frame.clusterId=${payload.frame?.clusterId}, matcher.clusterId=${matcher.clusterId}`, NS);
         return (
             (!matcher.address || payload.address === matcher.address) &&
-            (!payload.frame || payload.frame.clusterId === matcher.clusterId) &&
-            (!payload.frame || payload.payload[0] === matcher.sequence)
+            (!payload.frame || payload.frame.clusterId === matcher.clusterId) 
+            // &&
+            // (!payload.frame || payload.payload[0] === matcher.sequence)
         );
     }
 
