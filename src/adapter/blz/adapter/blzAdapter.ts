@@ -273,7 +273,7 @@ class BLZAdapter extends Adapter {
 
             const clusterName = Zdo.ClusterId[clusterId];
             const frame = this.driver.makeApsFrame(clusterId, disableResponse);
-            payload[0] = frame.sequence;
+            payload[0] = frame.sequence; //TODO: sequence number needed or not in aps
             let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
             let responseClusterId: number | undefined;
 
@@ -284,7 +284,7 @@ class BLZAdapter extends Adapter {
                     waiter = this.driver.waitFor(
                         responseClusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE ? ieeeAddress : networkAddress,
                         responseClusterId,
-                        frame.sequence,
+                        // frame.sequence,
                     );
                 }
             }

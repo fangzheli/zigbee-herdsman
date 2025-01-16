@@ -186,13 +186,22 @@ export class SerialDriver extends EventEmitter {
 
     private handleDATA(frame: Frame): void {
         const ackSeq = frame.control & 0x70 >> 4;
+        
+        // Log frame immediately before any processing
+        logger.debug(`<-- RAW FRAME (${frame.frameId.toString(16)}): ${frame}`, NS);
+
+        // // Special handling for APS indication frames
+        // if (frame.frameId === 0x0082) { // APS indication
+        //     this.emit('apsIndication', frame.buffer);
+        //     this.writer.sendACK(frame.sequence & 0x07);
+        //     return;
+        // }
+
         const handled = this.waitress.resolve({ frameId: frame.frameId });
         if (!handled) {
-            logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
-            }
-        else{
-            logger.debug(`<-- DATA (${ackSeq}): ${frame}`, NS);
+            logger.debug(`Unsolicited frame ID ${frame.frameId.toString(16)}`, NS);
         }
+        
         this.writer.sendACK(frame.sequence & 0x07);
         this.emit('received', frame.buffer);
     }
