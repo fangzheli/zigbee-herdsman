@@ -83,43 +83,43 @@ class BLZAdapter extends Adapter {
             this.emit('zclPayload', payload);
         } else if (frame.apsFrame.profileId == ZSpec.TOUCHLINK_PROFILE_ID && frame.senderEui64) {
             // ZLL Frame
-            const payload: ZclPayload = {
-                clusterID: frame.apsFrame.clusterId,
-                header: Zcl.Header.fromBuffer(frame.message),
-                data: frame.message,
-                address: `0x${frame.senderEui64.toString()}`,
-                endpoint: 0xfe,
-                linkquality: frame.lqi,
-                groupID: 0,
-                wasBroadcast: false,
-                destinationEndpoint: 1,
-            };
+            // const payload: ZclPayload = {
+            //     clusterID: frame.apsFrame.clusterId,
+            //     header: Zcl.Header.fromBuffer(frame.message),
+            //     data: frame.message,
+            //     address: `0x${frame.senderEui64.toString()}`,
+            //     endpoint: 0xfe,
+            //     linkquality: frame.lqi,
+            //     groupID: 0,
+            //     wasBroadcast: false,
+            //     destinationEndpoint: 1,
+            // };
 
-            this.waitress.resolve(payload);
-            this.emit('zclPayload', payload);
+            // this.waitress.resolve(payload);
+            // this.emit('zclPayload', payload);
         } else if (frame.apsFrame.profileId == ZSpec.GP_PROFILE_ID) {
             // GP Frame
             // Only handle when clusterId == 33 (greenPower), some devices send messages with this profileId
             // while the cluster is not greenPower
             // https://github.com/Koenkk/zigbee2mqtt/issues/20838
-            if (frame.apsFrame.clusterId === Zcl.Clusters.greenPower.ID) {
-                const payload: ZclPayload = {
-                    header: Zcl.Header.fromBuffer(frame.message),
-                    clusterID: frame.apsFrame.clusterId,
-                    data: frame.message,
-                    address: frame.sender,
-                    endpoint: frame.apsFrame.sourceEndpoint,
-                    linkquality: frame.lqi,
-                    groupID: 0,
-                    wasBroadcast: true,
-                    destinationEndpoint: frame.apsFrame.sourceEndpoint,
-                };
+            // if (frame.apsFrame.clusterId === Zcl.Clusters.greenPower.ID) {
+            //     const payload: ZclPayload = {
+            //         header: Zcl.Header.fromBuffer(frame.message),
+            //         clusterID: frame.apsFrame.clusterId,
+            //         data: frame.message,
+            //         address: frame.sender,
+            //         endpoint: frame.apsFrame.sourceEndpoint,
+            //         linkquality: frame.lqi,
+            //         groupID: 0,
+            //         wasBroadcast: true,
+            //         destinationEndpoint: frame.apsFrame.sourceEndpoint,
+            //     };
 
-                this.waitress.resolve(payload);
-                this.emit('zclPayload', payload);
-            } else {
-                logger.debug(`Ignoring GP frame because clusterId is not greenPower`, NS);
-            }
+            //     this.waitress.resolve(payload);
+            //     this.emit('zclPayload', payload);
+            // } else {
+            //     logger.debug(`Ignoring GP frame because clusterId is not greenPower`, NS);
+            // }
         }
     }
 
@@ -460,6 +460,9 @@ class BLZAdapter extends Adapter {
         return await this.queue.execute<void>(async () => {
             this.checkInterpanLock();
             const frame = this.driver.makeApsFrame(zclFrame.cluster.ID, false);
+            if (endpoint === ZSpec.GP_ENDPOINT) {
+                return
+            }
             frame.profileId = sourceEndpoint === ZSpec.GP_ENDPOINT && endpoint === ZSpec.GP_ENDPOINT ? ZSpec.GP_PROFILE_ID : ZSpec.HA_PROFILE_ID;
             frame.sourceEndpoint = sourceEndpoint;
             frame.destinationEndpoint = endpoint;
