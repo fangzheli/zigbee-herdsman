@@ -2,8 +2,9 @@
 
 import * as basic from './basic';
 import {fixed_list} from './basic';
+import {logger} from '../../../../utils/logger';
 
-// console.assert(basic.uint8_t);
+const NS = 'zh:blz:named';
 
 export class NcpResetCode extends basic.uint8_t {
     //Reset and Error Codes for NCP
@@ -33,6 +34,9 @@ export class BlzMulticastId extends basic.uint16_t {}
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     constructor(private _value: ArrayLike<number> | string) {
         super();
+        // logger.debug(`Type of input: ${typeof _value}`, NS);
+        // logger.debug(`Value of input: ${_value}`, NS);
+        
         if (typeof _value === 'string') {
             if (_value.startsWith('0x')) _value = _value.slice(2);
             if ((_value as string).length !== 16) {
