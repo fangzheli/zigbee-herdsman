@@ -3,6 +3,7 @@
 import assert from 'assert';
 
 import * as Models from '../../../models';
+import Device from '../../../controller/model/device';
 import {Queue, RealpathSync, Wait, Waitress} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import * as ZSpec from '../../../zspec';
@@ -128,7 +129,7 @@ class BLZAdapter extends Adapter {
 
         this.emit('deviceJoined', {
             networkAddress: nwk,
-            ieeeAddr: `0x${ieee.toString()}`,
+            ieeeAddr: `${ieee.toString()}`,
         });
     }
 
@@ -138,6 +139,7 @@ class BLZAdapter extends Adapter {
         this.emit('deviceLeave', {
             networkAddress: nwk,
             ieeeAddr: `0x${ieee.toString()}`,
+            //TODO: frank: add ieeeAddr change to deviceLeave
         });
     }
 
@@ -145,7 +147,9 @@ class BLZAdapter extends Adapter {
      * Adapter methods
      */
     public async start(): Promise<StartResult> {
-        return await this.driver.startup();
+        const result = await this.driver.startup();
+        Wait(1000);
+        return result;
     }
 
     public async stop(): Promise<void> {
@@ -217,7 +221,7 @@ class BLZAdapter extends Adapter {
             // });
 
             const result = await this.driver.permitJoining(seconds);
-
+            //const result = await this.driver.permitJoining(60); //TODO：hard code
             if (result.status !== BlzStatus.SUCCESS) {
                 throw new Error(`[ZDO] Failed coordinator permit joining request with status=${result.status}.`);
             }
@@ -484,9 +488,12 @@ class BLZAdapter extends Adapter {
     public async getNetworkParameters(): Promise<NetworkParameters> {
         return {
             panID: this.driver.networkParams.panId,
-            extendedPanID: this.driver.networkParams.extendedPanId[0],
+            extendedPanID: this.driver.networkParams.extendedPanId instanceof Buffer ? 
+                this.driver.networkParams.extendedPanId.readUIntBE(0, this.driver.networkParams.extendedPanId.length) :
+                0,
             channel: this.driver.networkParams.Channel,
         };
+        //TODO: frank: can't get the extendedPanId
     }
 
     public async supportsBackup(): Promise<boolean> {

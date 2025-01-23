@@ -253,19 +253,20 @@ export class Driver extends EventEmitter {
         if (netParams.status !== BlzStatus.SUCCESS) {
             logger.error(`Command (getNetworkParameters) returned unexpected state: ${netParams.status}`, NS);
         }
-        logger.info(`PanId: ${netParams.panId}`, NS);
-        logger.info(`extenedPanId: ${netParams.extPanId}`, NS);
+        logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
+        logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
         this.networkParams = new BlzNetworkParameters();
         this.networkParams.extendedPanId = netParams.extPanId;
         this.networkParams.panId = netParams.panId;
         this.networkParams.Channel = netParams.channel;
         logger.debug(`Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`, NS);
 
-        const ieee = (await this.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value;
+        const ieee = (await this.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value; 
         this.ieee = new BlzEUI64(ieee);
-        const nwk = (await this.blz.execCommand('getNodeIdByEui64', {eui64: ieee})).nodeId;
+        //TODO: frank, getnodeidbyeui64fail
+        // const nwk = (await this.blz.execCommand('getNodeIdByEui64', {eui64: ieee})).nodeId;
         this.blz.on('frame', this.handleFrame.bind(this));
-        logger.debug(`BLZ nwk=${nwk}, IEEE=0x${this.ieee}`, NS);
+        logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
         logger.debug('Network ready', NS);
         // Retrieve keys using BLZ-specific commands
         // const linkResult = await this.getKey(BlzKeyType.TRUST_CENTER_LINK_KEY);
@@ -481,23 +482,12 @@ export class Driver extends EventEmitter {
     //     await this.blz.execCommand('setManufacturerCode', {code: DEFAULT_MFG_ID});
     // }
 
-    public handleNodeJoined(nwk: number, ieee: BlzEUI64 | number[]): void {
-        if (ieee && !(ieee instanceof BlzEUI64)) {
-            ieee = new BlzEUI64(ieee);
-        }
-
-        // for (const rec of IEEE_PREFIX_MFG_ID) {
-        //     if (Buffer.from(ieee.value).indexOf(Buffer.from(rec.prefix)) == 0) {
-        //         // set ManufacturerCode
-        //         logger.debug(`handleNodeJoined: change ManufacturerCode for ieee ${ieee} to ${rec.mfgId}`, NS);
-        //         // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        //         this.resetMfgId(rec.mfgId);
-        //         break;
-        //     }
-        // }
-
-        this.eui64ToNodeId.set(ieee.toString(), nwk);
-        this.emit('deviceJoined', nwk, ieee);
+    public handleNodeJoined(nwk: number, ieee: number): void {
+        const ieeehexstring = `0x${ieee.toString(16).padStart(16, '0')}`
+        //TODO: frank, issue with convert none array like/string to BlzEUI64
+        logger.debug(`deviceJoined, ${nwk.toString(16)}, ${ieeehexstring}`, NS);
+        this.eui64ToNodeId.set(ieeehexstring, nwk);
+        this.emit('deviceJoined', nwk, ieeehexstring);
     }
 
     public setNode(nwk: number, ieee: BlzEUI64 | number[]): void {
