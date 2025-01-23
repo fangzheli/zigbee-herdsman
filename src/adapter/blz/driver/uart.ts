@@ -187,8 +187,8 @@ export class SerialDriver extends EventEmitter {
     private handleDATA(frame: Frame): void {
         const ackSeq = frame.control & 0x70 >> 4;
         
-        // Log frame immediately before any processing
-        logger.debug(`<-- RAW FRAME (${frame.frameId.toString(16)}): ${frame}`, NS);
+        // // Log frame immediately before any processing
+        // logger.debug(`<-- Processed FRAME (${frame.frameId.toString(16)}): ${frame}`, NS);
 
         // // Special handling for APS indication frames
         // if (frame.frameId === 0x0082) { // APS indication
