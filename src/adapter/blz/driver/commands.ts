@@ -282,8 +282,8 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
         request: {}, // No request data
         response: {
             status: BlzStatus,
-            networkAddress: uint16_t,
-            ieeeAddress: uint64_t,
+            valueLength: uint8_t,
+            value: Bytes,
         },
     },
 

@@ -192,15 +192,12 @@ export class Driver extends EventEmitter {
 
         this.blz.on('reset', this.onBlzReset.bind(this));
 
-        // await this.blz.version();
-        // Add endpoints as per BLZ requirements
-        // await this.addEndpoint({
-        //     inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a, 0x0300],
-        //     outputClusters: [
-        //         0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400, 0x0402, 0x0405, 0x0406, 0x0500, 0x0b01, 0x0b03, 0x0b04,
-        //         0x0702, 0x1000, 0xfc01, 0xfc02,
-        //     ],
-        // });
+        await this.addEndpoint({
+            inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
+            outputClusters: [
+                0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400,
+            ],
+        });
         // await this.addEndpoint({
         //     endpoint: 242,
         //     profileId: 0xa1e0,
@@ -426,7 +423,7 @@ export class Driver extends EventEmitter {
                 }
             case frameName === 'nwkStatusCallback': {
                 logger.debug(`Network status callback called is received`, NS);
-                this.handleNetworkStatus(frame.status, frame.networkAddress, frame.ieeeAddress);
+                this.handleNetworkStatus(frame.status);
                 break;
                 }
             case frameName === 'apsDataConfirm': {
@@ -462,8 +459,8 @@ export class Driver extends EventEmitter {
     //     logger.debug(`handleRouteError: nwk=${nwk}, status=${status}`, NS);
     // }
 
-    private handleNetworkStatus(status: BlzStatus, networkAddress: number, ieeeAddress: number): void {
-        logger.debug(`handleNetworkStatus: nwkAddress=${networkAddress}, ieeeAddress=${ieeeAddress}，networkStatusCode=${status}`, NS);
+    private handleNetworkStatus(status: BlzStatus): void {
+        logger.debug(`handleNetworkStatus: networkStatusCode=${status}`, NS);
     }
 
     // private handleNodeLeft(nwk: number, ieee: BlzEUI64 | number[]): void {

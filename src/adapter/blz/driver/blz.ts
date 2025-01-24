@@ -564,7 +564,6 @@ export class Blz extends EventEmitter {
     public async getVersion(): Promise<void> {
         // Retrieve version info specific to BLZ
         let verInfo = await this.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION);
-        // Parse version info according to BLZ's format
         // Update parsing logic if necessary
         let build, major, minor, patch;
         [build, verInfo] = uint16_t.deserialize(uint16_t, verInfo);
