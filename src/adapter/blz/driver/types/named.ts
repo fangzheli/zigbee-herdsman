@@ -1259,19 +1259,11 @@ export class BlzEventUnits extends basic.uint8_t {
 export class BlzNodeType extends basic.uint8_t {
     // The type of the node.
 
-    // Device is not joined.
-    static UNKNOWN_DEVICE = 0x00;
+    static COORDINATOR = 0x00;
     // Will relay messages and can act as a parent to other nodes.
-    static COORDINATOR = 0x01;
-    // Will relay messages and can act as a parent to other nodes.
-    static ROUTER = 0x02;
+    static ROUTER = 0x01;
     // Communicates only with its parent and will not relay messages.
-    static END_DEVICE = 0x03;
-    // An end device whose radio can be turned off to save power. The
-    // application must poll to receive messages.
-    static SLEEPY_END_DEVICE = 0x04;
-    // A sleepy end device that can move through the network.
-    static MOBILE_END_DEVICE = 0x05;
+    static END_DEVICE = 0x02;
 }
 
 export class BlzNetworkStatus extends basic.uint8_t {

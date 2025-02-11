@@ -83,6 +83,7 @@ export interface BLZFrameDesc {
 
 import { uint8_t, uint16_t, uint32_t, uint64_t, int8s, Bytes, WordList, LVBytes } from './types';
 import { BlzStatus, BlzValueId, BlzPolicyId, BlzDecisionId } from './types';
+import {Fixed16Bytes} from './types/basic';
 
 export const FRAMES: { [key: string]: BLZFrameDesc } = {
     // Control Frames
@@ -293,7 +294,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
         request: {}, // No request data
         response: {
             status: BlzStatus,
-            nwkKey: Bytes,
+            nwkKey: Fixed16Bytes,
             outgoingFrameCounter: uint32_t,
             nwkKeySeqNum: uint8_t,
         },
@@ -301,7 +302,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
     setNwkSecurityInfos: {
         ID: 0x0051,
         request: {
-            nwkKey: Bytes,
+            nwkKey: Fixed16Bytes,
             outgoingFrameCounter: uint32_t,
             nwkKeySeqNum: uint8_t,
         },
@@ -314,7 +315,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
         request: {}, // No request data
         response: {
             status: BlzStatus,
-            linkKey: Bytes,
+            linkKey: Fixed16Bytes,
             outgoingFrameCounter: uint32_t,
             trustCenterAddress: uint64_t,
         },
@@ -322,7 +323,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
     setGlobalTcLinkKey: {
         ID: 0x0053,
         request: {
-            linkKey: Bytes,
+            linkKey: Fixed16Bytes,
             outgoingFrameCounter: uint32_t,
         },
         response: {
@@ -336,7 +337,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
         },
         response: {
             status: BlzStatus,
-            linkKey: Bytes,
+            linkKey: Fixed16Bytes,
             outgoingFrameCounter: uint32_t,
             deviceIeeeAddress: uint64_t,
         },
@@ -345,7 +346,7 @@ export const FRAMES: { [key: string]: BLZFrameDesc } = {
         ID: 0x0055,
         request: {
             eui64: uint64_t,
-            uniqueTcLinkKey: Bytes,
+            uniqueTcLinkKey: Fixed16Bytes,
         },
         response: {
             status: BlzStatus,

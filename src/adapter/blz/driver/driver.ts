@@ -16,6 +16,7 @@ import * as TsType from './../../tstype';
 import {ParamsDesc} from './commands';
 // Import Blz and BLZFrameData instead of Ezsp and EZSPFrameData
 import {Blz, BLZFrameData} from './blz';
+import {uint64_t} from './types';
 // Update imports to BLZ-specific types
 import {BlzApsOption, BlzJoinDecision, BlzKeyData, BlzNodeType, BlzStatus, uint8_t, uint16_t, uint32_t, Bytes} from './types';
 import {
@@ -212,20 +213,15 @@ export class Driver extends EventEmitter {
             // need to check the backup
             const restore = await this.needsToBeRestore(this.nwkOpt);
 
-            //TODO: change the part according to network State
-            // const res = await this.blz.execCommand('networkState');
-
-            // logger.debug(`Network state ${res.status}`, NS);
-
-            // if (res.status == BlzNetworkStatus.JOINED_NETWORK) {
-            logger.info(`Leaving current network and forming new network`, NS);
+            logger.info(`Leaving the current network`, NS);
 
             const st = await this.blz.leaveNetwork();
 
             if (st != BlzStatus.SUCCESS) {
                 logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
             }
-            // }
+
+            logger.info(`Left the current network`, NS);
 
             if (restore) {
                 // restore
@@ -292,7 +288,14 @@ export class Driver extends EventEmitter {
         valid = valid && netParams.nodeType == BlzNodeType.COORDINATOR;
         valid = valid && options.panID == netParams.panId;
         valid = valid && options.channelList.includes(netParams.channel);
-        valid = valid && equals(options.extendedPanID, netParams.extPanId);
+        // Convert bigint extPanId to 8-byte array
+        const extPanIdArray = [];
+        let extPanId = netParams.extPanId;
+        for (let i = 0; i < 8; i++) {
+            extPanIdArray.unshift(Number(extPanId & 0xFFn));
+            extPanId >>= 8n;
+        }
+        valid = valid && equals(options.extendedPanID, extPanIdArray);
         return !valid;
     }
 
@@ -311,6 +314,7 @@ export class Driver extends EventEmitter {
 
             const {sequenceNumber, frameCounter } = backup.networkKeyInfo;
             const networkKey = backup.networkOptions.networkKey
+            // can only change network key and link key if stack is on and leave the network
             await this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber);
             await this.setGlobalTcLinkKey(backup.blz!.tclk!, backup.blz!.tclkFrameCounter!);
         } 
@@ -330,12 +334,15 @@ export class Driver extends EventEmitter {
             // parameters.extendedPanId = backup!.networkOptions.extendedPanId;
             // parameters.channels = backup!.logicalChannel;
             // parameters.nwkUpdateId = backup!.networkUpdateId;
-            await this.blz.formNetwork(backup!.networkOptions.extendedPanId, backup!.networkOptions.panId, backup!.logicalChannel);
+            
+            const [backupextendedPanID] = uint64_t.deserialize(uint64_t, Buffer.from(backup!.networkOptions.extendedPanId));
+            await this.blz.formNetwork(backupextendedPanID, backup!.networkOptions.panId, backup!.logicalChannel);
         } else {
-            // parameters.channels = this.nwkOpt.channelList[0];
-            // parameters.panId = this.nwkOpt.panID;
-            // parameters.extendedPanId = Buffer.from(this.nwkOpt.extendedPanID!);
-            await this.blz.networkInit();
+            const [nwkoptextendedPanID] = uint64_t.deserialize(uint64_t, Buffer.from(this.nwkOpt.extendedPanID!));
+            //TODO: frank buffer to u_int64_t
+            // await this.blz.networkInit();
+            // temperal solution
+            await this.blz.formNetwork(nwkoptextendedPanID, this.nwkOpt.panID, this.nwkOpt.channelList[0]);
         }
 
     }
@@ -480,11 +487,12 @@ export class Driver extends EventEmitter {
     // }
 
     public handleNodeJoined(nwk: number, ieee: number): void {
-        const ieeehexstring = `0x${ieee.toString(16).padStart(16, '0')}`
-        //TODO: frank, issue with convert none array like/string to BlzEUI64
-        logger.debug(`deviceJoined, ${nwk.toString(16)}, ${ieeehexstring}`, NS);
-        this.eui64ToNodeId.set(ieeehexstring, nwk);
-        this.emit('deviceJoined', nwk, ieeehexstring);
+        const ieeeAddr = `${ieee.toString(16).padStart(16, '0')}`;
+        const ieeeAddrstring = `0x${ieee.toString(16).padStart(16, '0')}`;
+        logger.debug(`deviceJoined, 0x${nwk.toString(16)}, 0x${ieeeAddr}`, NS);
+        //TODO: frank check the format of eui64toNodeId
+        this.eui64ToNodeId.set(ieeeAddr, nwk);
+        this.emit('deviceJoined', nwk, ieeeAddrstring);
     }
 
     public setNode(nwk: number, ieee: BlzEUI64 | number[]): void {
@@ -510,7 +518,6 @@ export class Driver extends EventEmitter {
 
                     if (nodeId === undefined) {
                         nodeId = (await this.blz.execCommand('getNodeIdByEui64', {eui64: eui64})).nodeId;
-                        // TODO
                         if (nodeId && nodeId !== 0xffff) {
                             this.eui64ToNodeId.set(strEui64, nodeId);
                         } else {
@@ -824,43 +831,44 @@ export class Driver extends EventEmitter {
         const backup = await this.backupMan.getStoredBackup();
         if (!backup) return false;
 
+        //TODO: frank no need to care this situation for now because it will go to reset
         let valid = true;
-        //valid = valid && (await this.blz.networkInit());
-        const netParams = await this.blz.execCommand('getNetworkParameters');
-        // const networkParams = netParams.parameters;
-        logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`, NS);
-        logger.debug(`Backuped network parameters: ${backup.networkOptions}`, NS);
-        const networkKey = await this.getNetworkKeyInfo();
-        let netKey: Buffer;
+        // //valid = valid && (await this.blz.networkInit());
+        // const netParams = await this.blz.execCommand('getNetworkParameters');
+        // // const networkParams = netParams.parameters;
+        // logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`, NS);
+        // logger.debug(`Backuped network parameters: ${backup.networkOptions}`, NS);
+        // const networkKey = await this.getNetworkKeyInfo();
+        // let netKey: Buffer;
 
-        netKey = Buffer.from((networkKey.keyStruct as BlzKeyStruct).key.contents);
+        // netKey = Buffer.from(networkKey.nwkKey);
 
-        // if the settings in the backup match the chip, then need to warn to delete the backup file first
-        valid = valid && netParams.panId == backup.networkOptions.panId;
-        valid = valid && netParams.channel == backup.logicalChannel;
-        valid = valid && Buffer.from(netParams.extPanId).equals(backup.networkOptions.extendedPanId);
-        valid = valid && Buffer.from(netKey).equals(backup.networkOptions.networkKey);
-        if (valid) {
-            logger.error(`Configuration is not consistent with adapter backup!`, NS);
-            logger.error(`- PAN ID: configured=${options.panID}, adapter=${netParams.panId}, backup=${backup.networkOptions.panId}`, NS);
-            logger.error(
-                `- Extended PAN ID: configured=${Buffer.from(options.extendedPanID!).toString('hex')}, ` +
-                    `adapter=${Buffer.from(netParams.extPanId).toString('hex')}, ` +
-                    `backup=${Buffer.from(netParams.extPanId).toString('hex')}`,
-                NS,
-            );
-            logger.error(`- Channel: configured=${options.channelList}, adapter=${netParams.channel}, backup=${backup.logicalChannel}`, NS);
-            logger.error(
-                `- Network key: configured=${Buffer.from(options.networkKey!).toString('hex')}, ` +
-                    `adapter=${Buffer.from(netKey).toString('hex')}, ` +
-                    `backup=${backup.networkOptions.networkKey.toString('hex')}`,
-                NS,
-            );
-            logger.error(`Please update configuration to prevent further issues.`, NS);
-            logger.error(`If you wish to re-commission your network, please remove coordinator backup.`, NS);
-            logger.error(`Re-commissioning your network will require re-pairing of all devices!`, NS);
-            throw new Error('startup failed - configuration-adapter mismatch - see logs above for more information');
-        }
+        // // if the settings in the backup match the chip, then need to warn to delete the backup file first
+        // valid = valid && netParams.panId == backup.networkOptions.panId;
+        // valid = valid && netParams.channel == backup.logicalChannel;
+        // valid = valid && Buffer.from(netParams.extPanId).equals(backup.networkOptions.extendedPanId);
+        // valid = valid && Buffer.from(netKey).equals(backup.networkOptions.networkKey);
+        // if (valid) {
+        //     logger.error(`Configuration is not consistent with adapter backup!`, NS);
+        //     logger.error(`- PAN ID: configured=${options.panID}, adapter=${netParams.panId}, backup=${backup.networkOptions.panId}`, NS);
+        //     logger.error(
+        //         `- Extended PAN ID: configured=${Buffer.from(options.extendedPanID!).toString('hex')}, ` +
+        //             `adapter=${Buffer.from(netParams.extPanId).toString('hex')}, ` +
+        //             `backup=${Buffer.from(netParams.extPanId).toString('hex')}`,
+        //         NS,
+        //     );
+        //     logger.error(`- Channel: configured=${options.channelList}, adapter=${netParams.channel}, backup=${backup.logicalChannel}`, NS);
+        //     logger.error(
+        //         `- Network key: configured=${Buffer.from(options.networkKey!).toString('hex')}, ` +
+        //             `adapter=${Buffer.from(netKey).toString('hex')}, ` +
+        //             `backup=${backup.networkOptions.networkKey.toString('hex')}`,
+        //         NS,
+        //     );
+        //     logger.error(`Please update configuration to prevent further issues.`, NS);
+        //     logger.error(`If you wish to re-commission your network, please remove coordinator backup.`, NS);
+        //     logger.error(`Re-commissioning your network will require re-pairing of all devices!`, NS);
+        //     throw new Error('startup failed - configuration-adapter mismatch - see logs above for more information');
+        // }
         valid = true;
         // if the settings in the backup match the config, then the old network is in the chip and needs to be restored
         valid = valid && options.panID == backup.networkOptions.panId;
