@@ -494,8 +494,8 @@ export class Blz extends EventEmitter {
     }
 
     async formNetwork(extPanId: uint64_t, panId: uint16_t, channel: uint8_t): Promise<number> {
-        const waiter = this.waitFor('stackStatusHandler');
-        const response = await waiter.start().promise;
+        // const waiter = this.waitFor('stackStatusHandler');
+        // const response = await waiter.start().promise;
     
         // Aligning the parameters with the command format
         const commandParams = {
@@ -506,16 +506,16 @@ export class Blz extends EventEmitter {
     
         const v = await this.execCommand('formNetwork', commandParams);
     
-        if (response.payload.status !== BlzStatus.SUCCESS) {
-            logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
-            throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        }
+        // if (response.payload.status !== BlzStatus.SUCCESS) {
+        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
+        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
+        // }
     
-        if (v.status !== BlzStatus.SUCCESS) {
-            this.waitress.remove(waiter.ID);
-            logger.error('Failure forming network: ' + JSON.stringify(v), NS);
-            throw new Error('Failure forming network: ' + JSON.stringify(v));
-        }
+        // if (v.status !== BlzStatus.SUCCESS) {
+        //     this.waitress.remove(waiter.ID);
+        //     logger.error('Failure forming network: ' + JSON.stringify(v), NS);
+        //     throw new Error('Failure forming network: ' + JSON.stringify(v));
+        // }
     
         return v.status;
     }

@@ -497,8 +497,7 @@ class BLZAdapter extends Adapter {
     }
 
     public async supportsBackup(): Promise<boolean> {
-        return false;
-        //change to false to disable backup in alpha
+        return true;
     }
 
     public async backup(): Promise<Models.Backup> {
