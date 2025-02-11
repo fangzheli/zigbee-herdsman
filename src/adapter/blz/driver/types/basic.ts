@@ -275,3 +275,30 @@ export class Bytes {
         return [data];
     }
 }
+
+export class Fixed16Bytes extends Bytes {
+    static _size = 16;  // Fixed size for this type
+
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+    static serialize(cls: any, value: any): Buffer {
+        // Check if the input is a Buffer and has the correct length
+        if (!Buffer.isBuffer(value) || value.length !== cls._size) {
+            throw new Error(`Value must be a buffer with exactly ${cls._size} bytes.`);
+        }
+        return Buffer.from(value);  // Simply returns the value as it should already be 16 bytes
+    }
+
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+    static deserialize(cls: any, data: Buffer): any[] {
+        if (data.length < cls._size) {
+            throw new RangeError(
+                `Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`
+            );
+        }
+
+        // Extract exactly 16 bytes
+        const value = data.subarray(0, cls._size);
+        const remainder = data.subarray(cls._size);  // Remaining part of the buffer after the first 16 bytes
+        return [value, remainder];  // Returns the 16-byte buffer and the remainder
+    }
+}

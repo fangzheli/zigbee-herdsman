@@ -23,7 +23,7 @@ export class BLZAdapterBackup {
 
     public async createBackup(): Promise<Models.Backup> {
         logger.debug('creating backup', NS);
-        const version: number = await this.driver.blz.version.product;
+        const version: number = this.driver.blz.version.product;
         const linkResult = await this.driver.getGlobalTcLinkKey();
         const netParams = await this.driver.blz.execCommand('getNetworkParameters');
         const netResult = await this.driver.getNetworkKeyInfo();
@@ -56,12 +56,12 @@ export class BLZAdapterBackup {
             },
             networkOptions: {
                 panId: netParams.panId,
-                extendedPanId: Buffer.from(netParams.extendedPanId),
-                channelList: uint32MaskToChannels(netParams.channels),
+                extendedPanId: Buffer.from(netParams.extPanId.toString(16)),
+                channelList: uint32MaskToChannels(netParams.channelMask),
                 networkKey: netKey,
                 networkKeyDistribute: true,
             },
-            logicalChannel: netParams.Channel,
+            logicalChannel: netParams.channel,
             networkKeyInfo: {
                 sequenceNumber: netKeySequenceNumber,
                 frameCounter: netKeyFrameCounter,
@@ -92,9 +92,9 @@ export class BLZAdapterBackup {
             if (data.metadata?.version !== 1) {
                 throw new Error(`Unsupported open coordinator backup version (version=${data.metadata?.version})`);
             }
-            if (!data.metadata.internal?.blzVersion) {
-                throw new Error(`This open coordinator backup format not for BLZ adapter`);
-            }
+            // if (!data.metadata.internal?.blzVersion) {
+            //     throw new Error(`This open coordinator backup format not for BLZ adapter`);
+            // }
             return BackupUtils.fromUnifiedBackup(data);
         } else {
             throw new Error('Unknown backup format');
