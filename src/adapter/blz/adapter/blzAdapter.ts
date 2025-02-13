@@ -21,8 +21,7 @@ import {BlzEUI64, BlzStatus} from '../driver/types';
 const NS = 'zh:blz';
 
 const autoDetectDefinitions = [
-    {manufacturer: 'ITEAD', vendorId: '1a86', productId: '55d4'}, // Sonoff ZBDongle-E
-    {manufacturer: 'Nabu Casa', vendorId: '10c4', productId: 'ea60'}, // Home Assistant SkyConnect
+    {manufacturer: 'wch.cn', vendorId: '1A86', productId: '7523'}, // ThirdReality Zigbee USB Dongle
 ];
 
 interface WaitressMatcher {
