@@ -4,7 +4,7 @@ import assert from 'assert';
 
 import * as Models from '../../../models';
 import Device from '../../../controller/model/device';
-import {Queue, RealpathSync, Wait, Waitress} from '../../../utils';
+import {Queue, wait, Waitress} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import * as ZSpec from '../../../zspec';
 import * as Zcl from '../../../zspec/zcl';
@@ -12,7 +12,6 @@ import * as Zdo from '../../../zspec/zdo';
 import * as ZdoTypes from '../../../zspec/zdo/definition/tstypes';
 import Adapter from '../../adapter';
 import {ZclPayload} from '../../events';
-import SerialPortUtils from '../../serialPortUtils';
 import SocketPortUtils from '../../socketPortUtils';
 import {AdapterOptions, CoordinatorVersion, NetworkOptions, NetworkParameters, SerialPortOptions, StartResult} from '../../tstype';
 import {Driver, BlzIncomingMessage} from '../driver';
@@ -32,7 +31,7 @@ interface WaitressMatcher {
     commandIdentifier: number;
 }
 
-class BLZAdapter extends Adapter {
+export class BLZAdapter extends Adapter {
     private driver: Driver;
     private waitress: Waitress<ZclPayload, WaitressMatcher>;
     private interpanLock: boolean;
@@ -147,7 +146,7 @@ class BLZAdapter extends Adapter {
      */
     public async start(): Promise<StartResult> {
         const result = await this.driver.startup();
-        Wait(1000);
+        await wait(1000);
         return result;
     }
 
@@ -162,26 +161,6 @@ class BLZAdapter extends Adapter {
         if (!this.closing) {
             this.emit('disconnected');
         }
-    }
-
-    public static async isValidPath(path: string): Promise<boolean> {
-        // For TCP paths we cannot get device information, therefore we cannot validate it.
-        if (SocketPortUtils.isTcpPath(path)) {
-            return false;
-        }
-
-        try {
-            return await SerialPortUtils.is(RealpathSync(path), autoDetectDefinitions);
-        } catch (error) {
-            logger.debug(`Failed to determine if path is valid: '${error}'`, NS);
-            return false;
-        }
-    }
-
-    public static async autoDetectPath(): Promise<string | undefined> {
-        const paths = await SerialPortUtils.find(autoDetectDefinitions);
-        paths.sort((a, b) => (a < b ? -1 : 1));
-        return paths.length > 0 ? paths[0] : undefined;
     }
 
     public async getCoordinatorIEEE(): Promise<string> {
@@ -450,7 +429,7 @@ class BLZAdapter extends Adapter {
              * (contrary to network address requests) we will give the
              * command some time to 'settle' in the network.
              */
-            await Wait(200);
+            await wait(200);
         });
     }
 
@@ -480,7 +459,7 @@ class BLZAdapter extends Adapter {
              * (contrary to network address requests) we will give the
              * command some time to 'settle' in the network.
              */
-            await Wait(200);
+            await wait(200);
         });
     }
 
@@ -488,11 +467,10 @@ class BLZAdapter extends Adapter {
         return {
             panID: this.driver.networkParams.panId,
             extendedPanID: this.driver.networkParams.extendedPanId instanceof Buffer ? 
-                this.driver.networkParams.extendedPanId.readUIntBE(0, this.driver.networkParams.extendedPanId.length) :
-                0,
+                '0x' + this.driver.networkParams.extendedPanId.toString('hex') :
+                '0x0000000000000000',
             channel: this.driver.networkParams.Channel,
         };
-        //TODO: frank: can't get the extendedPanId
     }
 
     public async supportsBackup(): Promise<boolean> {
@@ -586,5 +564,3 @@ class BLZAdapter extends Adapter {
         );
     }
 }
-
-export default BLZAdapter;

@@ -4,7 +4,7 @@ import {EventEmitter} from 'events';
 
 import equals from 'fast-deep-equal/es6';
 
-import {Wait, Waitress} from '../../../utils';
+import {wait, Waitress} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import * as ZSpec from '../../../zspec';
 import {Clusters} from '../../../zspec/zcl/definition/cluster';
@@ -144,7 +144,7 @@ export class Driver extends EventEmitter {
             logger.debug(`Stop error ${err}`, NS);
         }
         try {
-            await Wait(1000);
+            await wait(1000);
             logger.debug(`Startup again.`, NS);
             await this.startup();
         } catch (err) {
@@ -235,7 +235,7 @@ export class Driver extends EventEmitter {
                 result = 'reset';
             }
         }
-        await Wait(3000);
+        await wait(3000);
         // TODO: make sure the stack is running
         logger.info('The Zigbee network is formed', NS);
         // const state = (await this.blz.execCommand('networkState')).status;
