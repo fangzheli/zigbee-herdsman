@@ -3,7 +3,6 @@
 import assert from 'assert';
 
 import * as Models from '../../../models';
-import Device from '../../../controller/model/device';
 import {Queue, wait, Waitress} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import * as ZSpec from '../../../zspec';
@@ -12,7 +11,6 @@ import * as Zdo from '../../../zspec/zdo';
 import * as ZdoTypes from '../../../zspec/zdo/definition/tstypes';
 import Adapter from '../../adapter';
 import {ZclPayload} from '../../events';
-import SocketPortUtils from '../../socketPortUtils';
 import {AdapterOptions, CoordinatorVersion, NetworkOptions, NetworkParameters, SerialPortOptions, StartResult} from '../../tstype';
 import {Driver, BlzIncomingMessage} from '../driver';
 import {BlzEUI64, BlzStatus} from '../driver/types';
@@ -81,44 +79,9 @@ export class BLZAdapter extends Adapter {
             this.waitress.resolve(payload);
             this.emit('zclPayload', payload);
         } else if (frame.apsFrame.profileId == ZSpec.TOUCHLINK_PROFILE_ID && frame.senderEui64) {
-            // ZLL Frame
-            // const payload: ZclPayload = {
-            //     clusterID: frame.apsFrame.clusterId,
-            //     header: Zcl.Header.fromBuffer(frame.message),
-            //     data: frame.message,
-            //     address: `0x${frame.senderEui64.toString()}`,
-            //     endpoint: 0xfe,
-            //     linkquality: frame.lqi,
-            //     groupID: 0,
-            //     wasBroadcast: false,
-            //     destinationEndpoint: 1,
-            // };
-
-            // this.waitress.resolve(payload);
-            // this.emit('zclPayload', payload);
+            // Touchlink is not supported by BLZ
         } else if (frame.apsFrame.profileId == ZSpec.GP_PROFILE_ID) {
-            // GP Frame
-            // Only handle when clusterId == 33 (greenPower), some devices send messages with this profileId
-            // while the cluster is not greenPower
-            // https://github.com/Koenkk/zigbee2mqtt/issues/20838
-            // if (frame.apsFrame.clusterId === Zcl.Clusters.greenPower.ID) {
-            //     const payload: ZclPayload = {
-            //         header: Zcl.Header.fromBuffer(frame.message),
-            //         clusterID: frame.apsFrame.clusterId,
-            //         data: frame.message,
-            //         address: frame.sender,
-            //         endpoint: frame.apsFrame.sourceEndpoint,
-            //         linkquality: frame.lqi,
-            //         groupID: 0,
-            //         wasBroadcast: true,
-            //         destinationEndpoint: frame.apsFrame.sourceEndpoint,
-            //     };
-
-            //     this.waitress.resolve(payload);
-            //     this.emit('zclPayload', payload);
-            // } else {
-            //     logger.debug(`Ignoring GP frame because clusterId is not greenPower`, NS);
-            // }
+            // Green Power is not supported by BLZ
         }
     }
 
@@ -137,7 +100,6 @@ export class BLZAdapter extends Adapter {
         this.emit('deviceLeave', {
             networkAddress: nwk,
             ieeeAddr: `0x${ieee.toString()}`,
-            //TODO: frank: add ieeeAddr change to deviceLeave
         });
     }
 
@@ -175,12 +137,7 @@ export class BLZAdapter extends Adapter {
         const clusterId = Zdo.ClusterId.PERMIT_JOINING_REQUEST;
 
         if (networkAddress) {
-            // // specific device that is not `Coordinator`
-            // await this.queue.execute<void>(async () => {
-            //     this.checkInterpanLock();
-            //     await this.driver.preJoining(seconds);
-            // });
-
+            // Permit joining for specific devices is handled differently in BLZ
             // `authentication`: TC significance always 1 (zb specs)
             const zdoPayload = Zdo.Buffalo.buildRequest(this.hasZdoMessageOverhead, clusterId, seconds, 1, []);
 
@@ -192,14 +149,7 @@ export class BLZAdapter extends Adapter {
                 throw new Zdo.StatusError(result[0]);
             }
         } else {
-            // coordinator-only (0), or all
-            // await this.queue.execute<void>(async () => {
-            //     this.checkInterpanLock();
-            //     await this.driver.preJoining(seconds);
-            // });
-
             const result = await this.driver.permitJoining(seconds);
-            //const result = await this.driver.permitJoining(60); //TODO：hard code
             if (result.status !== BlzStatus.SUCCESS) {
                 throw new Error(`[ZDO] Failed coordinator permit joining request with status=${result.status}.`);
             }
@@ -255,7 +205,7 @@ export class BLZAdapter extends Adapter {
 
             const clusterName = Zdo.ClusterId[clusterId];
             const frame = this.driver.makeApsFrame(clusterId, disableResponse);
-            payload[0] = frame.sequence; //TODO: sequence number needed or not in aps
+            payload[0] = frame.sequence; // Sequence number is required for BLZ APS frame
             let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
             let responseClusterId: number | undefined;
 
@@ -266,7 +216,6 @@ export class BLZAdapter extends Adapter {
                     waiter = this.driver.waitFor(
                         responseClusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE ? ieeeAddress : networkAddress,
                         responseClusterId,
-                        // frame.sequence,
                     );
                 }
             }

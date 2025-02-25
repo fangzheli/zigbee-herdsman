@@ -1,49 +1,28 @@
 /* istanbul ignore file */
 
 import {EventEmitter} from 'events';
-
 import equals from 'fast-deep-equal/es6';
-
 import {wait, Waitress} from '../../../utils';
 import {logger} from '../../../utils/logger';
 import * as ZSpec from '../../../zspec';
 import {Clusters} from '../../../zspec/zcl/definition/cluster';
 import * as Zdo from '../../../zspec/zdo';
 import {GenericZdoResponse} from '../../../zspec/zdo/definition/tstypes';
-// Import BLZAdapterBackup instead of EZSPAdapterBackup
 import {BLZAdapterBackup} from '../adapter/backup';
 import * as TsType from './../../tstype';
 import {ParamsDesc} from './commands';
-// Import Blz and BLZFrameData instead of Ezsp and EZSPFrameData
 import {Blz, BLZFrameData} from './blz';
 import {uint64_t} from './types';
-// Update imports to BLZ-specific types
-import {BlzApsOption, BlzJoinDecision, BlzKeyData, BlzNodeType, BlzStatus, uint8_t, uint16_t, uint32_t, Bytes} from './types';
+import {BlzApsOption, BlzNodeType, BlzStatus, uint8_t, uint16_t, uint32_t, Bytes} from './types';
 import {
-    BlzDerivedKeyType,
-    BlzDeviceUpdate,
     BlzEUI64,
-    BlzInitialSecurityBitmask,
-    BlzJoinMethod,
-    BlzKeyType,
-    BlzNetworkStatus,
     BlzOutgoingMessageType,
-    BlzStackError,
-    BlzDecisionBitmask,
-    BlzPolicyId,
     BlzValueId,
 } from './types/named';
 import {
-    BlzAesMmoHashContext,
     BlzApsFrame,
-    BlzIeeeRawFrame,
-    BlzInitialSecurityState,
-    BlzKeyStruct,
     BlzNetworkParameters,
-    BlzRawFrame,
-    BlzSecurityManagerContext,
 } from './types/struct';
-import {blz_security} from './utils';
 
 const NS = 'zh:blz:driv';
 
@@ -66,7 +45,6 @@ type BlzFrame = {
 type BlzWaitressMatcher = {
     address: number | string;
     clusterId: number;
-    // sequence: number;
 };
 
 type IeeeMfg = {
@@ -92,7 +70,6 @@ const IEEE_PREFIX_MFG_ID: IeeeMfg[] = [
     {mfgId: 0x115f, prefix: [0x54, 0xef, 0x44]},
 ];
 const DEFAULT_MFG_ID = 0x1049;
-// we make three attempts to send the request
 const REQUEST_ATTEMPT_DELAYS = [500, 1000, 1500];
 
 export class Driver extends EventEmitter {
@@ -102,19 +79,9 @@ export class Driver extends EventEmitter {
     // @ts-expect-error XXX: init in startup
     public networkParams: BlzNetworkParameters;
     //// @ts-expect-error XXX: init in startup
-    // public version: {
-    //     product: number;
-    //     major: string;
-    //     minor: string;
-    //     patch: string;
-    //     build: string;
-    // };
     private eui64ToNodeId = new Map<string, number>();
-    // private eui64ToRelays = new Map<string, number>();
     // @ts-expect-error XXX: init in startup
     public ieee: BlzEUI64;
-    //// @ts-expect-error XXX: init in startup
-    // private multicast: Multicast;
     private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
     private transactionID = 1;
     private serialOpt: TsType.SerialPortOptions;
@@ -122,7 +89,6 @@ export class Driver extends EventEmitter {
 
     constructor(serialOpt: TsType.SerialPortOptions, nwkOpt: TsType.NetworkOptions, backupPath: string) {
         super();
-
         this.nwkOpt = nwkOpt;
         this.serialOpt = serialOpt;
         this.waitress = new Waitress<BlzFrame, BlzWaitressMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
@@ -187,7 +153,6 @@ export class Driver extends EventEmitter {
             await this.blz.connect(this.serialOpt);
         } catch (error) {
             logger.debug(`BLZ could not connect: ${error}`, NS);
-
             throw error;
         }
 
@@ -199,18 +164,11 @@ export class Driver extends EventEmitter {
                 0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400,
             ],
         });
-        // await this.addEndpoint({
-        //     endpoint: 242,
-        //     profileId: 0xa1e0,
-        //     deviceId: 0x61,
-        //     outputClusters: [0x0021],
-        // });
 
         await this.blz.getVersion();
 
         if (await this.needsToBeInitialised(this.nwkOpt)) {
             logger.info('The network setup need to be initialized', NS);
-            // need to check the backup
             const restore = await this.needsToBeRestore(this.nwkOpt);
 
             logger.info(`Leaving the current network`, NS);
@@ -224,12 +182,10 @@ export class Driver extends EventEmitter {
             logger.info(`Left the current network`, NS);
 
             if (restore) {
-                // restore
                 logger.info('Restore network from backup', NS);
                 await this.formNetwork(true);
                 result = 'restored';
             } else {
-                // reset
                 logger.info('Form a new network', NS);
                 await this.formNetwork(false);
                 result = 'reset';
@@ -238,8 +194,6 @@ export class Driver extends EventEmitter {
         await wait(3000);
         // TODO: make sure the stack is running
         logger.info('The Zigbee network is formed', NS);
-        // const state = (await this.blz.execCommand('networkState')).status;
-        // logger.debug(`Network state ${state}`, NS);
 
         const netParams = await this.blz.execCommand('getNetworkParameters');
         logger.info(`Command (getNetworkParameters) returned: ${netParams.status}`, NS);
@@ -256,24 +210,9 @@ export class Driver extends EventEmitter {
 
         const ieee = (await this.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value; 
         this.ieee = new BlzEUI64(ieee);
-        //TODO: frank, getnodeidbyeui64fail
-        // const nwk = (await this.blz.execCommand('getNodeIdByEui64', {eui64: ieee})).nodeId;
         this.blz.on('frame', this.handleFrame.bind(this));
         logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
         logger.debug('Network ready', NS);
-        // Retrieve keys using BLZ-specific commands
-        // const linkResult = await this.getKey(BlzKeyType.TRUST_CENTER_LINK_KEY);
-        // logger.debug(`TRUST_CENTER_LINK_KEY: ${JSON.stringify(linkResult)}`, NS);
-        // const netResult = await this.getKey(BlzKeyType.CURRENT_NETWORK_KEY);
-        // logger.debug(`CURRENT_NETWORK_KEY: ${JSON.stringify(netResult)}`, NS);
-
-        // await Wait(1000);
-        // await this.blz.execCommand('setManufacturerCode', {code: DEFAULT_MFG_ID});
-
-        // this.multicast = new Multicast(this);
-        // await this.multicast.startup([]);
-        // await this.multicast.subscribe(ZSpec.GP_GROUP_ID, ZSpec.GP_ENDPOINT);
-        // await this.multicast.subscribe(1, 901);
 
         return result;
     }
@@ -282,7 +221,6 @@ export class Driver extends EventEmitter {
         let valid = true;
         valid = valid && (await this.blz.networkInit());
         const netParams = await this.blz.execCommand('getNetworkParameters');
-        // const networkParams = netParams.parameters;
         logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`, NS);
         valid = valid && netParams.status == BlzStatus.SUCCESS;
         valid = valid && netParams.nodeType == BlzNodeType.COORDINATOR;
@@ -301,10 +239,6 @@ export class Driver extends EventEmitter {
 
     private async formNetwork(restore: boolean): Promise<void> {
         let backup;
-        // // Clear transient link keys if applicable in BLZ
-        // await this.blz.execCommand('clearTransientLinkKeys');
-
-        // let initial_security_state: BlzInitialSecurityState;
         if (restore) {
             backup = await this.backupMan.getStoredBackup();
 
@@ -318,33 +252,14 @@ export class Driver extends EventEmitter {
             await this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber);
             await this.setGlobalTcLinkKey(backup.blz!.tclk!, backup.blz!.tclkFrameCounter!);
         } 
-        // else {
-        //     initial_security_state = blz_security(Buffer.from(this.nwkOpt.networkKey!));
-        // }
 
-        // const parameters: BlzNetworkParameters = new BlzNetworkParameters();
-        // parameters.TxPower = 5;
-        // parameters.joinMethod = BlzJoinMethod.USE_MAC_ASSOCIATION;
-        // parameters.nwkManagerId = 0;
-        // parameters.nwkUpdateId = 0;
-        // parameters.channels = 0x07fff800; // all channels
         if (restore) {
-            // `backup` valid from above
-            // parameters.panId = backup!.networkOptions.panId;
-            // parameters.extendedPanId = backup!.networkOptions.extendedPanId;
-            // parameters.channels = backup!.logicalChannel;
-            // parameters.nwkUpdateId = backup!.networkUpdateId;
-            
             const [backupextendedPanID] = uint64_t.deserialize(uint64_t, Buffer.from(backup!.networkOptions.extendedPanId));
             await this.blz.formNetwork(backupextendedPanID, backup!.networkOptions.panId, backup!.logicalChannel);
         } else {
             const [nwkoptextendedPanID] = uint64_t.deserialize(uint64_t, Buffer.from(this.nwkOpt.extendedPanID!));
-            //TODO: frank buffer to u_int64_t
-            // await this.blz.networkInit();
-            // temperal solution
             await this.blz.formNetwork(nwkoptextendedPanID, this.nwkOpt.panID, this.nwkOpt.channelList[0]);
         }
-
     }
 
     private handleFrame(frameName: string, frame: BLZFrameData): void {
@@ -355,7 +270,7 @@ export class Driver extends EventEmitter {
                 apsFrame.clusterId = frame.clusterId;
                 apsFrame.sourceEndpoint = frame.srcEp;
                 apsFrame.destinationEndpoint = frame.dstEp;
-                apsFrame.sequence = 0; //TODO
+                apsFrame.sequence = 0;
                 apsFrame.groupId = frame.dstShortAddr
 
                 if (frame.profileId == Zdo.ZDO_PROFILE_ID && frame.clusterId >= 0x8000 /* response only */) {
@@ -427,12 +342,12 @@ export class Driver extends EventEmitter {
                 logger.debug(`Device joined callback is received`, NS);
                 this.handleNodeJoined(frame.nodeId, frame.eui64);
                 break;
-                }
+            }
             case frameName === 'nwkStatusCallback': {
                 logger.debug(`Network status callback called is received`, NS);
                 this.handleNetworkStatus(frame.status);
                 break;
-                }
+            }
             case frameName === 'apsDataConfirm': {
                 if (frame.status === BlzStatus.SUCCESS) {
                     logger.debug(`APS confirmed`, NS);
@@ -440,7 +355,7 @@ export class Driver extends EventEmitter {
                     logger.error(`APS Request failed`, NS);
                 }
                 break;
-                }
+            }
             case frameName === 'stackStatusHandler': {
                 if (frame.status === BlzStatus.SUCCESS) {
                     logger.debug(`Stack status is success`, NS);
@@ -453,18 +368,6 @@ export class Driver extends EventEmitter {
                 logger.debug(`Unhandled frame ${frameName}`, NS);
         }
     }
-
-    // private handleRouteRecord(nwk: number, ieee: BlzEUI64 | number[], lqi: number, rssi: number, relays: number): void {
-    //     // todo
-    //     logger.debug(`handleRouteRecord: nwk=${nwk}, ieee=${ieee.toString()}, lqi=${lqi}, rssi=${rssi}, relays=${relays}`, NS);
-
-    //     this.setNode(nwk, ieee);
-    // }
-
-    // private handleRouteError(status: BlzStatus, nwk: number): void {
-    //     // todo
-    //     logger.debug(`handleRouteError: nwk=${nwk}, status=${status}`, NS);
-    // }
 
     private handleNetworkStatus(status: BlzStatus): void {
         logger.debug(`handleNetworkStatus: networkStatusCode=${status}`, NS);
@@ -479,18 +382,10 @@ export class Driver extends EventEmitter {
     //     this.emit('deviceLeft', nwk, ieee);
     // }
 
-    // private async resetMfgId(mfgId: number): Promise<void> {
-    //     await this.blz.execCommand('setManufacturerCode', {code: mfgId});
-    //     // 60 sec for waiting
-    //     await Wait(60000);
-    //     await this.blz.execCommand('setManufacturerCode', {code: DEFAULT_MFG_ID});
-    // }
-
     public handleNodeJoined(nwk: number, ieee: number): void {
         const ieeeAddr = `${ieee.toString(16).padStart(16, '0')}`;
         const ieeeAddrstring = `0x${ieee.toString(16).padStart(16, '0')}`;
         logger.debug(`deviceJoined, 0x${nwk.toString(16)}, 0x${ieeeAddr}`, NS);
-        //TODO: frank check the format of eui64toNodeId
         this.eui64ToNodeId.set(ieeeAddr, nwk);
         this.emit('deviceJoined', nwk, ieeeAddrstring);
     }
@@ -526,13 +421,6 @@ export class Driver extends EventEmitter {
                     }
                     nwk = nodeId;
                 }
-                // else {
-                //     eui64 = await this.networkIdToEUI64(nwk);
-                // }
-
-                // if (extendedTimeout) {
-                //     await this.blz.execCommand('setExtendedTimeout', {remoteEui64: eui64, extendedTimeout: true});
-                // }
 
                 const sendResult = await this.blz.sendApsData(
                     BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST, // msgType
@@ -547,9 +435,7 @@ export class Driver extends EventEmitter {
                     data.length,                                // payloadLen
                     data                                        // payload
                 );
-                
 
-                // repeat only for these statuses
                 result = sendResult == BlzStatus.SUCCESS;
                 break;
             } catch (e) {
@@ -630,12 +516,10 @@ export class Driver extends EventEmitter {
     }
 
     public async networkIdToEUI64(nwk: number): Promise<BlzEUI64> {
-        // Check if we already have the mapping
         for (const [eui64Str, nodeId] of this.eui64ToNodeId) {
             if (nodeId === nwk) return new BlzEUI64(eui64Str);
         }
     
-        // Use BLZ command to get EUI64 by node ID
         const response = await this.blz.execCommand('getEui64ByNodeId', {nodeId: nwk});
     
         if (response.status === BlzStatus.SUCCESS) {
@@ -647,29 +531,10 @@ export class Driver extends EventEmitter {
             throw new Error('Unrecognized nodeId:' + nwk);
         }
     }
-    
-    // public async preJoining(seconds: number): Promise<void> {
-    //     if (seconds) {
-    //         const ieee = new BlzEUI64('0xFFFFFFFFFFFFFFFF');
-    //         const linkKey = new BlzKeyData();
-    //         linkKey.contents = Buffer.from('ZigBeeAlliance09');
-    //         const result = await this.addTransientLinkKey(ieee, linkKey);
-
-    //         if (result.status !== BlzStatus.SUCCESS) {
-    //             throw new Error(`Add Transient Link Key for '${ieee}' failed`);
-    //         }
-    //     } else {
-    //         await this.blz.execCommand('clearTransientLinkKeys');
-    //     }
-    // }
 
     public async permitJoining(seconds: number): Promise<BLZFrameData> {
         return await this.blz.execCommand('permitJoining', {duration: seconds});
     }
-
-    // public makeZDOframe(name: string | number, params: ParamsDesc): Buffer {
-    //     return this.blz.makeZDOframe(name, params);
-    // }
 
     public async addEndpoint({
         endpoint = 1,
@@ -695,13 +560,9 @@ export class Driver extends EventEmitter {
     public waitFor(
         address: number | string,
         clusterId: number,
-        // sequence: number,
         timeout = 10000,
     ): ReturnType<typeof this.waitress.waitFor> & {cancel: () => void} {
-        // const waiter = this.waitress.waitFor({address, clusterId, sequence}, timeout);
         const waiter = this.waitress.waitFor({address, clusterId}, timeout);
-        // blz doesn't have sequence number in the frame
-
         return {...waiter, cancel: () => this.waitress.remove(waiter.ID)};
     }
 
@@ -713,19 +574,9 @@ export class Driver extends EventEmitter {
         logger.debug(`waitressValidator: payload.address=${payload.address}, matcher.address=${matcher.address}, payload.frame.clusterId=${payload.frame?.clusterId}, matcher.clusterId=${matcher.clusterId}`, NS);
         return (
             (!matcher.address || payload.address === matcher.address) &&
-            (!payload.frame || payload.frame.clusterId === matcher.clusterId) 
-            // &&
-            // (!payload.frame || payload.payload[0] === matcher.sequence)
+            (!payload.frame || payload.frame.clusterId === matcher.clusterId)
         );
     }
-
-    // public setChannel(channel: number): Promise<BLZFrameData> {
-    //     return this.blz.execCommand('setChannel', {channel: channel});
-    // }
-
-    // public addTransientLinkKey(partner: BlzEUI64, transientKey: BlzKeyData): Promise<BLZFrameData> {
-    //     return this.blz.execCommand('addTransientLinkKey', {partner, transientKey});
-    // }
 
     public async getGlobalTcLinkKey(): Promise<BLZFrameData> {
         const frameResponse = await this.blz.execCommand('getGlobalTcLinkKey');
@@ -742,26 +593,22 @@ export class Driver extends EventEmitter {
             NS
         );
     
-        return frameResponse; // Return the full frameResponse object
+        return frameResponse;
     }
 
     public async setGlobalTcLinkKey(
         linkKey: Bytes,
         outgoingFrameCounter: uint32_t
     ): Promise<BlzStatus> {
-        // Construct the request payload
         const frameRequest = {
             linkKey,
             outgoingFrameCounter,
         };
     
-        // Execute the command
         const frameResponse = await this.blz.execCommand('setGlobalTcLinkKey', frameRequest);
     
-        // Extract the status from the response
         const { status } = frameResponse;
     
-        // Validate the response status
         if (status !== BlzStatus.SUCCESS) {
             logger.error(`setGlobalTcLinkKey() failed with status: ${status}`, NS);
             throw new Error(`Failed to set global Trust Center key: status ${status}`);
@@ -772,7 +619,7 @@ export class Driver extends EventEmitter {
             NS
         );
     
-        return status; // Return the status of the operation
+        return status;
     }
 
     public async getNetworkKeyInfo(): Promise<BLZFrameData> {
@@ -790,7 +637,7 @@ export class Driver extends EventEmitter {
             NS
         );
     
-        return frameResponse; // Return the full frameResponse object
+        return frameResponse;
     }
     
     public async setNetworkKeyInfo(
@@ -798,20 +645,16 @@ export class Driver extends EventEmitter {
         outgoingFrameCounter: uint32_t,
         nwkKeySeqNum: uint8_t
     ): Promise<BlzStatus> {
-        // Construct the request payload
         const frameRequest = {
             nwkKey,
             outgoingFrameCounter,
             nwkKeySeqNum,
         };
     
-        // Execute the command
         const frameResponse = await this.blz.execCommand('setNwkSecurityInfos', frameRequest);
     
-        // Extract the status from the response
         const { status } = frameResponse;
     
-        // Validate the response status
         if (status !== BlzStatus.SUCCESS) {
             logger.error(`setNwkSecurityInfos() failed with status: ${status}`, NS);
             throw new Error(`Failed to set network security infos: status ${status}`);
@@ -822,55 +665,14 @@ export class Driver extends EventEmitter {
             NS
         );
     
-        return status; // Return the status of the operation
+        return status;
     }
-    
 
     private async needsToBeRestore(options: TsType.NetworkOptions): Promise<boolean> {
-        // if no backup and the settings have been changed, then need to start a new network
         const backup = await this.backupMan.getStoredBackup();
         if (!backup) return false;
 
-        //TODO: frank no need to care this situation for now because it will go to reset
         let valid = true;
-        // //valid = valid && (await this.blz.networkInit());
-        // const netParams = await this.blz.execCommand('getNetworkParameters');
-        // // const networkParams = netParams.parameters;
-        // logger.debug(`Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`, NS);
-        // logger.debug(`Backuped network parameters: ${backup.networkOptions}`, NS);
-        // const networkKey = await this.getNetworkKeyInfo();
-        // let netKey: Buffer;
-
-        // netKey = Buffer.from(networkKey.nwkKey);
-
-        // // if the settings in the backup match the chip, then need to warn to delete the backup file first
-        // valid = valid && netParams.panId == backup.networkOptions.panId;
-        // valid = valid && netParams.channel == backup.logicalChannel;
-        // valid = valid && Buffer.from(netParams.extPanId).equals(backup.networkOptions.extendedPanId);
-        // valid = valid && Buffer.from(netKey).equals(backup.networkOptions.networkKey);
-        // if (valid) {
-        //     logger.error(`Configuration is not consistent with adapter backup!`, NS);
-        //     logger.error(`- PAN ID: configured=${options.panID}, adapter=${netParams.panId}, backup=${backup.networkOptions.panId}`, NS);
-        //     logger.error(
-        //         `- Extended PAN ID: configured=${Buffer.from(options.extendedPanID!).toString('hex')}, ` +
-        //             `adapter=${Buffer.from(netParams.extPanId).toString('hex')}, ` +
-        //             `backup=${Buffer.from(netParams.extPanId).toString('hex')}`,
-        //         NS,
-        //     );
-        //     logger.error(`- Channel: configured=${options.channelList}, adapter=${netParams.channel}, backup=${backup.logicalChannel}`, NS);
-        //     logger.error(
-        //         `- Network key: configured=${Buffer.from(options.networkKey!).toString('hex')}, ` +
-        //             `adapter=${Buffer.from(netKey).toString('hex')}, ` +
-        //             `backup=${backup.networkOptions.networkKey.toString('hex')}`,
-        //         NS,
-        //     );
-        //     logger.error(`Please update configuration to prevent further issues.`, NS);
-        //     logger.error(`If you wish to re-commission your network, please remove coordinator backup.`, NS);
-        //     logger.error(`Re-commissioning your network will require re-pairing of all devices!`, NS);
-        //     throw new Error('startup failed - configuration-adapter mismatch - see logs above for more information');
-        // }
-        valid = true;
-        // if the settings in the backup match the config, then the old network is in the chip and needs to be restored
         valid = valid && options.panID == backup.networkOptions.panId;
         valid = valid && options.channelList.includes(backup.logicalChannel);
         valid = valid && Buffer.from(options.extendedPanID!).equals(backup.networkOptions.extendedPanId);

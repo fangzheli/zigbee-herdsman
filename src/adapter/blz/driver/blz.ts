@@ -17,18 +17,12 @@ import {
 } from './commands';
 import * as t from './types';
 import {
-    BlzConcentratorType,
     BlzOutgoingMessageType,
     BlzStatus,
-    BlzZdoConfigurationFlags,
-    BlzConfigId,
-    BlzDecisionBitmask,
-    BlzDecisionId,
-    BlzPolicyId,
 } from './types/named';
-import { BlzApsFrame, BlzNetworkParameters } from './types/struct';
+import { BlzApsFrame } from './types/struct';
 import { SerialDriver } from './uart';
-import {BlzApsOption, BlzJoinDecision, BlzKeyData, BlzNodeType, uint8_t, uint16_t, uint32_t, uint64_t, Bytes} from './types';
+import { uint8_t, uint16_t, uint32_t, uint64_t, Bytes} from './types';
 import {BlzValueId} from './types/named';
 
 const NS = 'zh:blz:blz';
@@ -41,16 +35,8 @@ const MTOR_MAX_INTERVAL = 90;
 const MTOR_ROUTE_ERROR_THRESHOLD = 4;
 const MTOR_DELIVERY_FAIL_THRESHOLD = 3;
 const MAX_WATCHDOG_FAILURES = 4;
-// const RESET_ATTEMPT_BACKOFF_TIME = 5;
 const WATCHDOG_WAKE_PERIOD = 10; // in sec
-// const BLZ_COUNTER_CLEAR_INTERVAL = 180;  // Clear counters every n * WATCHDOG_WAKE_PERIOD
 const BLZ_DEFAULT_RADIUS = 0;
-
-const POLICY_IDS_CURRENT: number[][] = [
-    [BlzPolicyId.APP_KEY_REQUEST_POLICY, BlzDecisionId.DENY_APP_KEY_REQUESTS],
-    [BlzPolicyId.TC_KEY_REQUEST_POLICY, BlzDecisionId.ALLOW_TC_KEY_REQUESTS],
-    [BlzPolicyId.TRUST_CENTER_POLICY, BlzDecisionBitmask.ALLOW_UNSECURED_REJOINS | BlzDecisionBitmask.ALLOW_JOINS],
-];
 
 /**
  * Type-specific for BLZ Frames.
@@ -380,21 +366,6 @@ export class Blz extends EventEmitter {
         const frmData = new BLZFrameData(name, true, params);
 
         logger.debug(() => `==> ${JSON.stringify(frmData)}`, NS);
-        // let seq = 0;
-        // const frame = [seq & 255];
-
-        // if (this.blzV < 8) {
-        //     if (this.blzV >= 5) {
-        //         frame.push(0x00, 0xff, 0x00, frmData.id);
-        //     } else {
-        //         frame.push(0x00, frmData.id);
-        //     }
-        // } else {
-        //     const cmd_id = t.serialize([frmData.id], [t.uint16_t]);
-
-        //     frame.push(0x00, 0x01, ...cmd_id);
-        // }
-        // TODO: clean it up
         return frmData.serialize();
     }
 
@@ -408,8 +379,6 @@ export class Blz extends EventEmitter {
         return await this.queue.execute<BLZFrameData>(async (): Promise<BLZFrameData> => {
             const data = this.makeFrame(name, params);
             const waiter = this.waitFor(name);
-            // this.cmdSeq = (this.cmdSeq + 1) & 255;
-
             try {
                 await this.serialDriver.sendDATA(data, FRAMES[name].ID);
 
@@ -425,42 +394,20 @@ export class Blz extends EventEmitter {
 
     async networkInit(): Promise<boolean> {
         logger.debug('Set up stack status handler before initial the network', NS);
-        // const waiter = this.waitFor('stackStatusHandler');
-        // const response = await waiter.start().promise;
         const result = await this.execCommand('networkInit');
-
-        // if (response.payload.status !== BlzStatus.SUCCESS) {
-        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
-
-        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        // }
-
         logger.debug(`Network init result: ${JSON.stringify(result)}`, NS);
-
-        // if (result.status !== BlzStatus.SUCCESS) {
-        //     this.waitress.remove(waiter.ID);
-        //     logger.error('Failure to init network', NS);
-        //     return false;
-        // }
-
+        if (result.status !== BlzStatus.SUCCESS) {
+            logger.error('Failure to init network', NS);
+            return false;
+        }
         return result.status == BlzStatus.SUCCESS;
     }
 
     async leaveNetwork(): Promise<number> {
-        // const waiter = this.waitFor('stackStatusHandler');
-        // const response = await waiter.start().promise;
         const result = await this.execCommand('leaveNetwork');
-
-        // if (response.payload.status !== BlzStatus.SUCCESS) {
-        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
-
-        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        // }
-
         logger.debug(`Network leave result: ${JSON.stringify(result)}`, NS);
 
         if (result.status !== BlzStatus.SUCCESS) {
-            // this.waitress.remove(waiter.ID);
             logger.debug('Failure to leave network', NS);
             throw new Error('Failure to leave network: ' + JSON.stringify(result));
         }
@@ -494,10 +441,6 @@ export class Blz extends EventEmitter {
     }
 
     async formNetwork(extPanId: uint64_t, panId: uint16_t, channel: uint8_t): Promise<number> {
-        // const waiter = this.waitFor('stackStatusHandler');
-        // const response = await waiter.start().promise;
-    
-        // Aligning the parameters with the command format
         const commandParams = {
             extPanId: extPanId,
             panId: panId,
@@ -505,60 +448,12 @@ export class Blz extends EventEmitter {
         };
     
         const v = await this.execCommand('formNetwork', commandParams);
-    
-        // if (response.payload.status !== BlzStatus.SUCCESS) {
-        //     logger.error('Wrong network status: ' + JSON.stringify(response.payload), NS);
-        //     throw new Error('Wrong network status: ' + JSON.stringify(response.payload));
-        // }
-    
-        // if (v.status !== BlzStatus.SUCCESS) {
-        //     this.waitress.remove(waiter.ID);
-        //     logger.error('Failure forming network: ' + JSON.stringify(v), NS);
-        //     throw new Error('Failure forming network: ' + JSON.stringify(v));
-        // }
+        if (v.status !== BlzStatus.SUCCESS) {
+            logger.error('Failure forming network: ' + JSON.stringify(v), NS);
+            throw new Error('Failure forming network: ' + JSON.stringify(v));
+        }
     
         return v.status;
-    }
-    
-
-    public sendUnicast(direct: BlzOutgoingMessageType, nwk: number, apsFrame: BlzApsFrame, seq: number, data: Buffer): Promise<BLZFrameData> {
-        return this.execCommand('sendUnicast', {
-            type: direct,
-            indexOrDestination: nwk,
-            apsFrame: apsFrame,
-            messageTag: seq,
-            message: data,
-        });
-    }
-
-    public async setSourceRouting(): Promise<void> {
-        const res = await this.execCommand('setConcentrator', {
-            on: true,
-            concentratorType: BlzConcentratorType.HIGH_RAM_CONCENTRATOR,
-            minTime: MTOR_MIN_INTERVAL,
-            maxTime: MTOR_MAX_INTERVAL,
-            routeErrorThreshold: MTOR_ROUTE_ERROR_THRESHOLD,
-            deliveryFailureThreshold: MTOR_DELIVERY_FAIL_THRESHOLD,
-            maxHops: 0,
-        });
-
-        logger.debug(`Set concentrator type: ${JSON.stringify(res)}`, NS);
-
-        if (res.status != BlzStatus.SUCCESS) {
-            logger.error(`Couldn't set concentrator ${JSON.stringify(res)}`, NS);
-        }
-
-        await this.execCommand('setSourceRouteDiscoveryMode', {mode: 1});
-    }
-
-    public sendBroadcast(destination: number, apsFrame: BlzApsFrame, seq: number, data: Buffer): Promise<BLZFrameData> {
-        return this.execCommand('sendBroadcast', {
-            destination: destination,
-            apsFrame: apsFrame,
-            radius: BLZ_DEFAULT_RADIUS,
-            messageTag: seq,
-            message: data,
-        });
     }
 
     public async getVersion(): Promise<void> {
