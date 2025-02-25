@@ -391,6 +391,7 @@ export class BLZAdapter extends Adapter {
         return await this.queue.execute<void>(async () => {
             this.checkInterpanLock();
             const frame = this.driver.makeApsFrame(zclFrame.cluster.ID, false);
+            // Green Power is not supported by BLZ
             if (endpoint === ZSpec.GP_ENDPOINT) {
                 return
             }
