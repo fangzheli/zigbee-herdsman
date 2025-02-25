@@ -8,7 +8,6 @@ import {logger} from '../../../utils/logger';
 import {uint32MaskToChannels} from '../../../zspec/utils';
 import {Driver} from '../driver';
 import {BlzValueId} from '../driver/types/named';
-import {BlzKeyData, BlzKeyStruct, BlzKeyType, BlzNetworkParameters, BlzSecurityManagerNetworkKeyInfo} from '../driver/types';
 
 const NS = 'zh:blz:backup';
 
@@ -36,14 +35,6 @@ export class BLZAdapterBackup {
         netKey = Buffer.from(netResult.nwkKey);
         netKeySequenceNumber = netResult.nwkKeySeqNum;
         netKeyFrameCounter = netResult.outgoingFrameCounter;
-
-        // tclKey = Buffer.from((linkResult.keyData as BlzKeyData).contents);
-        // netKey = Buffer.from((netResult.keyData as BlzKeyData).contents);
-        // // get rest of info from second cmd in EZSP 13+
-        // const netKeyInfoResult = await this.driver.getNetworkKeyInfo();
-        // const networkKeyInfo: BlzSecurityManagerNetworkKeyInfo = netKeyInfoResult.networkKeyInfo;
-        // netKeySequenceNumber = networkKeyInfo.networkKeySequenceNumber;
-        // netKeyFrameCounter = networkKeyInfo.networkKeyFrameCounter;
 
         const ieee = (await this.driver.blz.execCommand('getValue', {valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS})).value;
         /* return backup structure */
@@ -92,9 +83,9 @@ export class BLZAdapterBackup {
             if (data.metadata?.version !== 1) {
                 throw new Error(`Unsupported open coordinator backup version (version=${data.metadata?.version})`);
             }
-            // if (!data.metadata.internal?.blzVersion) {
-            //     throw new Error(`This open coordinator backup format not for BLZ adapter`);
-            // }
+            if (!data.metadata.internal?.blzVersion) {
+                throw new Error(`This open coordinator backup format not for BLZ adapter`);
+            }
             return BackupUtils.fromUnifiedBackup(data);
         } else {
             throw new Error('Unknown backup format');
