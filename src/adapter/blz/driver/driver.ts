@@ -506,12 +506,6 @@ export class Driver extends EventEmitter {
         frame.sourceEndpoint = 0;
         frame.destinationEndpoint = 0;
         frame.groupId = 0;
-        frame.options = BlzApsOption.APS_OPTION_ENABLE_ROUTE_DISCOVERY || BlzApsOption.APS_OPTION_ENABLE_ADDRESS_DISCOVERY;
-
-        if (!disableResponse) {
-            frame.options ||= BlzApsOption.APS_OPTION_RETRY;
-        }
-
         return frame;
     }
 

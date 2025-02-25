@@ -120,121 +120,20 @@ export class BlzOutgoingMessageType extends basic.uint8_t {
     static BLZ_MSG_TYPE_BROADCAST = 0x03;
 }
 
+// Options to use when sending a message.
 export class BlzApsOption extends basic.uint16_t {
-    // Options to use when sending a message.
 
     // No options.
-    static APS_OPTION_NONE = 0x0000;
-    // UNKNOWN: Discovered while receiving data
-    static APS_OPTION_UNKNOWN = 0x0008;
+    static ZB_APS_TX_OPTIONS_NONE = 0x00;
     // Send the message using APS Encryption, using the Link Key shared with the
     // destination node to encrypt the data at the APS Level.
-    static APS_OPTION_ENCRYPTION = 0x0020;
-    // Resend the message using the APS retry mechanism.
-    static APS_OPTION_RETRY = 0x0040;
-    // Causes a route discovery to be initiated if no route to the destination
-    // is known.
-    static APS_OPTION_ENABLE_ROUTE_DISCOVERY = 0x0100;
-    // Causes a route discovery to be initiated even if one is known.
-    static APS_OPTION_FORCE_ROUTE_DISCOVERY = 0x0200;
-    // Include the source EUI64 in the network frame.
-    static APS_OPTION_SOURCE_EUI64 = 0x0400;
-    // Include the destination EUI64 in the network frame.
-    static APS_OPTION_DESTINATION_EUI64 = 0x0800;
-    // Send a ZDO request to discover the node ID of the destination, if it is
-    // not already know.
-    static APS_OPTION_ENABLE_ADDRESS_DISCOVERY = 0x1000;
-    // Reserved.
-    static APS_OPTION_POLL_RESPONSE = 0x2000;
-    // This incoming message is a ZDO request not handled by the BlzZNet
-    // stack, and the application is responsible for sending a ZDO response.
-    // This flag is used only when the ZDO is configured to have requests
-    // handled by the application. See the CONFIG_APPLICATION_ZDO_FLAGS
-    // configuration parameter for more information.
-    static APS_OPTION_ZDO_RESPONSE_REQUIRED = 0x4000;
-    // This message is part of a fragmented message. This option may only be set
-    // for unicasts. The groupId field gives the index of this fragment in the
-    // low-order byte. If the low-order byte is zero this is the first fragment
-    // and the high-order byte contains the number of fragments in the message.
-    static APS_OPTION_FRAGMENT = 0x8000;
-}
-
-export class BlzKeyStructBitmask extends basic.uint16_t {
-    // Describes the presence of valid data within the BlzKeyStruct structure.
-
-    // The key has a sequence number associated with it.
-    static KEY_HAS_SEQUENCE_NUMBER = 0x0001;
-    // The key has an outgoing frame counter associated with it.
-    static KEY_HAS_OUTGOING_FRAME_COUNTER = 0x0002;
-    // The key has an incoming frame counter associated with it.
-    static KEY_HAS_INCOMING_FRAME_COUNTER = 0x0004;
-    // The key has a Partner IEEE address associated with it.
-    static KEY_HAS_PARTNER_EUI64 = 0x0008;
-}
-
-export class BlzJoinMethod extends basic.uint8_t {
-    // The type of method used for joining.
-
-    // Normally devices use MAC Association to join a network, which respects
-    // the "permit joining" flag in the MAC Beacon. For mobile nodes this value
-    // causes the device to use an Blz Mobile Node Join, which is functionally
-    // equivalent to a MAC association. This value should be used by default.
-    static USE_MAC_ASSOCIATION = 0x0;
-    // For those networks where the "permit joining" flag is never turned on,
-    // they will need to use a ZigBee NWK Rejoin. This value causes the rejoin
-    // to be sent without NWK security and the Trust Center will be asked to
-    // send the NWK key to the device. The NWK key sent to the device can be
-    // encrypted with the device's corresponding Trust Center link key. That is
-    // determined by the ::BlzJoinDecision on the Trust Center returned by the
-    // ::emberTrustCenterJoinHandler(). For a mobile node this value will cause
-    // it to use an Blz Mobile node rejoin, which is functionally equivalent.
-    static USE_NWK_REJOIN = 0x1;
-    // For those networks where the "permit joining" flag is never turned on,
-    // they will need to use a NWK Rejoin. If those devices have been
-    // preconfigured with the NWK key (including sequence number) they can use a
-    // secured rejoin. This is only necessary for end devices since they need a
-    // parent. Routers can simply use the ::USE_NWK_COMMISSIONING join method
-    // below.
-    static USE_NWK_REJOIN_HAVE_NWK_KEY = 0x2;
-    // For those networks where all network and security information is known
-    // ahead of time, a router device may be commissioned such that it does not
-    // need to send any messages to begin communicating on the network.
-    static USE_NWK_COMMISSIONING = 0x3;
-}
-
-export class BlzZdoConfigurationFlags extends basic.uint8_t {
-    // Flags for controlling which incoming ZDO requests are passed to the
-    // application. To see if the application is required to send a ZDO response
-    // to an incoming message, the application must check the APS options
-    // bitfield within the incomingMessageHandler callback to see if the
-    // APS_OPTION_ZDO_RESPONSE_REQUIRED flag is set.
-
-    // Set this flag in order to receive supported ZDO request messages via the
-    // incomingMessageHandler callback. A supported ZDO request is one that is
-    // handled by the BlzZNet stack. The stack will continue to handle the
-    // request and send the appropriate ZDO response even if this configuration
-    // option is enabled.
-    static APP_RECEIVES_SUPPORTED_ZDO_REQUESTS = 0x01;
-    // Set this flag in order to receive unsupported ZDO request messages via
-    // the incomingMessageHandler callback. An unsupported ZDO request is one
-    // that is not handled by the BlzZNet stack, other than to send a 'not
-    // supported' ZDO response. If this configuration option is enabled, the
-    // stack will no longer send any ZDO response, and it is the application's
-    // responsibility to do so.
-    static APP_HANDLES_UNSUPPORTED_ZDO_REQUESTS = 0x02;
-    // Set this flag in order to receive the following ZDO request messages via
-    // the incomingMessageHandler callback: SIMPLE_DESCRIPTOR_REQUEST,
-    // MATCH_DESCRIPTORS_REQUEST, and ACTIVE_ENDPOINTS_REQUEST. If this
-    // configuration option is enabled, the stack will no longer send any ZDO
-    // response for these requests, and it is the application's responsibility
-    // to do so.
-    static APP_HANDLES_ZDO_ENDPOINT_REQUESTS = 0x04;
-    // Set this flag in order to receive the following ZDO request messages via
-    // the incomingMessageHandler callback: BINDING_TABLE_REQUEST, BIND_REQUEST,
-    // and UNBIND_REQUEST. If this configuration option is enabled, the stack
-    // will no longer send any ZDO response for these requests, and it is the
-    // application's responsibility to do so.
-    static APP_HANDLES_ZDO_BINDING_REQUESTS = 0x08;
+    static ZB_APS_TX_OPTIONS_SEC_EN_TRANS = 0x01;
+    // Use the network key to encrypt the data at the APS Level.
+    static ZB_APS_TX_OPTIONS_USE_NWK_KEY = 0x02;
+    // Use the APS ACK mechanism to confirm that the message was received.
+    static ZB_APS_TX_OPTIONS_ACK_TRANS = 0x04;
+    static ZB_APS_TX_OPTIONS_FRAG_PERMIT = 0x08;
+    static ZB_APS_TX_OPTIONS_EXT_NONCE = 0x10;
 }
 
 
