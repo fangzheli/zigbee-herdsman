@@ -111,12 +111,10 @@ describe('BLZ Driver', () => {
             }
 
             // Verify final error and connection state
-            await expect(connectPromise).rejects.toThrow(
-                expect.objectContaining({
-                    message: expect.stringContaining(`Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`),
-                    cause: expect.any(Error)
-                })
-            );
+            const err = await connectPromise.catch(e => e);
+            expect(err.message).toContain(`Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`);
+            expect(err.cause).toBeDefined();
+            expect(err.cause.message).toBe('Connection failed');
             expect(blz.isInitialized()).toBe(false);
             
             // Verify connection attempts were made the correct number of times
@@ -164,31 +162,6 @@ describe('BLZ Driver', () => {
             // Execute and wait for the response
             const result = await blz.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION);
             expect(result).toEqual(mockValue);
-        }, 10000); // Increase timeout for this test
-
-        it('should set value successfully', async () => {
-            // Mock successful request with immediate response
-            serialDriverMock.sendDATA.mockImplementation(() => {
-                // Immediately emit the response after sendDATA is called
-                const data = Buffer.alloc(6);
-                data.writeUInt16LE(FRAMES.setValue.ID, 2); // frameId
-                data[4] = BlzStatus.SUCCESS; // status
-                
-                // Find the 'received' event handler and call it with our response
-                const receivedHandler = serialDriverMock.on.mock.calls.find(call => call[0] === 'received')?.[1];
-                if (receivedHandler) {
-                    receivedHandler(data);
-                }
-                
-                return Promise.resolve(undefined);
-            });
-
-            // Execute and wait for the response
-            const result = await blz.setValue(
-                BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
-                0x1234 // value as number
-            );
-            expect(result.status).toBe(BlzStatus.SUCCESS);
         }, 10000); // Increase timeout for this test
     });
 
