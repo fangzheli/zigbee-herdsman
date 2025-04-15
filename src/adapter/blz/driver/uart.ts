@@ -99,11 +99,6 @@ export class SerialDriver extends EventEmitter {
             this.initialized = true;
         } catch (error) {
             this.initialized = false;
-
-            if (this.serialPort.isOpen) {
-                this.serialPort.close();
-            }
-
             throw error;
         }
     }
@@ -305,9 +300,9 @@ export class SerialDriver extends EventEmitter {
 
         for (let attempt = 0; attempt <= retries; attempt++) {
             const isRetransmission = attempt > 0;
+            const waiter = this.waitFor(frameId, 1000); // 1 second timeout per attempt
 
             try {
-                const waiter = this.waitFor(frameId);
                 this.writer.sendData(data, seq, ackSeq, frameId, true, isRetransmission);
                 this.sendSeq = (seq + 1) & 0x0F;
                 await waiter.start().promise;
@@ -319,8 +314,11 @@ export class SerialDriver extends EventEmitter {
 
                 if (attempt === retries) {
                     logger.error(`All retries failed for seq ${seq}.`, NS);
-                    throw new Error(`Failed to send data after ${retries} retries.`);
+                    throw new Error(`Failed to send data after ${retries} retries`);
                 }
+
+                // Wait before retry
+                await wait(100);
             }
         }
     }

@@ -47,7 +47,15 @@ export class BLZAdapterBackup {
             },
             networkOptions: {
                 panId: netParams.panId,
-                extendedPanId: Buffer.from(netParams.extPanId.toString(16)),
+                extendedPanId: (() => {
+                    const bytes = [];
+                    let extPanId = netParams.extPanId;
+                    for (let i = 0; i < 8; i++) {
+                        bytes.unshift(Number(extPanId & 0xFFn));
+                        extPanId >>= 8n;
+                    }
+                    return Buffer.from(bytes);
+                })(),
                 channelList: uint32MaskToChannels(netParams.channelMask),
                 networkKey: netKey,
                 networkKeyDistribute: true,
@@ -83,9 +91,10 @@ export class BLZAdapterBackup {
             if (data.metadata?.version !== 1) {
                 throw new Error(`Unsupported open coordinator backup version (version=${data.metadata?.version})`);
             }
-            if (!data.metadata.internal?.blzVersion) {
-                throw new Error(`This open coordinator backup format not for BLZ adapter`);
-            }
+            // no blz data needed for now
+            // if (!data.metadata.internal?.blzVersion) {
+            //     throw new Error(`This open coordinator backup format not for BLZ adapter`);
+            // }
             return BackupUtils.fromUnifiedBackup(data);
         } else {
             throw new Error('Unknown backup format');

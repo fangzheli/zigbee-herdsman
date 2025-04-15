@@ -25,11 +25,11 @@ import { SerialDriver } from './uart';
 import { uint8_t, uint16_t, uint32_t, uint64_t, Bytes} from './types';
 import {BlzValueId} from './types/named';
 
-const NS = 'zh:blz:blz';
+export const NS = 'zh:blz:blz';
 
-const MAX_SERIAL_CONNECT_ATTEMPTS = 4;
+export const MAX_SERIAL_CONNECT_ATTEMPTS = 4;
 /** In ms. This is multiplied by tries count (above), e.g., 4 tries = 5000, 10000, 15000 */
-const SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY = 5000;
+export const SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY = 5000;
 const MTOR_MIN_INTERVAL = 10;
 const MTOR_MAX_INTERVAL = 90;
 const MTOR_ROUTE_ERROR_THRESHOLD = 4;
@@ -262,7 +262,8 @@ export class Blz extends EventEmitter {
     }
 
     public async connect(options: SerialPortOptions): Promise<void> {
-        let lastError = null;
+        let lastError: Error | null = null;
+        let connected = false;
 
         const resetForReconnect = (): void => {
             throw new Error('Failure to connect');
@@ -271,33 +272,44 @@ export class Blz extends EventEmitter {
 
         for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
             try {
+                logger.debug(`Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`, NS);
                 await this.serialDriver.connect(options);
-                break;
+                
+                // Verify connection is actually established
+                if (this.serialDriver.isInitialized()) {
+                    connected = true;
+                    break;
+                } else {
+                    throw new Error('Driver reported connection but is not initialized');
+                }
             } catch (error) {
-                logger.error(`Connection attempt ${i} error: ${error}`, NS);
+                lastError = error instanceof Error ? error : new Error(String(error));
+                logger.error(`Connection attempt ${i} failed: ${lastError.message}`, NS);
 
                 if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
-                    await wait(SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i);
-                    logger.debug(`Next attempt ${i + 1}`, NS);
+                    const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
+                    logger.debug(`Waiting ${delay}ms before next attempt`, NS);
+                    await wait(delay);
                 }
-
-                lastError = error;
             }
         }
 
         this.serialDriver.off('reset', resetForReconnect);
 
-        if (!this.serialDriver.isInitialized()) {
-            throw new Error('Failure to connect', { cause: lastError });
+        if (!connected) {
+            const error = new Error(`Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`);
+            error.cause = lastError;
+            throw error;
         }
 
         this.inResetingProcess = false;
-
         this.serialDriver.on('reset', this.onSerialReset.bind(this));
 
         if (WATCHDOG_WAKE_PERIOD) {
             this.watchdogTimer = setInterval(this.watchdogHandler.bind(this), WATCHDOG_WAKE_PERIOD * 1000);
         }
+
+        logger.debug('Connection established successfully', NS);
     }
 
     public isInitialized(): boolean {
@@ -415,10 +427,28 @@ export class Blz extends EventEmitter {
         return result.status;
     }
 
-    async setValue(valueId: t.BlzValueId, value: number): Promise<BLZFrameData> {
+    async setValue(valueId: t.BlzValueId, value: number | Buffer): Promise<BLZFrameData> {
         const valueName = t.BlzValueId.valueToName(t.BlzValueId, valueId);
         logger.debug(`Set ${valueName} = ${value}`, NS);
-        const ret = await this.execCommand('setValue', {valueId, value});
+        
+        // Convert value to Buffer if it's a number
+        let valueBuffer: Buffer;
+        if (typeof value === 'number') {
+            // For numbers, use a 4-byte buffer
+            valueBuffer = Buffer.alloc(4);
+            valueBuffer.writeUInt32LE(value, 0);
+        } else if (Buffer.isBuffer(value)) {
+            valueBuffer = value;
+        } else {
+            throw new Error(`Value must be a number or Buffer. Received: ${typeof value}`);
+        }
+        
+        // Send command with proper parameters
+        const ret = await this.execCommand('setValue', {
+            valueId, 
+            valueLength: valueBuffer.length,
+            value: valueBuffer
+        });
 
         if (ret.status !== BlzStatus.SUCCESS) {
             logger.error(`Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`, NS);
