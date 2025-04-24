@@ -420,6 +420,7 @@ export class BLZAdapter extends Adapter {
                 '0x' + this.driver.networkParams.extendedPanId.toString('hex') :
                 '0x0000000000000000',
             channel: this.driver.networkParams.Channel,
+            nwkUpdateID: this.driver.networkParams.nwkUpdateId,
         };
     }
 
