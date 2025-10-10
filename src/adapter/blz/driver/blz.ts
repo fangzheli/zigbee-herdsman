@@ -253,7 +253,11 @@ export class Blz extends EventEmitter {
     constructor() {
         super();
         this.queue = new Queue();
-        this.waitress = new Waitress<BLZFrame, BLZWaitressMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
+        this.waitress = new Waitress<BLZFrame, BLZWaitressMatcher>(
+            this.waitressValidator, 
+            this.waitressTimeoutFormatter,
+            'BLZ-Driver'
+        );
 
         this.serialDriver = new SerialDriver();
         this.serialDriver.on('received', this.onFrameReceived.bind(this));
@@ -407,6 +411,11 @@ export class Blz extends EventEmitter {
 
     public async execCommand(name: string, params?: ParamsDesc): Promise<BLZFrameData> {
         logger.debug(() => `==> ${name}: ${JSON.stringify(params)}`, NS);
+        
+        logger.info(
+            `DRIVER CMD START: ${name}, params=${JSON.stringify(params)}`,
+            NS
+        );
 
         if (!this.serialDriver.isInitialized()) {
             throw new Error('Connection not initialized');
@@ -421,14 +430,25 @@ export class Blz extends EventEmitter {
                 // Don't wait for response if this is a reset command
                 if (name !== 'reset') {
                     const response = await waiter.start().promise;
+                    logger.info(
+                        `DRIVER CMD SUCCESS: ${name}`,
+                        NS
+                    );
                     return response.payload;
                 } else {
                     // For reset command, return empty BLZFrameData since we don't wait for response
                     return new BLZFrameData('reset', false, {});
                 }
-            } catch {
+            } catch (error) {
+                logger.warning(
+                    `DRIVER CMD ERROR: ${name}, error=${error instanceof Error ? error.message : String(error)}`,
+                    NS
+                );
                 this.waitress.remove(waiter.ID);
-                throw new Error(`Failure send ${name}:` + JSON.stringify(data));
+                throw new Error(
+                    `Failed to execute driver command ${name}: ${error instanceof Error ? error.message : String(error)}. ` +
+                    `Data: ${JSON.stringify(data)}`
+                );
             }
         });
     }

@@ -41,7 +41,11 @@ export class BLZAdapter extends Adapter {
         this.hasZdoMessageOverhead = true;
         this.manufacturerID = Zcl.ManufacturerCode.SILICON_LABORATORIES;
 
-        this.waitress = new Waitress<ZclPayload, WaitressMatcher>(this.waitressValidator, this.waitressTimeoutFormatter);
+        this.waitress = new Waitress<ZclPayload, WaitressMatcher>(
+            this.waitressValidator, 
+            this.waitressTimeoutFormatter,
+            'BLZ-Adapter'
+        );
         this.interpanLock = false;
         this.closing = false;
 
@@ -54,6 +58,11 @@ export class BLZAdapter extends Adapter {
         this.driver.on("deviceJoined", this.handleDeviceJoin.bind(this));
         this.driver.on("deviceLeft", this.handleDeviceLeft.bind(this));
         this.driver.on("incomingMessage", this.processMessage.bind(this));
+        
+        // Start memory monitoring
+        setInterval(() => {
+            this.logDetailedMemoryStats();
+        }, 10000); // Every 10 seconds
     }
 
     private async processMessage(frame: BlzIncomingMessage): Promise<void> {
@@ -85,6 +94,23 @@ export class BLZAdapter extends Adapter {
         } else if (frame.apsFrame.profileId === ZSpec.GP_PROFILE_ID) {
             // Green Power is not supported by BLZ
         }
+    }
+    
+    private logDetailedMemoryStats(): void {
+        const memUsage = process.memoryUsage();
+        const waitressStats = this.waitress.getMemoryStats();
+        const queueCount = this.queue.count();
+        
+        logger.info(
+            `BLZ MEMORY ANALYSIS: ` +
+            `heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB/${Math.round(memUsage.heapTotal / 1024 / 1024)}MB, ` +
+            `external=${Math.round(memUsage.external / 1024 / 1024)}MB, ` +
+            `waitress=[total:${waitressStats.total}, active:${waitressStats.active}, timedout:${waitressStats.timedout}], ` +
+            `counters=[created:${waitressStats.created}, resolved:${waitressStats.resolved}, timeouts:${waitressStats.timedoutTotal}], ` +
+            `queue=${queueCount}, ` +
+            `leak_indicator=${waitressStats.created - waitressStats.resolved - waitressStats.timedout}`,
+            NS
+        );
     }
 
     private async handleDeviceJoin(nwk: number, ieee: BlzEUI64): Promise<void> {
@@ -590,6 +616,11 @@ export class BLZAdapter extends Adapter {
                 `(${responseAttempt},${dataRequestAttempt},${this.queue.count()}), timeout=${timeout}`,
             NS,
         );
+        
+        logger.info(
+            `REQUEST START: ${ieeeAddr}:${networkAddress}/${endpoint}, attempt=${responseAttempt}, timeout=${timeout}ms`,
+            NS,
+        );
         let response = null;
         const command = zclFrame.command;
         if (command.response != undefined && disableResponse === false) {
@@ -629,10 +660,23 @@ export class BLZAdapter extends Adapter {
         if (response !== null) {
             try {
                 const result = await response.start().promise;
+                logger.info(
+                    `REQUEST SUCCESS: ${ieeeAddr}:${networkAddress}/${endpoint}, attempt=${responseAttempt}`,
+                    NS,
+                );
                 return result;
             } catch (error) {
                 logger.debug(`Response timeout (${ieeeAddr}:${networkAddress},${responseAttempt})`, NS);
+                logger.warning(
+                    `REQUEST TIMEOUT: ${ieeeAddr}:${networkAddress}/${endpoint}, attempt=${responseAttempt}, ` +
+                    `timeout=${timeout}ms, error=${(error as Error).message}`,
+                    NS,
+                );
                 if (responseAttempt < 1 && !disableRecovery) {
+                    logger.info(
+                        `REQUEST RETRY: ${ieeeAddr}:${networkAddress}/${endpoint}, starting attempt=${responseAttempt + 1}`,
+                        NS,
+                    );
                     return await this.sendZclFrameToEndpointInternal(
                         ieeeAddr,
                         networkAddress,
@@ -646,6 +690,10 @@ export class BLZAdapter extends Adapter {
                         dataRequestAttempt,
                     );
                 } else {
+                    logger.error(
+                        `REQUEST FAILED: ${ieeeAddr}:${networkAddress}/${endpoint}, final attempt=${responseAttempt}`,
+                        NS,
+                    );
                     throw error;
                 }
             }
