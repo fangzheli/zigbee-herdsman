@@ -473,6 +473,10 @@ Future BLZ refactors should follow these rules:
 - Made high-level startup fail immediately when the final network-parameter
   probe returns a non-success BLZ status, instead of continuing to coordinator
   IEEE lookup after the stack failed to report valid network parameters.
+- Routed direct high-level driver BLZ command helpers through the existing
+  request-operation cancellation path, so `Driver.stop()` now rejects pending
+  permit-join, endpoint registration, network-key, and trust-center-key
+  operations instead of leaving their callers waiting on lower BLZ commands.
 
 ## Next Steps
 

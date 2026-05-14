@@ -871,6 +871,18 @@ export class Driver extends EventEmitter {
     );
   }
 
+  private async runBlzCommandOperation<T>(
+    operation: (blz: Blz) => Promise<T>,
+  ): Promise<T> {
+    const blz = this.getBlz();
+    const requestGeneration = this.requestGeneration;
+
+    return await this.runRequestOperation(
+      () => operation(blz),
+      requestGeneration,
+    );
+  }
+
   private async waitForRequestRetry(
     milliseconds: number,
     requestGeneration: number,
@@ -1080,9 +1092,11 @@ export class Driver extends EventEmitter {
   }
 
   public async permitJoining(seconds: number): Promise<BLZFrameData> {
-    return await this.getBlz().execCommand("permitJoining", {
-      duration: seconds,
-    });
+    return await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("permitJoining", {
+        duration: seconds,
+      }),
+    );
   }
 
   public async addEndpoint({
@@ -1093,16 +1107,18 @@ export class Driver extends EventEmitter {
     inputClusters = [],
     outputClusters = [],
   }: AddEndpointParameters): Promise<void> {
-    const res = await this.getBlz().execCommand("addEndpoint", {
-      endpoint: endpoint,
-      profileId: profileId,
-      deviceId: deviceId,
-      appFlags: appFlags,
-      inputClusterCount: inputClusters.length,
-      outputClusterCount: outputClusters.length,
-      inputClusterList: inputClusters,
-      outputClusterList: outputClusters,
-    });
+    const res = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("addEndpoint", {
+        endpoint: endpoint,
+        profileId: profileId,
+        deviceId: deviceId,
+        appFlags: appFlags,
+        inputClusterCount: inputClusters.length,
+        outputClusterCount: outputClusters.length,
+        inputClusterList: inputClusters,
+        outputClusterList: outputClusters,
+      }),
+    );
     logger.debug(() => `Blz adding endpoint: ${JSON.stringify(res)}`, NS);
   }
 
@@ -1137,7 +1153,9 @@ export class Driver extends EventEmitter {
   }
 
   public async getGlobalTcLinkKey(): Promise<BLZFrameData> {
-    const frameResponse = await this.getBlz().execCommand("getGlobalTcLinkKey");
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("getGlobalTcLinkKey"),
+    );
 
     const { status, linkKey, outgoingFrameCounter, trustCenterAddress } =
       frameResponse;
@@ -1169,9 +1187,8 @@ export class Driver extends EventEmitter {
       outgoingFrameCounter,
     };
 
-    const frameResponse = await this.getBlz().execCommand(
-      "setGlobalTcLinkKey",
-      frameRequest,
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("setGlobalTcLinkKey", frameRequest),
     );
 
     const { status } = frameResponse;
@@ -1192,7 +1209,9 @@ export class Driver extends EventEmitter {
   }
 
   public async getNetworkKeyInfo(): Promise<BLZFrameData> {
-    const frameResponse = await this.getBlz().execCommand("getNwkSecurityInfos");
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("getNwkSecurityInfos"),
+    );
 
     const { status, nwkKey, outgoingFrameCounter, nwkKeySeqNum } =
       frameResponse;
@@ -1233,9 +1252,8 @@ export class Driver extends EventEmitter {
       nwkKeySeqNum,
     };
 
-    const frameResponse = await this.getBlz().execCommand(
-      "setNwkSecurityInfos",
-      frameRequest,
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("setNwkSecurityInfos", frameRequest),
     );
 
     const { status } = frameResponse;

@@ -150,6 +150,86 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
     });
 
+    it.each([
+        {
+            name: "permitJoining",
+            invoke: (driver: Driver) => driver.permitJoining(60),
+            expectedCommand: "permitJoining",
+            hasParameters: true,
+        },
+        {
+            name: "addEndpoint",
+            invoke: (driver: Driver) => driver.addEndpoint({endpoint: 1}),
+            expectedCommand: "addEndpoint",
+            hasParameters: true,
+        },
+        {
+            name: "getGlobalTcLinkKey",
+            invoke: (driver: Driver) => driver.getGlobalTcLinkKey(),
+            expectedCommand: "getGlobalTcLinkKey",
+            hasParameters: false,
+        },
+        {
+            name: "setGlobalTcLinkKey",
+            invoke: (driver: Driver) =>
+                driver.setGlobalTcLinkKey(Buffer.alloc(16), 0),
+            expectedCommand: "setGlobalTcLinkKey",
+            hasParameters: true,
+        },
+        {
+            name: "getNetworkKeyInfo",
+            invoke: (driver: Driver) => driver.getNetworkKeyInfo(),
+            expectedCommand: "getNwkSecurityInfos",
+            hasParameters: false,
+        },
+        {
+            name: "setNetworkKeyInfo",
+            invoke: (driver: Driver) =>
+                driver.setNetworkKeyInfo(Buffer.alloc(16), 0, 0),
+            expectedCommand: "setNwkSecurityInfos",
+            hasParameters: true,
+        },
+    ])("cancels $name when stopping while the lower command is pending", async ({
+        invoke,
+        expectedCommand,
+        hasParameters,
+    }) => {
+        const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {
+            execCommand,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        } as unknown as Driver["blz"];
+
+        const operation = invoke(driver);
+        const operationResult = operation.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await Promise.resolve();
+
+        await driver.stop(false);
+        await new Promise((resolve) => setImmediate(resolve));
+        const observed = await Promise.race([
+            operationResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void operation.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        if (hasParameters) {
+            expect(execCommand).toHaveBeenCalledWith(
+                expectedCommand,
+                expect.anything(),
+            );
+        } else {
+            expect(execCommand).toHaveBeenCalledWith(expectedCommand);
+        }
+    });
+
     it("releases the BLZ instance reference when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const blzMock = {
