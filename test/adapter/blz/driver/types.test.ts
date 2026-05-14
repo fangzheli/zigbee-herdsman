@@ -335,6 +335,14 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should not retain mutable constructor input storage', () => {
+                const value = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+                const eui = new BlzEUI64(value);
+                value[0] = 0xff;
+
+                expect(eui.toString()).toBe('0102030405060708');
+            });
+
             it('should throw for invalid string length', () => {
                 expect(() => new BlzEUI64('0102030405')).toThrow('Incorrect value passed');
             });

@@ -555,6 +555,9 @@ Future BLZ refactors should follow these rules:
 - Hardened `BlzEUI64.value` to return a copy of its backing storage, so any
   caller that receives an EUI64 cannot mutate the original object through the
   exposed byte array.
+- Hardened `BlzEUI64` construction from array-like values to copy the input
+  bytes, preventing later mutation of the caller-owned buffer from changing the
+  EUI64 object.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.

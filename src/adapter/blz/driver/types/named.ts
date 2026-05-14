@@ -19,7 +19,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
             if (_value.length !== 8) {
                 throw new Error('Incorrect value passed');
             }
-            this._value = _value;
+            this._value = Buffer.from(_value);
         }
     }
 
