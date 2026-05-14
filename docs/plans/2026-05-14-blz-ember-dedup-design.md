@@ -426,6 +426,9 @@ Future BLZ refactors should follow these rules:
 - Reused adapter operation cancellation for backup creation, so
   `BLZAdapter.stop()` rejects `backup()` while backup collection is still
   pending.
+- Added high-level driver request-operation cancellation, so `Driver.stop()`
+  resolves active unicast requests while EUI64 lookup or APS send is still
+  pending instead of waiting for the lower BLZ operation to settle.
 
 ## Next Steps
 

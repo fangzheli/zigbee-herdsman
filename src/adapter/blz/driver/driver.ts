@@ -91,6 +91,7 @@ export class Driver extends EventEmitter {
   private cancelPendingStartupOperation?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
+  private readonly requestOperationRejecters = new Set<(error: Error) => void>();
   private readonly requestRetryDelay = new CancellableDelay();
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
@@ -264,6 +265,7 @@ export class Driver extends EventEmitter {
   ): Promise<void> {
     logger.debug("Stopping driver", NS);
     this.requestGeneration += 1;
+    this.cancelRequestOperations(new Error("Driver stopped"));
     this.requestRetryDelay.cancel();
     if (!internalReset) {
       this.stopGeneration += 1;
@@ -791,9 +793,13 @@ export class Driver extends EventEmitter {
 
           if (nodeId === undefined) {
             nodeId = (
-              await this.getBlz().execCommand("getNodeIdByEui64", {
-                eui64: eui64,
-              })
+              await this.runRequestOperation(
+                () =>
+                  this.getBlz().execCommand("getNodeIdByEui64", {
+                    eui64: eui64,
+                  }),
+                requestGeneration,
+              )
             ).nodeId;
             if (nodeId && nodeId !== 0xffff) {
               this.cacheNodeIeee(nodeId, eui64);
@@ -806,11 +812,15 @@ export class Driver extends EventEmitter {
           resolvedNwk = nwk;
         }
 
-        const sendResult = await this.sendApsData(
-          BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
-          resolvedNwk,
-          apsFrame,
-          data,
+        const sendResult = await this.runRequestOperation(
+          () =>
+            this.sendApsData(
+              BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
+              resolvedNwk,
+              apsFrame,
+              data,
+            ),
+          requestGeneration,
         );
 
         if (sendResult === BlzStatus.SUCCESS) {
@@ -850,6 +860,43 @@ export class Driver extends EventEmitter {
 
   private isRequestCancelled(requestGeneration: number): boolean {
     return this.requestGeneration !== requestGeneration || !this.blz;
+  }
+
+  private cancelRequestOperations(error: Error): void {
+    const rejecters = [...this.requestOperationRejecters];
+    this.requestOperationRejecters.clear();
+
+    for (const reject of rejecters) {
+      reject(error);
+    }
+  }
+
+  private async runRequestOperation<T>(
+    operation: () => Promise<T>,
+    requestGeneration: number,
+  ): Promise<T> {
+    if (this.isRequestCancelled(requestGeneration)) {
+      throw new Error("Driver stopped");
+    }
+
+    let rejectOperation: ((error: Error) => void) | undefined;
+    const operationStopped = new Promise<never>((_, reject): void => {
+      rejectOperation = reject;
+      this.requestOperationRejecters.add(reject);
+    });
+
+    try {
+      const result = await Promise.race([operation(), operationStopped]);
+      if (this.isRequestCancelled(requestGeneration)) {
+        throw new Error("Driver stopped");
+      }
+
+      return result;
+    } finally {
+      if (rejectOperation) {
+        this.requestOperationRejecters.delete(rejectOperation);
+      }
+    }
   }
 
   private async waitForRequestRetry(

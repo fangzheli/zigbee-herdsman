@@ -351,6 +351,65 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(sendApsData).toHaveBeenCalledTimes(1);
     });
 
+    it("stops active APS requests when driver stop interrupts the lower send", async () => {
+        vi.useFakeTimers();
+        const sendApsData = vi.fn().mockReturnValue(new Promise(() => {}));
+        const blzMock = {
+            sendApsData,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = blzMock as unknown as Driver["blz"];
+        const request = driver.request(0x3344, makeApsFrame(), Buffer.from([0x0c]));
+        const requestResult = request.then((value) => `resolved:${value}`);
+
+        await vi.advanceTimersByTimeAsync(0);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            requestResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void request.catch(() => {});
+
+        expect(observed).toBe("resolved:false");
+        expect(sendApsData).toHaveBeenCalledTimes(1);
+    });
+
+    it("stops APS requests when driver stop interrupts EUI64 lookup", async () => {
+        vi.useFakeTimers();
+        const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
+        const sendApsData = vi.fn();
+        const blzMock = {
+            execCommand,
+            sendApsData,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = blzMock as unknown as Driver["blz"];
+        const request = driver.request(new BlzEUI64("0000000000003344"), makeApsFrame(), Buffer.from([0x0c]));
+        const requestResult = request.then((value) => `resolved:${value}`);
+
+        await vi.advanceTimersByTimeAsync(0);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            requestResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void request.catch(() => {});
+
+        expect(observed).toBe("resolved:false");
+        expect(execCommand).toHaveBeenCalledWith("getNodeIdByEui64", {eui64: expect.any(BlzEUI64)});
+        expect(sendApsData).not.toHaveBeenCalled();
+    });
+
     it("closes BLZ resources when startup fails after connecting", async () => {
         const blzMock = {
             on: vi.fn(),
