@@ -325,18 +325,15 @@ export class BLZAdapter extends Adapter {
       );
 
       // BLZ hardware does not provide a device leave callback/indication.
-      // After successfully sending LEAVE_REQUEST, emit deviceLeave immediately
-      // so the controller removes the device from the database.
+      // Route the synthetic leave through the driver so its address cache is
+      // cleared before the controller removes the device from the database.
       if (clusterId === Zdo.ClusterId.LEAVE_REQUEST) {
         logger.info(
           `[BLZ] LEAVE_REQUEST sent to ${ieeeAddress}:${networkAddress}, emitting deviceLeave`,
           NS,
         );
 
-        this.emit("deviceLeave", {
-          networkAddress,
-          ieeeAddr: ieeeAddress,
-        });
+        this.driver.handleNodeLeft(networkAddress, ieeeAddress);
       }
 
       if (waiter && responseClusterId !== undefined) {

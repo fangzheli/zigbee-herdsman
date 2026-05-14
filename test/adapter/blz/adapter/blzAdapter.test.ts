@@ -49,6 +49,7 @@ describe("BLZ Adapter", () => {
     getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
     setNetworkKeyInfo: ReturnType<typeof vi.fn>;
     setGlobalTcLinkKey: ReturnType<typeof vi.fn>;
+    handleNodeLeft: ReturnType<typeof vi.fn>;
   };
 
   const networkOptions: NetworkOptions = {
@@ -103,6 +104,7 @@ describe("BLZ Adapter", () => {
       getGlobalTcLinkKey: vi.fn(),
       setNetworkKeyInfo: vi.fn(),
       setGlobalTcLinkKey: vi.fn(),
+      handleNodeLeft: vi.fn(),
     };
     driverMock.getBlz.mockReturnValue(driverMock.blz);
 
@@ -584,6 +586,42 @@ describe("BLZ Adapter", () => {
         0x2ea0,
         15,
       );
+    });
+
+    it("should clear the driver address cache when sending a leave request", async () => {
+      const callback = vi.fn();
+      adapter.on("deviceLeave", callback);
+      driverMock.makeApsFrame.mockReturnValue({
+        sequence: 9,
+        profileId: Zdo.ZDO_PROFILE_ID,
+        clusterId: Zdo.ClusterId.LEAVE_REQUEST,
+        sourceEndpoint: 0,
+        destinationEndpoint: 0,
+      });
+      driverMock.request.mockResolvedValue(true);
+      driverMock.handleNodeLeft.mockImplementation((nwk: number, ieee: string) => {
+        driverMock.on.mock.calls.find((call) => call[0] === "deviceLeft")?.[1](
+          nwk,
+          { toString: () => ieee.replace(/^0x/, "") },
+        );
+      });
+
+      await adapter.sendZdo(
+        "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.LEAVE_REQUEST,
+        Buffer.from([0, 1, 2, 3]),
+        true,
+      );
+
+      expect(driverMock.handleNodeLeft).toHaveBeenCalledWith(
+        0x1234,
+        "0x0102030405060708",
+      );
+      expect(callback).toHaveBeenCalledWith({
+        networkAddress: 0x1234,
+        ieeeAddr: "0x0102030405060708",
+      });
     });
   });
 
