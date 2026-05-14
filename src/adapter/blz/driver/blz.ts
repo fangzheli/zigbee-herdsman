@@ -18,7 +18,7 @@ import * as t from "./types";
 import { BlzOutgoingMessageType, BlzStatus } from "./types/named";
 import { BlzApsFrame } from "./types/struct";
 import { SerialDriver } from "./uart";
-import { uint8_t, uint16_t, uint32_t, uint64_t, Bytes } from "./types";
+import { uint8_t, uint16_t, uint32_t, uint64_t, Bytes, WordList } from "./types";
 import { serializeMappedBufferSegments } from "./types/basic";
 import { BlzValueId } from "./types/named";
 
@@ -38,6 +38,10 @@ const BYTE_FIELD_LENGTHS: Record<string, string> = {
   value: "valueLength",
   payload: "payloadLen",
   message: "messageLength",
+};
+const WORD_LIST_FIELD_LENGTHS: Record<string, string> = {
+  inputClusterList: "inputClusterCount",
+  outputClusterList: "outputClusterCount",
 };
 
 /**
@@ -127,6 +131,17 @@ export class BLZFrameData {
             data.subarray(0, byteLength),
           );
           data = data.subarray(byteLength);
+        } else if (fieldType === WordList) {
+          const itemCount = getDeclaredWordListItemCount(prop, this);
+          if (itemCount !== undefined) {
+            [this[prop], data] = deserializeCountedWordList(
+              prop,
+              itemCount,
+              data,
+            );
+          } else {
+            [this[prop], data] = fieldType.deserialize(fieldType, data);
+          }
         } else {
           [this[prop], data] = fieldType.deserialize(fieldType, data);
         }
@@ -194,6 +209,39 @@ function getDeclaredByteFieldLength(
 
   const value = values[lengthField];
   return typeof value === "number" ? value : undefined;
+}
+
+function getDeclaredWordListItemCount(
+  fieldName: string,
+  values: Record<string, unknown>,
+): number | undefined {
+  const lengthField = WORD_LIST_FIELD_LENGTHS[fieldName];
+  if (lengthField === undefined) {
+    return undefined;
+  }
+
+  const value = values[lengthField];
+  return typeof value === "number" ? value : undefined;
+}
+
+function deserializeCountedWordList(
+  fieldName: string,
+  itemCount: number,
+  data: Buffer,
+): [number[], Buffer] {
+  const byteLength = itemCount * 2;
+  if (data.length < byteLength) {
+    throw new RangeError(
+      `WordList field ${fieldName} expected ${itemCount} items (${byteLength} bytes), received ${data.length} bytes`,
+    );
+  }
+
+  const values = new Array<number>(itemCount);
+  for (let i = 0; i < itemCount; i++) {
+    values[i] = data.readUInt16LE(i * 2);
+  }
+
+  return [values, data.subarray(byteLength)];
 }
 
 export class Blz extends EventEmitter {

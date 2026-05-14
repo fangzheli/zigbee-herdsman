@@ -810,6 +810,9 @@ Future BLZ refactors should follow these rules:
 - Reused the same BLZ retention-safe buffer helper for parsed byte fields, so
   `LVBytes`, terminal `Bytes`, and fixed 16-byte security fields do not expose
   subarrays that can retain a larger inbound frame buffer.
+- Enforced counted BLZ `WordList` boundaries for `addEndpoint` frame parsing,
+  so input and output cluster lists are split by their declared counts instead
+  of the first list consuming all remaining request bytes.
 
 ## Next Steps
 

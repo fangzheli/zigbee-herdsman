@@ -59,4 +59,25 @@ describe("BLZFrameData", () => {
             new BLZFrameData("getValue", false, Buffer.from([0x00, 0x02, 0xaa, 0xbb, 0xcc])),
         ).toThrow("Unexpected trailing data after getValue frame: 1 bytes");
     });
+
+    it("parses counted WordList fields without consuming following lists", () => {
+        const frame = new BLZFrameData(
+            "addEndpoint",
+            true,
+            Buffer.from([
+                0x01, // endpoint
+                0x04, 0x01, // profileId
+                0x00, 0x00, // deviceId
+                0x00, // appFlags
+                0x02, // inputClusterCount
+                0x01, // outputClusterCount
+                0x06, 0x00, // genOnOff
+                0x08, 0x00, // genLevelCtrl
+                0x19, 0x00, // genOta
+            ]),
+        );
+
+        expect(frame.inputClusterList).toEqual([0x0006, 0x0008]);
+        expect(frame.outputClusterList).toEqual([0x0019]);
+    });
 });
