@@ -62,7 +62,7 @@ export interface BlzIncomingMessage {
   bindingIndex: number;
   addressIndex: number;
   message: Buffer;
-  senderEui64: BlzEUI64;
+  senderEui64?: BlzEUI64;
   zdoResponse?: GenericZdoResponse;
 }
 
@@ -81,6 +81,7 @@ export class Driver extends EventEmitter {
   public networkParams: BlzNetworkParameters;
   //// @ts-expect-error XXX: init in startup
   private eui64ToNodeId = new Map<string, number>();
+  private nodeIdToEui64 = new Map<number, BlzEUI64>();
   // @ts-expect-error XXX: init in startup
   public ieee: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
@@ -433,10 +434,7 @@ export class Driver extends EventEmitter {
               const eui64 = zdoResponse[1].eui64;
 
               // update cache with new network address
-              this.eui64ToNodeId.set(
-                this.normalizeIeee(eui64),
-                frame.srcShortAddr,
-              );
+              this.cacheNodeIeee(frame.srcShortAddr, eui64);
 
               this.waitress.resolve({
                 address: eui64,
@@ -464,7 +462,7 @@ export class Driver extends EventEmitter {
             bindingIndex: null,
             addressIndex: null,
             message: frame.message,
-            senderEui64: this.eui64ToNodeId.get(frame.srcShortAddr),
+            senderEui64: this.getCachedEui64(frame.srcShortAddr),
             zdoResponse,
           });
         } else {
@@ -484,7 +482,7 @@ export class Driver extends EventEmitter {
               bindingIndex: null,
               addressIndex: null,
               message: frame.message,
-              senderEui64: this.eui64ToNodeId.get(frame.srcShortAddr),
+              senderEui64: this.getCachedEui64(frame.srcShortAddr),
             });
           }
         }
@@ -544,26 +542,49 @@ export class Driver extends EventEmitter {
     return ieee.replace(/^0x/i, "").toLowerCase();
   }
 
+  private cacheNodeIeee(
+    nwk: number,
+    ieee: BlzEUI64 | ArrayLike<number> | string | number,
+  ): BlzEUI64 {
+    const eui64 =
+      ieee instanceof BlzEUI64
+        ? ieee
+        : new BlzEUI64(
+            typeof ieee === "number"
+              ? ieee.toString(16).padStart(16, "0")
+              : ieee,
+          );
+
+    this.eui64ToNodeId.set(this.normalizeIeee(eui64.toString()), nwk);
+    this.nodeIdToEui64.set(nwk, eui64);
+
+    return eui64;
+  }
+
+  private getCachedEui64(nwk: number): BlzEUI64 | undefined {
+    return this.nodeIdToEui64.get(nwk);
+  }
+
+  private removeCachedNode(nwk: number, ieeeAddr: string): void {
+    this.nodeIdToEui64.delete(nwk);
+    this.eui64ToNodeId.delete(this.normalizeIeee(ieeeAddr));
+  }
+
   public handleNodeJoined(nwk: number, ieee: number): void {
-    const ieeeAddr = ieee.toString(16).padStart(16, "0");
-    const ieeeAddrFull = `0x${ieeeAddr}`;
+    const eui64 = this.cacheNodeIeee(nwk, ieee);
+    const ieeeAddrFull = `0x${eui64.toString()}`;
     logger.debug(`deviceJoined, 0x${nwk.toString(16)}, ${ieeeAddrFull}`, NS);
-    this.eui64ToNodeId.set(this.normalizeIeee(ieeeAddr), nwk);
     this.emit("deviceJoined", nwk, ieeeAddrFull);
   }
 
   public handleNodeLeft(nwk: number, ieeeAddr: string): void {
-    this.eui64ToNodeId.delete(this.normalizeIeee(ieeeAddr));
+    this.removeCachedNode(nwk, ieeeAddr);
     logger.debug(`deviceLeft, 0x${nwk.toString(16)}, ${ieeeAddr}`, NS);
     this.emit("deviceLeft", nwk, ieeeAddr);
   }
 
   public setNode(nwk: number, ieee: BlzEUI64 | number[]): void {
-    if (ieee && !(ieee instanceof BlzEUI64)) {
-      ieee = new BlzEUI64(ieee);
-    }
-
-    this.eui64ToNodeId.set(this.normalizeIeee(ieee.toString()), nwk);
+    this.cacheNodeIeee(nwk, ieee);
   }
 
   public async request(
@@ -712,8 +733,16 @@ export class Driver extends EventEmitter {
   }
 
   public async networkIdToEUI64(nwk: number): Promise<BlzEUI64> {
+    const cached = this.getCachedEui64(nwk);
+
+    if (cached) {
+      return cached;
+    }
+
     for (const [eui64Str, nodeId] of this.eui64ToNodeId) {
-      if (nodeId === nwk) return new BlzEUI64(eui64Str);
+      if (nodeId === nwk) {
+        return this.cacheNodeIeee(nwk, eui64Str);
+      }
     }
 
     const response = await this.blz.execCommand("getEui64ByNodeId", {
@@ -721,10 +750,7 @@ export class Driver extends EventEmitter {
     });
 
     if (response.status === BlzStatus.SUCCESS) {
-      const eui64 = new BlzEUI64(response.eui64);
-      this.eui64ToNodeId.set(this.normalizeIeee(eui64.toString()), nwk);
-
-      return eui64;
+      return this.cacheNodeIeee(nwk, response.eui64);
     } else {
       throw new Error("Unrecognized nodeId:" + nwk);
     }

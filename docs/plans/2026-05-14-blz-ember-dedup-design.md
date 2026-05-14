@@ -148,7 +148,12 @@ Future BLZ refactors should follow these rules:
   and connects a `Blz` instance but a later initialization step fails, it now
   tears down listeners, waiters, watchdogs, and lower transport resources through
   `stop(false)` while preserving the original startup error.
+- Added a reverse node-ID-to-EUI64 cache in the high-level driver. Join,
+  `setNode`, ZDO network-address responses, and `networkIdToEUI64` now update
+  one shared cache path; leave removes both directions so incoming APS messages
+  can carry `senderEui64` without stale entries.
 
 ## Next Steps
 
-1. Audit network-parameter caching gaps against the `ember` adapter patterns.
+1. Continue auditing BLZ driver startup/network cache state that should be reset
+   across fresh network formation or coordinator restart.

@@ -11,6 +11,7 @@ vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
     };
 });
 
+import type {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
 import {BlzOutgoingMessageType, BlzStatus} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame} from "../../../../src/adapter/blz/driver/types/struct";
@@ -53,6 +54,21 @@ describe("BLZ high-level driver lifecycle", () => {
         apsFrame.sequence = 0x7f;
 
         return apsFrame;
+    }
+
+    function makeIncomingApsFrame(srcShortAddr: number): BLZFrameData {
+        return {
+            profileId: 0x0104,
+            clusterId: 0x0006,
+            srcShortAddr,
+            dstShortAddr: 0x0000,
+            srcEp: 1,
+            dstEp: 1,
+            msgType: 0,
+            lqi: 255,
+            rssi: -40,
+            message: Buffer.from([0x18, 0x01, 0x0a]),
+        } as BLZFrameData;
     }
 
     it("clears pending waiters even when BLZ close rejects", async () => {
@@ -133,5 +149,39 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect(blzMock.removeAllListeners).toHaveBeenCalled();
         expect(blzMock.close).toHaveBeenCalledWith(false);
+    });
+
+    it("caches sender EUI64 by node ID for incoming APS messages and clears it on leave", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const incomingMessage = vi.fn();
+        driver.on("incomingMessage", incomingMessage);
+
+        driver.handleNodeJoined(0x3344, 0x123456);
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingApsFrame(0x3344),
+        );
+
+        expect(incomingMessage).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                sender: 0x3344,
+                senderEui64: expect.objectContaining({
+                    value: Buffer.from("0000000000123456", "hex"),
+                }),
+            }),
+        );
+
+        driver.handleNodeLeft(0x3344, "0x0000000000123456");
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingApsFrame(0x3344),
+        );
+
+        expect(incomingMessage).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                sender: 0x3344,
+                senderEui64: undefined,
+            }),
+        );
     });
 });
