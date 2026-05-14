@@ -377,7 +377,7 @@ export class BLZAdapter extends Adapter {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async reset(type: "soft" | "hard"): Promise<void> {
-    return await Promise.reject(new Error("Not supported"));
+    throw new Error("Not supported");
   }
 
   /**

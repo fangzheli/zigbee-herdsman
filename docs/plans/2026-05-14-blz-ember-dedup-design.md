@@ -637,6 +637,9 @@ Future BLZ refactors should follow these rules:
 - Contained BLZ transport frame decoding failures at the receive boundary, so
   unknown or malformed frame IDs are logged and discarded instead of escaping
   from the serial EventEmitter callback.
+- Simplified the BLZ adapter unsupported `reset()` path to throw directly like
+  the other unsupported adapter APIs, removing a stale `return await
+  Promise.reject(...)` pattern.
 
 ## Next Steps
 
