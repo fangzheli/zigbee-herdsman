@@ -811,6 +811,32 @@ describe("BLZ Driver", () => {
       }
     });
 
+    it("should normalize non-Buffer received frames without Buffer.from", () => {
+      const frame = vi.fn();
+      const data = new Uint8Array([0x00, 0x00, 0x03, 0x00, 0x00, 0x00]);
+      blz.on("frame", frame);
+
+      const receivedHandler = serialDriverMock.on.mock.calls.find(
+        (call) => call[0] === "received",
+      )?.[1];
+      const originalFrom = Buffer.from;
+      const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+        if (value === data) {
+          throw new Error("received frame clone used");
+        }
+
+        return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+      }) as typeof Buffer.from);
+
+      try {
+        expect(() => receivedHandler(data as Buffer)).not.toThrow();
+        expect(frame).toHaveBeenCalled();
+        expect(fromSpy).not.toHaveBeenCalledWith(data);
+      } finally {
+        fromSpy.mockRestore();
+      }
+    });
+
     it("should ignore received frames that cannot be decoded", () => {
       const frame = vi.fn();
       const error = vi.spyOn(logger, "error").mockImplementation(() => {});

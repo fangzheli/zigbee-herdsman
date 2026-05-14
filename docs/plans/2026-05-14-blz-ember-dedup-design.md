@@ -794,6 +794,9 @@ Future BLZ refactors should follow these rules:
 - Reworked restore-path backup network-key hex parsing to fill a fixed 16-byte
   buffer directly before `setNetworkKeyInfo()`, avoiding `Buffer.from(hex,
   "hex")` on backup restore.
+- Reworked the BLZ receive-handler non-Buffer fallback to normalize
+  array-like frames with a direct copy helper, avoiding `Buffer.from()` on the
+  EventEmitter receive path.
 
 ## Next Steps
 

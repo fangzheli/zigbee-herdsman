@@ -34,6 +34,19 @@ const MAX_WATCHDOG_FAILURES = 2;
 const WATCHDOG_WAKE_PERIOD = 30; // in sec
 const BLZ_DEFAULT_RADIUS = 0;
 
+function bufferFromBytes(value: ArrayLike<number>): Buffer {
+  const result = Buffer.allocUnsafe(value.length);
+  if (Buffer.isBuffer(value)) {
+    value.copy(result);
+  } else {
+    for (let i = 0; i < value.length; i++) {
+      result[i] = value[i] & 0xff;
+    }
+  }
+
+  return result;
+}
+
 /**
  * Type-specific for BLZ Frames.
  */
@@ -500,7 +513,7 @@ export class Blz extends EventEmitter {
   private onFrameReceived(data: Buffer): void {
     if (!Buffer.isBuffer(data)) {
       logger.error(`Data is not a Buffer. Converting...`, NS);
-      data = Buffer.from(data);
+      data = bufferFromBytes(data as ArrayLike<number>);
     }
     logger.debug(`<== Frame: ${data.toString("hex")}`, NS);
     if (data.length < 6) {
