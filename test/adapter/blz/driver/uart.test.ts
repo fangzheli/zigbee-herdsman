@@ -317,6 +317,21 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should not clean the same serial port twice when close cancels open", async () => {
+      const connect = driver.connect(serialPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.close(false);
+      await expect(connectResult).resolves.toBe("rejected:Connection closed");
+
+      expect(serialPortMock.destroy).toHaveBeenCalledTimes(1);
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+    });
+
     it("should handle disconnection", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
@@ -475,6 +490,21 @@ describe("BLZ Serial Driver", () => {
       expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
       expect(parserMock.reset).toHaveBeenCalled();
       expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should not clean the same TCP socket twice when close cancels open", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.close(false);
+      await expect(connectResult).resolves.toBe("rejected:Connection closed");
+
+      expect(socketPortMock.destroy).toHaveBeenCalledTimes(1);
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
     });
 
     it("should stay closed when TCP connect is closed while ready reset is pending", async () => {

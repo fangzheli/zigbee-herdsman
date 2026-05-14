@@ -117,14 +117,15 @@ export class SerialDriver extends EventEmitter {
 
     let opened = false;
     const cleanupOpen = (): void => {
+      if (this.serialPort !== serialPort) {
+        return;
+      }
+
       this.initialized = false;
       this.cleanupParser();
       this.detachSerialPort();
       serialPort.destroy();
-
-      if (this.serialPort === serialPort) {
-        this.serialPort = undefined;
-      }
+      this.serialPort = undefined;
     };
 
     try {
@@ -173,14 +174,15 @@ export class SerialDriver extends EventEmitter {
     let settled = false;
     const socketPort = this.socketPort!;
     const cleanupOpen = (): void => {
+      if (this.socketPort !== socketPort) {
+        return;
+      }
+
       this.initialized = false;
       this.cleanupParser();
       this.detachSocketPort();
       socketPort.destroy();
-
-      if (this.socketPort === socketPort) {
-        this.socketPort = undefined;
-      }
+      this.socketPort = undefined;
     };
 
     const openSocket = (): Promise<void> =>

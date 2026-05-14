@@ -888,6 +888,9 @@ Future BLZ refactors should follow these rules:
   driver, releasing `connect`/`ready`/open `error`/open `close` handlers as soon
   as ready-time reset succeeds while retaining only runtime `close`/`error`
   handlers until transport close.
+- Made UART serial/TCP open-attempt cleanup ownership-aware, so an explicit
+  `close()` that cancels an in-flight open releases the port once and the
+  abandoned connect path does not detach/destroy the same transport again.
 - Extended shared `Waitress.clear()` to accept an explicit rejection reason and
   wired BLZ adapter, high-level driver, low-level BLZ, and UART cleanup paths to
   preserve stop/close/reset causes instead of reporting generic
