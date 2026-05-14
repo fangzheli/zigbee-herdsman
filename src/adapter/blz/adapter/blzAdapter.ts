@@ -48,6 +48,7 @@ export class BLZAdapter extends Adapter {
   private readonly stopDelay = new CancellableDelay();
   private driverListenersAttached = false;
   private cancelPendingStart?: (error: Error) => void;
+  private startPromise?: Promise<StartResult>;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
@@ -172,6 +173,22 @@ export class BLZAdapter extends Adapter {
    * Adapter methods
    */
   public async start(): Promise<StartResult> {
+    if (this.startPromise) {
+      logger.debug("Adapter start already in progress.", NS);
+      return await this.startPromise;
+    }
+
+    const startPromise = this.performStart().finally(() => {
+      if (this.startPromise === startPromise) {
+        this.startPromise = undefined;
+      }
+    });
+    this.startPromise = startPromise;
+
+    return await startPromise;
+  }
+
+  private async performStart(): Promise<StartResult> {
     this.closing = false;
     this.attachDriverListeners();
     const generation = this.stopGeneration;

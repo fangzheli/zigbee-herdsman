@@ -413,6 +413,9 @@ Future BLZ refactors should follow these rules:
 - Added adapter-level start-operation cancellation, so `BLZAdapter.stop()`
   rejects an in-flight `start()` even while it is still awaiting
   `Driver.startup()`.
+- Coalesced concurrent `BLZAdapter.start()` calls into one start promise, so
+  overlapping starts do not duplicate driver startup or overwrite each other's
+  stop-cancellation hook.
 
 ## Next Steps
 

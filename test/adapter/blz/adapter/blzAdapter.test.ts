@@ -185,6 +185,45 @@ describe("BLZ Adapter", () => {
       expect(driverMock.stop).toHaveBeenCalled();
     });
 
+    it("should coalesce concurrent adapter starts and cancel them together", async () => {
+      driverMock.startup.mockReturnValue(new Promise<StartResult>(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const firstStart = adapter.start();
+      const firstResult = firstStart.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const secondStart = adapter.start();
+      const secondResult = secondStart.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(driverMock.startup).toHaveBeenCalledTimes(1);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observedPromise = Promise.race([
+        Promise.all([firstResult, secondResult]),
+        new Promise((resolve) => setTimeout(() => resolve("pending"), 1)),
+      ]);
+      await vi.advanceTimersByTimeAsync(1);
+      const observed = await observedPromise;
+
+      void firstStart.catch(() => {});
+      void secondStart.catch(() => {});
+
+      expect(observed).toEqual([
+        "rejected:Adapter stopped",
+        "rejected:Adapter stopped",
+      ]);
+      expect(driverMock.stop).toHaveBeenCalled();
+    });
+
     it("should reject queued adapter jobs when stopping", async () => {
       vi.useRealTimers();
       driverMock.stop.mockResolvedValue(undefined);
