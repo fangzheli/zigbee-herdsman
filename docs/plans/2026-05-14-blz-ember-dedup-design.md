@@ -509,6 +509,9 @@ Future BLZ refactors should follow these rules:
 - Added a high-level driver stop barrier, so concurrent `Driver.stop()` calls
   share one lower `Blz.close()` while still applying each caller's stop
   cancellation side effects.
+- Preserved explicit BLZ close events when a `Blz.close(true)` caller joins an
+  already-running silent `Blz.close(false)`, so coalesced close calls do not
+  drop the later caller's notification requirement.
 
 ## Next Steps
 

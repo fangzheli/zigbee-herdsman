@@ -278,6 +278,7 @@ export class Blz extends EventEmitter {
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
   private closePromise?: Promise<void>;
+  private emitCloseWhenCloseCompletes = false;
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private readonly connectOperations = new CancellableOperation();
@@ -550,6 +551,10 @@ export class Blz extends EventEmitter {
   }
 
   public async close(emitClose: boolean): Promise<void> {
+    if (emitClose) {
+      this.emitCloseWhenCloseCompletes = true;
+    }
+
     if (this.closePromise) {
       logger.debug("Close already in progress.", NS);
       return await this.closePromise;
@@ -558,6 +563,7 @@ export class Blz extends EventEmitter {
     const closePromise = this.performClose(emitClose).finally(() => {
       if (this.closePromise === closePromise) {
         this.closePromise = undefined;
+        this.emitCloseWhenCloseCompletes = false;
       }
     });
     this.closePromise = closePromise;
@@ -581,7 +587,7 @@ export class Blz extends EventEmitter {
     try {
       await this.serialDriver.close(emitClose);
     } finally {
-      if (emitClose) {
+      if (this.emitCloseWhenCloseCompletes) {
         this.emit("close");
       }
     }
