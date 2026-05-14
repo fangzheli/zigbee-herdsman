@@ -213,8 +213,9 @@ describe('BLZ Types', () => {
         });
 
         it('should deserialize remaining bytes', () => {
-            const [value] = Bytes.deserialize(Bytes, Buffer.from([0x01, 0x02, 0x03]));
+            const [value, remaining] = Bytes.deserialize(Bytes, Buffer.from([0x01, 0x02, 0x03]));
             expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03]));
+            expect(remaining).toEqual(Buffer.alloc(0));
         });
     });
 

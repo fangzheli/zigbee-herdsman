@@ -561,6 +561,9 @@ Future BLZ refactors should follow these rules:
 - Fixed generic BLZ list serialization to use the declared item type and fixed
   length-prefixed lists to write the actual item count, keeping type
   serialization consistent without retaining unnecessary intermediate arrays.
+- Aligned raw `Bytes.deserialize()` with the generic schema contract by
+  returning an empty remaining buffer, preventing future non-terminal raw byte
+  fields from poisoning subsequent deserialization state.
 - Reworked `BlzEUI64.serialize()` to write the fixed eight-byte reversed value
   directly into a preallocated buffer, avoiding per-byte integer serialization
   and intermediate array churn.

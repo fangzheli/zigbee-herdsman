@@ -290,7 +290,7 @@ export class Bytes {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
-        return [data];
+        return [data, Buffer.alloc(0)];
     }
 }
 
