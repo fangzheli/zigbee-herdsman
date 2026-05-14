@@ -40,6 +40,7 @@ export class SerialDriver extends EventEmitter {
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
   private detachSocketListeners?: () => void;
+  private cancelPendingConnect?: (error: Error) => void;
 
   constructor() {
     super();
@@ -85,30 +86,63 @@ export class SerialDriver extends EventEmitter {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     this.serialPort = new SerialPort(options);
+    const serialPort = this.serialPort;
 
-    this.writer.pipe(this.serialPort);
+    this.writer.pipe(serialPort);
 
-    this.serialPort.pipe(this.parser);
+    serialPort.pipe(this.parser);
     this.parser.on("parsed", this.onParsedHandler);
 
+    let settled = false;
+    const cleanupOpen = (): void => {
+      this.initialized = false;
+      this.cleanupParser();
+      this.detachSerialPort();
+      serialPort.destroy();
+
+      if (this.serialPort === serialPort) {
+        this.serialPort = undefined;
+      }
+
+      this.cancelPendingConnect = undefined;
+    };
+    const cancelled = new Promise<never>((_, reject): void => {
+      this.cancelPendingConnect = (error: Error): void => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        cleanupOpen();
+        reject(error);
+      };
+    });
+
     try {
-      await this.serialPort.asyncOpen();
+      await Promise.race([serialPort.asyncOpen(), cancelled]);
+
+      if (settled || this.serialPort !== serialPort) {
+        throw new Error("Connection closed");
+      }
+
+      settled = true;
+      this.cancelPendingConnect = undefined;
       logger.debug("Serialport opened", NS);
 
-      this.serialPort.once("close", this.onPortCloseHandler);
-      this.serialPort.on("error", this.onPortErrorHandler);
+      serialPort.once("close", this.onPortCloseHandler);
+      serialPort.on("error", this.onPortErrorHandler);
 
       // reset
       // await this.reset();
 
       this.initialized = true;
     } catch (error) {
-      this.initialized = false;
-      // Clean up pipes and port on failure to prevent orphaned streams
-      this.cleanupParser();
-      this.detachSerialPort();
-      this.serialPort.destroy();
-      this.serialPort = undefined;
+      if (!settled) {
+        settled = true;
+        // Clean up pipes and port on failure to prevent orphaned streams
+        cleanupOpen();
+      }
+
       throw error;
     }
   }
@@ -139,6 +173,7 @@ export class SerialDriver extends EventEmitter {
         this.detachSocketPort();
         this.socketPort?.destroy();
         this.socketPort = undefined;
+        this.cancelPendingConnect = undefined;
 
         reject(err);
       };
@@ -169,9 +204,11 @@ export class SerialDriver extends EventEmitter {
 
         settled = true;
         this.initialized = true;
+        this.cancelPendingConnect = undefined;
 
         resolve();
       };
+      this.cancelPendingConnect = openError;
       this.detachSocketListeners = (): void => {
         socketPort.off("connect", onConnect);
         socketPort.off("ready", onReady);
@@ -289,6 +326,7 @@ export class SerialDriver extends EventEmitter {
 
   public async close(emitClose: boolean): Promise<void> {
     logger.debug("Closing UART", NS);
+    this.cancelPendingConnect?.(new Error("Connection closed"));
     this.cancelPendingOperations();
     this.cleanupParser();
 

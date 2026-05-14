@@ -367,6 +367,9 @@ Future BLZ refactors should follow these rules:
   BLZ adapter stop and BLZ transport close now pass domain-specific cancellation
   errors so callers do not stay pending behind lower-layer operations after
   lifecycle teardown begins.
+- Added UART open-phase cancellation for both serial and TCP connections, so
+  `SerialDriver.close()` rejects an in-flight `connect()` before the port is
+  fully opened/ready and releases parser, pipe, and port/socket references.
 
 ## Next Steps
 

@@ -213,6 +213,30 @@ describe("BLZ Serial Driver", () => {
       expect(serialPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should reject pending serial connect when closing before open finishes", async () => {
+      const connect = driver.connect(serialPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.close(false);
+      const observed = await Promise.race([
+        connectResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection closed");
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should handle disconnection", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
@@ -321,6 +345,27 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
       expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should reject pending TCP connect when closing before ready", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.close(false);
+      const observed = await Promise.race([
+        connectResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection closed");
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(parserMock.reset).toHaveBeenCalled();
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
