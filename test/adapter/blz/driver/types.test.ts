@@ -599,6 +599,21 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should create from hex string without Buffer.from', () => {
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    const eui = new BlzEUI64('0102030405060708');
+
+                    expect(eui.toString()).toBe('0102030405060708');
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
+
             it('should create from array', () => {
                 const eui = new BlzEUI64([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
                 expect(eui.toString()).toBe('0102030405060708');

@@ -20,6 +20,33 @@ function fixedEui64BufferFromBytes(value: ArrayLike<number>): Buffer {
     return result;
 }
 
+function hexNibble(value: number): number {
+    if (value >= 0x30 && value <= 0x39) {
+        return value - 0x30;
+    }
+    if (value >= 0x41 && value <= 0x46) {
+        return value - 0x41 + 10;
+    }
+    if (value >= 0x61 && value <= 0x66) {
+        return value - 0x61 + 10;
+    }
+
+    throw new Error('Incorrect value passed');
+}
+
+function fixedEui64BufferFromHex(value: string): Buffer {
+    if (value.length !== 16) {
+        throw new Error('Incorrect value passed');
+    }
+
+    const result = Buffer.allocUnsafe(8);
+    for (let i = 0; i < result.length; i++) {
+        result[i] = (hexNibble(value.charCodeAt(i * 2)) << 4) | hexNibble(value.charCodeAt(i * 2 + 1));
+    }
+
+    return result;
+}
+
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     private readonly _value: Buffer;
 
@@ -29,10 +56,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
             this._value = fixedEui64BufferFromBytes(value._value);
         } else if (typeof value === 'string') {
             if (value.startsWith('0x')) value = value.slice(2);
-            if (value.length !== 16) {
-                throw new Error('Incorrect value passed');
-            }
-            this._value = Buffer.from(value, 'hex');
+            this._value = fixedEui64BufferFromHex(value);
         } else {
             this._value = fixedEui64BufferFromBytes(value);
         }

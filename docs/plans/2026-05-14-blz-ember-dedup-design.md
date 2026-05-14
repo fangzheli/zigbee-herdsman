@@ -789,6 +789,8 @@ Future BLZ refactors should follow these rules:
 - Reworked `BlzEUI64` array, copy-constructor, and value-getter defensive
   copies through a fixed 8-byte helper, keeping identity storage isolated
   without generic `Buffer.from()` source-buffer clones.
+- Reworked `BlzEUI64` hex-string parsing to fill the fixed 8-byte identity
+  buffer directly, avoiding `Buffer.from(hex, "hex")` in address construction.
 
 ## Next Steps
 
