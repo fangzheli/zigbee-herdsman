@@ -256,6 +256,7 @@ export class Blz extends EventEmitter {
   private closePromise?: Promise<void>;
   private emitCloseWhenCloseCompletes = false;
   private watchdogGeneration = 0;
+  private watchdogPromise?: Promise<void>;
   private readonly connectRetryDelay = new CancellableDelay();
   private readonly connectOperations = new CancellableOperation();
   private readonly connectResetOperations = new CancellableOperation();
@@ -479,6 +480,7 @@ export class Blz extends EventEmitter {
 
   private clearWatchdogTimer(): void {
     this.watchdogGeneration += 1;
+    this.watchdogPromise = undefined;
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = undefined;
@@ -873,6 +875,24 @@ export class Blz extends EventEmitter {
   }
 
   private async watchdogHandler(): Promise<void> {
+    if (this.watchdogPromise) {
+      logger.debug("Watchdog heartbeat already in progress", NS);
+      return;
+    }
+
+    const watchdogPromise = this.performWatchdogHeartbeat();
+    this.watchdogPromise = watchdogPromise;
+
+    try {
+      await watchdogPromise;
+    } finally {
+      if (this.watchdogPromise === watchdogPromise) {
+        this.watchdogPromise = undefined;
+      }
+    }
+  }
+
+  private async performWatchdogHeartbeat(): Promise<void> {
     const watchdogGeneration = this.watchdogGeneration;
     logger.debug(`Time to watchdog ... ${this.failures}`, NS);
 

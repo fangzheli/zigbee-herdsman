@@ -599,6 +599,32 @@ describe("BLZ Driver", () => {
 
       expect(reset).not.toHaveBeenCalled();
     });
+
+    it("should skip overlapping watchdog heartbeats", async () => {
+      let finishHeartbeat: (() => void) | undefined;
+      const watchdog = (
+        blz as unknown as {watchdogHandler: () => Promise<void>}
+      ).watchdogHandler.bind(blz);
+      const getVersion = vi.spyOn(blz, "getVersion")
+        .mockReturnValueOnce(
+          new Promise<void>((resolve) => {
+            finishHeartbeat = resolve;
+          }),
+        )
+        .mockResolvedValueOnce(undefined);
+
+      const firstHeartbeat = watchdog();
+      await vi.advanceTimersByTimeAsync(0);
+      await watchdog();
+
+      expect(getVersion).toHaveBeenCalledTimes(1);
+
+      finishHeartbeat?.();
+      await firstHeartbeat;
+      await watchdog();
+
+      expect(getVersion).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("Value operations", () => {

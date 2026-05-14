@@ -829,6 +829,9 @@ Future BLZ refactors should follow these rules:
   wraps send/wait failures, so command callers still get the existing
   high-level failure message without losing the underlying UART or waiter
   evidence.
+- Coalesced low-level BLZ watchdog heartbeats so a hung `getVersion()` probe
+  cannot accumulate overlapping heartbeat commands or queued promises; watchdog
+  generation changes still release the guard for close/reconnect boundaries.
 
 ## Next Steps
 
