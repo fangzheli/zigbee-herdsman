@@ -76,6 +76,7 @@ export class BLZAdapter extends Adapter {
   private readonly runningOperations = new CancellableOperation();
   private startPromise?: Promise<StartResult>;
   private stopPromise?: Promise<void>;
+  private runningCancellationError?: Error;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
@@ -222,6 +223,7 @@ export class BLZAdapter extends Adapter {
 
   private async performStart(): Promise<StartResult> {
     this.closing = false;
+    this.runningCancellationError = undefined;
     this.attachDriverListeners();
     const generation = this.stopGeneration;
     try {
@@ -257,10 +259,10 @@ export class BLZAdapter extends Adapter {
     this.closing = true;
     this.stopGeneration += 1;
     const stopError = new Error("Adapter stopped");
-    this.stopDelay.cancel();
     this.queue.clear(stopError);
     this.waitress.clear();
     this.cancelRunningOperations(stopError);
+    this.stopDelay.cancel();
 
     try {
       await this.driver.stop();
@@ -278,10 +280,10 @@ export class BLZAdapter extends Adapter {
     const closeError = new Error("Adapter disconnected");
     this.closing = true;
     this.stopGeneration += 1;
-    this.stopDelay.cancel();
     this.queue.clear(closeError);
     this.waitress.clear();
     this.cancelRunningOperations(closeError);
+    this.stopDelay.cancel();
     this.detachDriverListeners();
 
     if (!wasClosing) {
@@ -291,11 +293,12 @@ export class BLZAdapter extends Adapter {
 
   private throwIfStopped(generation: number): void {
     if (this.closing || generation !== this.stopGeneration) {
-      throw new Error("Adapter stopped");
+      throw this.runningCancellationError ?? new Error("Adapter stopped");
     }
   }
 
   private cancelRunningOperations(error: Error): void {
+    this.runningCancellationError = error;
     this.runningOperations.cancel(error);
   }
 
@@ -306,7 +309,7 @@ export class BLZAdapter extends Adapter {
     return await this.runningOperations.run(
       operation,
       () => !this.closing && generation === this.stopGeneration,
-      () => new Error("Adapter stopped"),
+      () => this.runningCancellationError ?? new Error("Adapter stopped"),
     );
   }
 
@@ -322,7 +325,7 @@ export class BLZAdapter extends Adapter {
     );
 
     if (!completed) {
-      throw new Error("Adapter stopped");
+      throw this.runningCancellationError ?? new Error("Adapter stopped");
     }
 
     this.throwIfStopped(generation);

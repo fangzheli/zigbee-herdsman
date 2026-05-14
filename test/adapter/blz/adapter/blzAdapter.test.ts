@@ -210,6 +210,31 @@ describe("BLZ Adapter", () => {
       expect(observed).toBe("rejected:Adapter stopped");
     });
 
+    it("should cancel the startup settle delay as disconnected when the driver closes", async () => {
+      driverMock.startup.mockResolvedValue("resumed");
+      const disconnected = vi.fn();
+      adapter.on("disconnected", disconnected);
+
+      const start = adapter.start();
+      const startResult = start.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      driverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        startResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void start.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter disconnected");
+      expect(disconnected).toHaveBeenCalledTimes(1);
+    });
+
     it("should cancel adapter start while driver startup is pending", async () => {
       driverMock.startup.mockReturnValue(new Promise<StartResult>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);

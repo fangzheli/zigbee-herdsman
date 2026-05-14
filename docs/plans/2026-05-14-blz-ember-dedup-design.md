@@ -865,6 +865,9 @@ Future BLZ refactors should follow these rules:
 - Preserved the specific startup cancellation reason when reset interrupts a
   high-level startup delay, and treated reset-cancelled startup cleanup as
   internal reset cleanup so the reset recovery can still restart the driver.
+- Preserved adapter-level running-operation cancellation reasons across
+  cancellable settle delays, so an unexpected driver close during adapter start
+  rejects as `Adapter disconnected` instead of being reported as a normal stop.
 
 ## Next Steps
 
