@@ -109,13 +109,16 @@ Future BLZ refactors should follow these rules:
 - Changed `BLZAdapter.start()` to reset the `closing` state after a previous
   `stop()`, with a regression test proving a driver close after restart still
   emits `disconnected`.
+- Extracted BLZ NWK update channel-change payload normalization and parsing into
+  `parseNwkUpdateChannelChange()`. The adapter now uses that pure helper before
+  broadcasting the canonical payload through `sendZdoFrame()`.
+- Added pure tests for NWK update payload layouts with and without TSN,
+  `nwkManagerAddr`, and ZDO overhead, plus non-channel-change, multi-channel
+  mask, empty-mask, and invalid-length rejection cases.
 
 ## Next Steps
 
-1. Extract NWK update payload normalization/parsing into pure helpers. That
-   block is currently long, has multiple layouts, and can be tested without
-   hardware.
-2. Add lifecycle tests around `BLZAdapter.stop()`, `Driver.stop()`, `Blz.close()`,
+1. Add lifecycle tests around `BLZAdapter.stop()`, `Driver.stop()`, `Blz.close()`,
    and `SerialDriver.close()` to lock down waitress/listener/timer cleanup.
-3. Only then consider parser/CRC/stuffing extraction, because the driver layer is
+2. Only then consider parser/CRC/stuffing extraction, because the driver layer is
    closer to hardware and easier to regress.

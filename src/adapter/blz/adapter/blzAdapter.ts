@@ -25,6 +25,7 @@ import {
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzStatus } from "../driver/types";
 import type { BlzApsFrame } from "../driver/types/struct";
+import { parseNwkUpdateChannelChange } from "./nwkUpdate";
 
 const NS = "zh:blz";
 
@@ -394,234 +395,62 @@ export class BLZAdapter extends Adapter {
     rawPayload: Buffer,
     disableResponse: boolean,
   ): Promise<void> {
-    let payload = rawPayload;
-
-    /*───────────────────────────────────────────────────────────────────────────
-     * 0.  Snapshot of the raw incoming frame                                     */
-    let buf = Buffer.from(rawPayload); // safe copy
+    const raw = Buffer.from(rawPayload);
     logger.debug(
-      `[BLZ] NWK_UPDATE_REQUEST raw  len=${buf.length}  ${buf.toString("hex")}`,
+      `[BLZ] NWK_UPDATE_REQUEST raw  len=${raw.length}  ${raw.toString("hex")}`,
       NS,
     );
-    // First, determine the expected lengths for different scenarios
-    const baseLen = this.hasZdoMessageOverhead ? 9 : 8; // with TSN and manager addr
-    const baseLenNoMgr = this.hasZdoMessageOverhead ? 7 : 6; // with TSN, no manager addr
-    const baseLenNoTsn = this.hasZdoMessageOverhead ? 8 : 7; // no TSN, with manager addr
-    const baseLenNoTsnNoMgr = this.hasZdoMessageOverhead ? 6 : 5; // no TSN, no manager addr
 
-    // Determine what's missing based on current length
-    let needsTsn = false;
-    let needsMgrAddr = false;
+    const channelChange = parseNwkUpdateChannelChange(
+      rawPayload,
+      this.hasZdoMessageOverhead,
+    );
+    const payload = channelChange.payload;
 
-    if (this.hasZdoMessageOverhead) {
-      // Expected scenarios when hasZdoMessageOverhead is true:
-      // 9 bytes: TSN + 4 bytes mask + 1 byte duration + 1 byte updateId + 2 bytes mgr addr
-      // 7 bytes: TSN + 4 bytes mask + 1 byte duration + 1 byte updateId (missing mgr addr)
-      // 8 bytes: 4 bytes mask + 1 byte duration + 1 byte updateId + 2 bytes mgr addr (missing TSN)
-      // 6 bytes: 4 bytes mask + 1 byte duration + 1 byte updateId (missing both TSN and mgr addr)
-
-      switch (buf.length) {
-        case 9:
-          // Perfect - has both TSN and manager addr
-          break;
-        case 7:
-          // Has TSN, missing manager addr
-          needsMgrAddr = true;
-          break;
-        case 8:
-          // Missing TSN, has manager addr
-          needsTsn = true;
-          break;
-        case 6:
-          // Missing both TSN and manager addr
-          needsTsn = true;
-          needsMgrAddr = true;
-          break;
-        default:
-          throw new Error(
-            `Unexpected NWK_UPDATE_REQUEST length ${buf.length} bytes. ` +
-              `Expected 6, 7, 8, or 9 bytes when hasZdoMessageOverhead=true`,
-          );
-      }
-    } else {
-      // Expected scenarios when hasZdoMessageOverhead is false:
-      // 8 bytes: 4 bytes mask + 1 byte duration + 1 byte updateId + 2 bytes mgr addr
-      // 6 bytes: 4 bytes mask + 1 byte duration + 1 byte updateId (missing mgr addr)
-
-      switch (buf.length) {
-        case 8:
-          // Perfect - has manager addr
-          break;
-        case 6:
-          // Missing manager addr
-          needsMgrAddr = true;
-          break;
-        default:
-          throw new Error(
-            `Unexpected NWK_UPDATE_REQUEST length ${buf.length} bytes. ` +
-              `Expected 6 or 8 bytes when hasZdoMessageOverhead=false`,
-          );
-      }
-    }
-
-    // Add TSN if needed
-    if (needsTsn) {
-      const tmp = Buffer.alloc(buf.length + 1);
-      tmp[0] = 0x00; // placeholder TSN – overwritten later
-      buf.copy(tmp, 1);
-      buf = tmp;
-      logger.debug(
-        `[BLZ]  +TSN  -> len=${buf.length}  ${buf.toString("hex")}`,
-        NS,
-      );
-    }
-
-    // Add manager address if needed
-    if (needsMgrAddr) {
-      const tmp = Buffer.alloc(buf.length + 2);
-      buf.copy(tmp, 0);
-      tmp.writeUInt16LE(0xffff, buf.length);
-      buf = tmp;
-      logger.debug(
-        `[BLZ]  +mgr -> len=${buf.length}  ${buf.toString("hex")}`,
-        NS,
-      );
-    }
-
-    // Final length validation
-    const expectedFinalLen = this.hasZdoMessageOverhead ? 9 : 8;
-    if (buf.length !== expectedFinalLen) {
-      throw new Error(
-        `Invalid NWK_UPDATE_REQUEST length ${buf.length} bytes ` +
-          `(expected ${expectedFinalLen}) after normalisation`,
-      );
-    }
-    /*  Canonical buffer is ready – hand it to the parser and keep it for TX. */
-    payload = buf;
     logger.debug(
       `[BLZ] Canonical payload len=${payload.length} ${payload.toString("hex")}`,
       NS,
     );
-
-    /*───────────────────────────────────────────────────────────────────────────
-     * 3.  Parse fields                                                          */
-    let offset = this.hasZdoMessageOverhead ? 1 : 0; // skip TSN if present
-
-    const need = (n: number) => {
-      if (payload.length < offset + n) {
-        throw new Error(
-          `Need ${n} bytes at offset ${offset}, only ` +
-            `${payload.length} available`,
-        );
-      }
-    };
-
-    need(4);
-    const scanChannelsMask = payload.readUInt32LE(offset);
-    offset += 4;
-
-    /* Two layouts exist in the wild:
-              A) Z‑Stack “channel change”   :  scanDuration (=0xFE)  nwkUpdateId
-              B) Ember  “energy scan”       :  scanCount   scanDuration   nwkUpdateId
-          Distinguish by checking the first byte after the mask: 0xFE → layout A. */
-    need(1);
-    let scanDuration: number;
-    let scanCount = 0; // default when absent
-    let nwkUpdateId: number;
-
-    const byte5 = payload.readUInt8(offset);
-    if (byte5 === 0xfe) {
-      /* Layout A */
-      scanDuration = byte5;
-      offset += 1;
-
-      need(1);
-      nwkUpdateId = payload.readUInt8(offset);
-      offset += 1;
-    } else {
-      /* Layout B */
-      scanCount = byte5;
-      offset += 1;
-
-      need(1);
-      scanDuration = payload.readUInt8(offset);
-      offset += 1;
-
-      need(1);
-      nwkUpdateId = payload.readUInt8(offset);
-      offset += 1;
-    }
-
-    need(2);
-    const nwkManagerAddr = payload.readUInt16LE(offset);
-    offset += 2;
-
     logger.debug(
-      `[BLZ] Parsed → mask=0x${scanChannelsMask.toString(16)}, ` +
-        `duration=0x${scanDuration.toString(16)}, count=${scanCount}, ` +
-        `updateId=${nwkUpdateId}, manager=0x${nwkManagerAddr.toString(16)}`,
+      `[BLZ] Parsed -> mask=0x${channelChange.scanChannelsMask.toString(16)}, ` +
+        `duration=0x${channelChange.scanDuration.toString(16)}, ` +
+        `updateId=${channelChange.nwkUpdateId}, ` +
+        `manager=0x${channelChange.nwkManagerAddr.toString(16)}`,
       NS,
     );
 
-    /*───────────────────────────────────────────────────────────────────────────
-     * 4.  Validate for *channel‑change* requests                                */
-    if (scanDuration !== 0xfe) {
-      throw new Error(
-        `scanDuration 0x${scanDuration.toString(16)} ≠ 0xFE; ` +
-          `this adapter only handles channel‑change requests.`,
-      );
-    }
-    if (nwkUpdateId === 0) {
+    if (channelChange.nwkUpdateId === 0) {
       logger.warning(`[BLZ] nwkUpdateId == 0 (unusual but allowed)`, NS);
     }
 
-    /*  Extract the single channel from the mask (must have exactly one bit).  */
-    let newChannel = -1;
-    for (let i = 0; i < 32; i++) {
-      if ((scanChannelsMask >>> i) & 1) {
-        if (newChannel !== -1) {
-          throw new Error(
-            `scanChannelsMask 0x${scanChannelsMask.toString(16)} ` +
-              `has more than one bit set`,
-          );
-        }
-        newChannel = i;
-      }
-    }
-    if (newChannel === -1) {
-      throw new Error(
-        `scanChannelsMask 0x${scanChannelsMask.toString(16)} has no bits set`,
-      );
-    }
-
     logger.info(
-      `[BLZ] Channel‑change request → channel ${newChannel}, ` +
-        `nwkUpdateId=${nwkUpdateId}`,
+      `[BLZ] Channel-change request -> channel ${channelChange.channel}, ` +
+        `nwkUpdateId=${channelChange.nwkUpdateId}`,
       NS,
     );
 
-    /*───────────────────────────────────────────────────────────────────────────
-     * 5.  Broadcast the request with the SAME buffer (overwrite TSN now)       */
     await this.queue.execute(async () => {
       this.checkInterpanLock();
       const frame = this.driver.makeApsFrame(clusterId, disableResponse);
-      payload[0] = frame.sequence; // real TSN
 
-      logger.debug(
-        () =>
-          `~~~> [ZDO NWK_UPDATE_REQUEST BROADCAST to=${networkAddress} ` +
-          `payload=${payload.toString("hex")}]`,
-        NS,
+      if (this.hasZdoMessageOverhead) {
+        payload[0] = frame.sequence;
+      }
+
+      await this.sendZdoFrame(
+        ZSpec.BLANK_EUI64,
+        networkAddress,
+        Zdo.ClusterId[clusterId],
+        frame,
+        payload,
+        undefined,
       );
-
-      const ok = await this.driver.brequest(networkAddress, frame, payload);
-      if (!ok) throw new Error("Failed to broadcast NWK_UPDATE_REQUEST");
     }, networkAddress);
 
-    /*───────────────────────────────────────────────────────────────────────────
-     * 6.  Perform the local channel change on BLZ hardware                     */
-    
-    await this.handleChannelChange(newChannel, nwkUpdateId);
+    await this.handleChannelChange(
+      channelChange.channel,
+      channelChange.nwkUpdateId,
+    );
   }
 
   /**
