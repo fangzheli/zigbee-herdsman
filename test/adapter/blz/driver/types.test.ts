@@ -337,6 +337,15 @@ describe('BLZ Types', () => {
                 Buffer.from([0x01, 0x34, 0x12]),
             );
         });
+
+        it('should reject unsupported multi-address modes', () => {
+            expect(() =>
+                BlzMultiAddress.serialize(BlzMultiAddress, {
+                    addrmode: 2,
+                    nwk: 0x1234,
+                }),
+            ).toThrow('Unsupported BLZ multi-address mode: 2');
+        });
     });
 
     describe('int_t valueToName', () => {

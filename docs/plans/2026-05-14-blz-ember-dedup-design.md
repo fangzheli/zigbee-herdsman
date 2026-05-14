@@ -567,6 +567,9 @@ Future BLZ refactors should follow these rules:
   emission stays owned by the adapter's attached driver listener.
 - Removed unused public BLZ transport leftovers (`cmdSeq` and `makeZDOframe()`),
   reducing mutable and command-construction surface not owned by current flows.
+- Removed unused BLZ transport ZDO frame-data classes and made
+  `BlzMultiAddress` reject unsupported address modes instead of silently
+  serializing them as group/NWK-style addresses.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot

@@ -12,10 +12,6 @@ import {
   FRAME_NAMES_BY_ID,
   FRAMES,
   ParamsDesc,
-  ZDOREQUEST_NAME_BY_ID,
-  ZDOREQUESTS,
-  ZDORESPONSE_NAME_BY_ID,
-  ZDORESPONSES,
 } from "./commands";
 import * as t from "./types";
 import { BlzOutgoingMessageType, BlzStatus } from "./types/named";
@@ -143,118 +139,6 @@ export class BLZFrameData {
     }
 
     return result;
-  }
-
-  get id(): number {
-    return this._id_;
-  }
-}
-
-export class BLZZDORequestFrameData {
-  _cls_: string;
-  _id_: number;
-  _isRequest_: boolean;
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-  [name: string]: any;
-
-  static getFrame(key: string | number): BLZFrameDesc {
-    const name = typeof key == "string" ? key : ZDOREQUEST_NAME_BY_ID[key];
-    const frameDesc = ZDOREQUESTS[name];
-    if (!frameDesc)
-      throw new Error(`Unrecognized ZDOFrame from FrameID ${key}`);
-    return frameDesc;
-  }
-
-  constructor(
-    key: string | number,
-    isRequest: boolean,
-    params: ParamsDesc | Buffer,
-  ) {
-    if (typeof key == "string") {
-      this._cls_ = key;
-      this._id_ = ZDOREQUESTS[this._cls_].ID;
-    } else {
-      this._id_ = key;
-      this._cls_ = ZDOREQUEST_NAME_BY_ID[key];
-    }
-
-    this._isRequest_ = isRequest;
-    const frame = BLZZDORequestFrameData.getFrame(key);
-    const frameDesc = this._isRequest_
-      ? frame.request || {}
-      : frame.response || {};
-    if (Buffer.isBuffer(params)) {
-      let data = params;
-      for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-        [this[prop], data] = frameDesc[prop].deserialize(frameDesc[prop], data);
-      }
-    } else {
-      for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-        this[prop] = params[prop];
-      }
-    }
-  }
-
-  serialize(): Buffer {
-    const frame = BLZZDORequestFrameData.getFrame(this._cls_);
-    const frameDesc = this._isRequest_
-      ? frame.request || {}
-      : frame.response || {};
-    return serializeFrameFields(frameDesc, this);
-  }
-
-  get name(): string {
-    return this._cls_;
-  }
-
-  get id(): number {
-    return this._id_;
-  }
-}
-
-export class BLZZDOResponseFrameData {
-  _cls_: string;
-  _id_: number;
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-  [name: string]: any;
-
-  static getFrame(key: string | number): ParamsDesc {
-    const name = typeof key == "string" ? key : ZDORESPONSE_NAME_BY_ID[key];
-    const frameDesc = ZDORESPONSES[name];
-    if (!frameDesc)
-      throw new Error(`Unrecognized ZDOFrame from FrameID ${key}`);
-    return frameDesc.params;
-  }
-
-  constructor(key: string | number, params: ParamsDesc | Buffer) {
-    if (typeof key == "string") {
-      this._cls_ = key;
-      this._id_ = ZDORESPONSES[this._cls_].ID;
-    } else {
-      this._id_ = key;
-      this._cls_ = ZDORESPONSE_NAME_BY_ID[key];
-    }
-
-    const frameDesc = BLZZDOResponseFrameData.getFrame(key);
-    if (Buffer.isBuffer(params)) {
-      let data = params;
-      for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-        [this[prop], data] = frameDesc[prop].deserialize(frameDesc[prop], data);
-      }
-    } else {
-      for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-        this[prop] = params[prop];
-      }
-    }
-  }
-
-  serialize(): Buffer {
-    const frameDesc = BLZZDOResponseFrameData.getFrame(this._cls_);
-    return serializeFrameFields(frameDesc, this);
-  }
-
-  get name(): string {
-    return this._cls_;
   }
 
   get id(): number {

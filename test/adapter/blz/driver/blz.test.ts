@@ -97,6 +97,12 @@ describe("BLZ Driver", () => {
       expect(source).not.toContain("public waitFor(");
       expect(source).not.toContain("cmdSeq");
       expect(source).not.toContain("makeZDOframe(");
+      expect(source).not.toContain("BLZZDORequestFrameData");
+      expect(source).not.toContain("BLZZDOResponseFrameData");
+      expect(source).not.toContain("ZDOREQUESTS");
+      expect(source).not.toContain("ZDOREQUEST_NAME_BY_ID");
+      expect(source).not.toContain("ZDORESPONSES");
+      expect(source).not.toContain("ZDORESPONSE_NAME_BY_ID");
 
       const version = blz.getVersionSnapshot();
       version.product = 99;
