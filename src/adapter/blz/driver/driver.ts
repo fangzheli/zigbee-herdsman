@@ -88,7 +88,7 @@ export class Driver extends EventEmitter {
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
   private cancelPendingResetForce?: (error: Error) => void;
-  private cancelPendingStartupConnect?: (error: Error) => void;
+  private cancelPendingStartupOperation?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestRetryDelay = new CancellableDelay();
@@ -270,7 +270,7 @@ export class Driver extends EventEmitter {
       this.resetDelay.cancel();
       this.startupDelay.cancel();
       this.cancelPendingResetForce?.(new Error("Driver stopped"));
-      this.cancelPendingStartupConnect?.(new Error("Driver stopped"));
+      this.cancelPendingStartupOperation?.(new Error("Driver stopped"));
     }
 
     try {
@@ -330,25 +330,10 @@ export class Driver extends EventEmitter {
       blz.on("close", this.onBlzCloseHandler);
 
       try {
-        let rejectStartupConnect: ((error: Error) => void) | undefined;
-        const startupConnectCancelled = new Promise<never>((_, reject): void => {
-          rejectStartupConnect = reject;
-          this.cancelPendingStartupConnect = reject;
-        });
-
-        try {
-          await Promise.race([
-            blz.connect(this.serialOpt),
-            startupConnectCancelled,
-          ]);
-        } finally {
-          if (
-            rejectStartupConnect &&
-            this.cancelPendingStartupConnect === rejectStartupConnect
-          ) {
-            this.cancelPendingStartupConnect = undefined;
-          }
-        }
+        await this.runStartupOperation(
+          () => blz.connect(this.serialOpt),
+          startupStopGeneration,
+        );
       } catch (error) {
         logger.debug(`BLZ could not connect: ${error}`, NS);
         throw error;
@@ -357,7 +342,10 @@ export class Driver extends EventEmitter {
 
       blz.on("reset", this.onBlzResetHandler);
 
-      await blz.forceReset();
+      await this.runStartupOperation(
+        () => blz.forceReset(),
+        startupStopGeneration,
+      );
       await this.waitForStartupDelay(2000, startupStopGeneration);
 
       await this.addEndpoint({
@@ -890,6 +878,36 @@ export class Driver extends EventEmitter {
 
     if (!stillActive) {
       throw new Error("Driver stopped");
+    }
+  }
+
+  private async runStartupOperation<T>(
+    operation: () => Promise<T>,
+    startupStopGeneration: number,
+  ): Promise<T> {
+    this.throwIfStartupCancelled(startupStopGeneration);
+
+    let rejectStartupOperation: ((error: Error) => void) | undefined;
+    const startupOperationCancelled = new Promise<never>((_, reject): void => {
+      rejectStartupOperation = reject;
+      this.cancelPendingStartupOperation = reject;
+    });
+
+    try {
+      const result = await Promise.race([
+        operation(),
+        startupOperationCancelled,
+      ]);
+      this.throwIfStartupCancelled(startupStopGeneration);
+
+      return result;
+    } finally {
+      if (
+        rejectStartupOperation &&
+        this.cancelPendingStartupOperation === rejectStartupOperation
+      ) {
+        this.cancelPendingStartupOperation = undefined;
+      }
     }
   }
 

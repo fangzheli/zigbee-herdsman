@@ -383,6 +383,10 @@ Future BLZ refactors should follow these rules:
 - Added a high-level driver reset-force abort, so `Driver.stop()` resolves an
   in-flight `Driver.reset()` that is still awaiting `Blz.forceReset()` and
   clears the BLZ reset-state flag.
+- Generalized the high-level startup cancellation path into
+  `runStartupOperation()`, and used it for both `Blz.connect()` and
+  `Blz.forceReset()` so startup cannot remain pending behind either lower-layer
+  operation after stop begins.
 
 ## Next Steps
 
