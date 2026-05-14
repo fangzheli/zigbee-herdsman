@@ -554,8 +554,19 @@ export class Driver extends EventEmitter {
               ? ieee.toString(16).padStart(16, "0")
               : ieee,
           );
+    const normalized = this.normalizeIeee(eui64.toString());
+    const previousEui64 = this.nodeIdToEui64.get(nwk);
+    const previousNwk = this.eui64ToNodeId.get(normalized);
 
-    this.eui64ToNodeId.set(this.normalizeIeee(eui64.toString()), nwk);
+    if (previousEui64) {
+      this.eui64ToNodeId.delete(this.normalizeIeee(previousEui64.toString()));
+    }
+
+    if (previousNwk !== undefined && previousNwk !== nwk) {
+      this.nodeIdToEui64.delete(previousNwk);
+    }
+
+    this.eui64ToNodeId.set(normalized, nwk);
     this.nodeIdToEui64.set(nwk, eui64);
 
     return eui64;

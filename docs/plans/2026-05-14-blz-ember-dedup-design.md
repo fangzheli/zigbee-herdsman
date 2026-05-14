@@ -151,7 +151,8 @@ Future BLZ refactors should follow these rules:
 - Added a reverse node-ID-to-EUI64 cache in the high-level driver. Join,
   `setNode`, ZDO network-address responses, and `networkIdToEUI64` now update
   one shared cache path; leave removes both directions so incoming APS messages
-  can carry `senderEui64` without stale entries.
+  can carry `senderEui64` without stale entries. Re-caching a node ID with a new
+  EUI64 also removes the old EUI64 mapping to avoid stale sends and cache growth.
 
 ## Next Steps
 

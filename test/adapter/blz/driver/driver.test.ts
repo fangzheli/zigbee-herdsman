@@ -13,7 +13,7 @@ vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
 
 import type {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
-import {BlzOutgoingMessageType, BlzStatus} from "../../../../src/adapter/blz/driver/types";
+import {BlzEUI64, BlzOutgoingMessageType, BlzStatus} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
 
@@ -182,6 +182,35 @@ describe("BLZ high-level driver lifecycle", () => {
                 sender: 0x3344,
                 senderEui64: undefined,
             }),
+        );
+    });
+
+    it("removes stale EUI64 mappings when a node ID is re-cached with a new EUI64", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const execCommand = vi.fn().mockResolvedValue({nodeId: 0x5566});
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        const apsFrame = makeApsFrame();
+        const data = Buffer.from([0x08, 0x09]);
+
+        driver.handleNodeJoined(0x3344, 0x1111);
+        driver.handleNodeJoined(0x3344, 0x2222);
+
+        await expect(driver.request(new BlzEUI64("0000000000001111"), apsFrame, data)).resolves.toBe(true);
+
+        expect(execCommand).toHaveBeenCalledWith("getNodeIdByEui64", {eui64: expect.any(BlzEUI64)});
+        expect(sendApsData).toHaveBeenCalledWith(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
+            0x5566,
+            apsFrame.profileId,
+            apsFrame.clusterId,
+            apsFrame.sourceEndpoint,
+            apsFrame.destinationEndpoint,
+            0,
+            5,
+            0x80,
+            data.length,
+            data,
         );
     });
 });
