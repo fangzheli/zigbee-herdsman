@@ -558,6 +558,9 @@ Future BLZ refactors should follow these rules:
   avoiding orphaned pipes, listeners, or port references at the lower layer.
 - Coalesced concurrent UART `connect()` calls behind one in-flight promise, so
   parallel opens do not race close/cancel/open paths against the same port.
+- Coalesced concurrent UART `close()` calls behind one in-flight promise, so a
+  second close cannot destroy a port while the first flush-close is still
+  pending.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot

@@ -38,6 +38,8 @@ export class SerialDriver extends EventEmitter {
   private operationGeneration = 0;
   private readonly sendRetryDelay = new CancellableDelay();
   private connectPromise?: Promise<void>;
+  private closePromise?: Promise<void>;
+  private emitCloseWhenCloseCompletes = false;
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
@@ -360,6 +362,27 @@ export class SerialDriver extends EventEmitter {
   }
 
   public async close(emitClose: boolean): Promise<void> {
+    if (emitClose) {
+      this.emitCloseWhenCloseCompletes = true;
+    }
+
+    if (this.closePromise) {
+      logger.debug("UART close already in progress.", NS);
+      return await this.closePromise;
+    }
+
+    const closePromise = this.performClose().finally(() => {
+      if (this.closePromise === closePromise) {
+        this.closePromise = undefined;
+        this.emitCloseWhenCloseCompletes = false;
+      }
+    });
+    this.closePromise = closePromise;
+
+    return await closePromise;
+  }
+
+  private async performClose(): Promise<void> {
     logger.debug("Closing UART", NS);
     this.connectOperations.cancel(new Error("Connection closed"));
     this.cancelPendingOperations();
@@ -378,7 +401,7 @@ export class SerialDriver extends EventEmitter {
         }
       } catch (error) {
         this.serialPort.destroy();
-        if (emitClose) {
+        if (this.emitCloseWhenCloseCompletes) {
           this.emit("close");
         }
 
@@ -392,7 +415,7 @@ export class SerialDriver extends EventEmitter {
       this.socketPort = undefined;
     }
 
-    if (emitClose) {
+    if (this.emitCloseWhenCloseCompletes) {
       this.emit("close");
     }
   }

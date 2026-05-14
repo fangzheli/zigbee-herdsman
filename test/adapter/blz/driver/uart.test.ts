@@ -311,6 +311,34 @@ describe("BLZ Serial Driver", () => {
       expect(driver.isInitialized()).toBe(false);
     });
 
+    it("should coalesce concurrent close calls against the same serial port", async () => {
+      let finishClose: (() => void) | undefined;
+      const callback = vi.fn();
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishClose = resolve;
+        }),
+      );
+
+      await driver.connect(serialPortOptions);
+      driver.on("close", callback);
+
+      const firstClose = driver.close(false);
+      await Promise.resolve();
+      const secondClose = driver.close(true);
+      await Promise.resolve();
+
+      expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalledTimes(1);
+      expect(serialPortMock.destroy).not.toHaveBeenCalled();
+
+      finishClose?.();
+      await Promise.all([firstClose, secondClose]);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+    });
+
     it("should remove serial port listeners when closing", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
