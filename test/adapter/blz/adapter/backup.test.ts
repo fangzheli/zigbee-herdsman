@@ -22,6 +22,7 @@ describe('BLZ Adapter Backup', () => {
             version: {product: number};
             execCommand: ReturnType<typeof vi.fn>;
         };
+        getBlz: ReturnType<typeof vi.fn>;
         getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
         getNetworkKeyInfo: ReturnType<typeof vi.fn>;
     };
@@ -35,9 +36,11 @@ describe('BLZ Adapter Backup', () => {
                 version: {product: 1},
                 execCommand: vi.fn(),
             },
+            getBlz: vi.fn(),
             getGlobalTcLinkKey: vi.fn(),
             getNetworkKeyInfo: vi.fn(),
         };
+        driverMock.getBlz.mockReturnValue(driverMock.blz);
 
         vi.mocked(Driver).mockImplementation(() => driverMock as any);
         backup = new BLZAdapterBackup(driverMock as any, backupPath);

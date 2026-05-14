@@ -74,8 +74,7 @@ const DEFAULT_MFG_ID = 0x1049;
 const REQUEST_ATTEMPT_DELAYS = [500, 1000, 1500];
 
 export class Driver extends EventEmitter {
-  // @ts-expect-error XXX: init in startup
-  public blz: Blz;
+  public blz?: Blz;
   private nwkOpt: TsType.NetworkOptions;
   // @ts-expect-error XXX: init in startup
   public networkParams: BlzNetworkParameters;
@@ -102,6 +101,14 @@ export class Driver extends EventEmitter {
       this.waitressTimeoutFormatter,
     );
     this.backupMan = new BLZAdapterBackup(this, backupPath);
+  }
+
+  public getBlz(): Blz {
+    if (!this.blz) {
+      throw new Error("BLZ driver is not started");
+    }
+
+    return this.blz;
   }
 
   /**
@@ -189,8 +196,13 @@ export class Driver extends EventEmitter {
 
     try {
       if (this.blz) {
-        this.blz.removeAllListeners();
-        await this.blz.close(emitClose);
+        const blz = this.blz;
+        blz.removeAllListeners();
+        await blz.close(emitClose);
+
+        if (this.blz === blz) {
+          this.blz = undefined;
+        }
       }
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
@@ -207,21 +219,22 @@ export class Driver extends EventEmitter {
       await this.stop(false);
     }
 
-    this.blz = new Blz();
+    const blz = new Blz();
+    this.blz = blz;
 
     try {
-      this.blz.on("close", this.onBlzClose.bind(this));
+      blz.on("close", this.onBlzClose.bind(this));
 
       try {
-        await this.blz.connect(this.serialOpt);
+        await blz.connect(this.serialOpt);
       } catch (error) {
         logger.debug(`BLZ could not connect: ${error}`, NS);
         throw error;
       }
 
-      this.blz.on("reset", this.onBlzReset.bind(this));
+      blz.on("reset", this.onBlzReset.bind(this));
 
-      await this.blz.forceReset();
+      await blz.forceReset();
       await wait(2000);
 
       await this.addEndpoint({
@@ -232,7 +245,7 @@ export class Driver extends EventEmitter {
         ],
       });
 
-      await this.blz.getVersion();
+      await blz.getVersion();
 
       if (await this.needsToBeInitialised(this.nwkOpt)) {
         logger.info("The network setup need to be initialized", NS);
@@ -241,7 +254,7 @@ export class Driver extends EventEmitter {
 
         logger.info(`Leaving the current network`, NS);
 
-        const st = await this.blz.leaveNetwork();
+        const st = await blz.leaveNetwork();
 
         if (st != BlzStatus.SUCCESS) {
           logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
@@ -264,7 +277,7 @@ export class Driver extends EventEmitter {
       // TODO: make sure the stack is running
       logger.info("The Zigbee network is formed", NS);
 
-      const netParams = await this.blz.execCommand("getNetworkParameters");
+      const netParams = await blz.execCommand("getNetworkParameters");
       logger.info(
         `Command (getNetworkParameters) returned: ${netParams.status}`,
         NS,
@@ -295,14 +308,14 @@ export class Driver extends EventEmitter {
       );
 
       const ieee = (
-        await this.blz.execCommand("getValue", {
+        await blz.execCommand("getValue", {
           valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
         })
       ).value;
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
-      this.blz.on("frame", this.handleFrame.bind(this));
+      blz.on("frame", this.handleFrame.bind(this));
       logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
       logger.debug("Network ready", NS);
 
@@ -326,10 +339,11 @@ export class Driver extends EventEmitter {
   private async needsToBeInitialised(
     options: TsType.NetworkOptions,
   ): Promise<boolean> {
+    const blz = this.getBlz();
     let valid = true;
-    valid = valid && (await this.blz.networkInit());
+    valid = valid && (await blz.networkInit());
     logger.debug(`needToBeInitialized success stack up: ${valid}`, NS);
-    const netParams = await this.blz.execCommand("getNetworkParameters");
+    const netParams = await blz.execCommand("getNetworkParameters");
     logger.debug(
       `Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`,
       NS,
@@ -361,6 +375,7 @@ export class Driver extends EventEmitter {
   }
 
   private async formNetwork(restore: boolean): Promise<void> {
+    const blz = this.getBlz();
     let backup;
     if (restore) {
       backup = await this.backupMan.getStoredBackup();
@@ -389,7 +404,7 @@ export class Driver extends EventEmitter {
         uint64_t,
         Buffer.from(backup!.networkOptions.extendedPanId),
       );
-      await this.blz.formNetwork(
+      await blz.formNetwork(
         backupextendedPanID,
         backup!.networkOptions.panId,
         backup!.logicalChannel,
@@ -399,7 +414,7 @@ export class Driver extends EventEmitter {
         uint64_t,
         Buffer.from(this.nwkOpt.extendedPanID!),
       );
-      await this.blz.formNetwork(
+      await blz.formNetwork(
         nwkoptextendedPanID,
         this.nwkOpt.panID,
         this.nwkOpt.channelList[0],
@@ -628,7 +643,9 @@ export class Driver extends EventEmitter {
 
           if (nodeId === undefined) {
             nodeId = (
-              await this.blz.execCommand("getNodeIdByEui64", { eui64: eui64 })
+              await this.getBlz().execCommand("getNodeIdByEui64", {
+                eui64: eui64,
+              })
             ).nodeId;
             if (nodeId && nodeId !== 0xffff) {
               this.cacheNodeIeee(nodeId, eui64);
@@ -722,7 +739,7 @@ export class Driver extends EventEmitter {
   ): Promise<BlzStatus> {
     const seq = (apsFrame.sequence + 1) & 0xff;
 
-    return await this.blz.sendApsData(
+    return await this.getBlz().sendApsData(
       messageType,
       destination,
       apsFrame.profileId,
@@ -769,7 +786,7 @@ export class Driver extends EventEmitter {
       }
     }
 
-    const response = await this.blz.execCommand("getEui64ByNodeId", {
+    const response = await this.getBlz().execCommand("getEui64ByNodeId", {
       nodeId: nwk,
     });
 
@@ -781,7 +798,9 @@ export class Driver extends EventEmitter {
   }
 
   public async permitJoining(seconds: number): Promise<BLZFrameData> {
-    return await this.blz.execCommand("permitJoining", { duration: seconds });
+    return await this.getBlz().execCommand("permitJoining", {
+      duration: seconds,
+    });
   }
 
   public async addEndpoint({
@@ -792,7 +811,7 @@ export class Driver extends EventEmitter {
     inputClusters = [],
     outputClusters = [],
   }: AddEndpointParameters): Promise<void> {
-    const res = await this.blz.execCommand("addEndpoint", {
+    const res = await this.getBlz().execCommand("addEndpoint", {
       endpoint: endpoint,
       profileId: profileId,
       deviceId: deviceId,
@@ -836,7 +855,7 @@ export class Driver extends EventEmitter {
   }
 
   public async getGlobalTcLinkKey(): Promise<BLZFrameData> {
-    const frameResponse = await this.blz.execCommand("getGlobalTcLinkKey");
+    const frameResponse = await this.getBlz().execCommand("getGlobalTcLinkKey");
 
     const { status, linkKey, outgoingFrameCounter, trustCenterAddress } =
       frameResponse;
@@ -868,7 +887,7 @@ export class Driver extends EventEmitter {
       outgoingFrameCounter,
     };
 
-    const frameResponse = await this.blz.execCommand(
+    const frameResponse = await this.getBlz().execCommand(
       "setGlobalTcLinkKey",
       frameRequest,
     );
@@ -891,7 +910,7 @@ export class Driver extends EventEmitter {
   }
 
   public async getNetworkKeyInfo(): Promise<BLZFrameData> {
-    const frameResponse = await this.blz.execCommand("getNwkSecurityInfos");
+    const frameResponse = await this.getBlz().execCommand("getNwkSecurityInfos");
 
     const { status, nwkKey, outgoingFrameCounter, nwkKeySeqNum } =
       frameResponse;
@@ -932,7 +951,7 @@ export class Driver extends EventEmitter {
       nwkKeySeqNum,
     };
 
-    const frameResponse = await this.blz.execCommand(
+    const frameResponse = await this.getBlz().execCommand(
       "setNwkSecurityInfos",
       frameRequest,
     );

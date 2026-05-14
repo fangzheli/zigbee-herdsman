@@ -175,7 +175,7 @@ export class BLZAdapter extends Adapter {
     seconds: number,
     networkAddress?: number,
   ): Promise<void> {
-    if (!this.driver.blz.isInitialized()) {
+    if (!this.driver.blz?.isInitialized()) {
       return;
     }
 
@@ -238,9 +238,11 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getCoordinatorVersion(): Promise<CoordinatorVersion> {
+    const blz = this.driver.getBlz();
+
     return {
-      type: `BLZ v${this.driver.blz.version.product}`,
-      meta: this.driver.blz.version,
+      type: `BLZ v${blz.version.product}`,
+      meta: blz.version,
     };
   }
 
@@ -501,7 +503,8 @@ export class BLZAdapter extends Adapter {
 
     // 4. Leave current network
     logger.info(`[BLZ] Leaving current network...`, NS);
-    const leaveStatus = await this.driver.blz.leaveNetwork();
+    const blz = this.driver.getBlz();
+    const leaveStatus = await blz.leaveNetwork();
     if (leaveStatus !== BlzStatus.SUCCESS) {
       throw new Error(
         `[BLZ] Failed to leave network with status=${leaveStatus}`,
@@ -524,7 +527,7 @@ export class BLZAdapter extends Adapter {
     // 6. Reform network on new channel
     logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
     const extPanId = BigInt(currentParams.extendedPanID);
-    const formStatus = await this.driver.blz.formNetwork(
+    const formStatus = await blz.formNetwork(
       extPanId,
       currentParams.panID,
       newChannel,
@@ -740,8 +743,10 @@ export class BLZAdapter extends Adapter {
   }
 
   public async backup(): Promise<Models.Backup> {
+    const blz = this.driver.getBlz();
+
     assert(
-      this.driver.blz.isInitialized(),
+      blz.isInitialized(),
       "Cannot make backup when blz is not initialized",
     );
     return await this.driver.backupMan.createBackup();

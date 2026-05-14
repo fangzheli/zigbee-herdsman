@@ -22,9 +22,10 @@ export class BLZAdapterBackup {
 
   public async createBackup(): Promise<Models.Backup> {
     logger.debug("creating backup", NS);
-    const version: number = this.driver.blz.version.product;
+    const blz = this.driver.getBlz();
+    const version: number = blz.version.product;
     const linkResult = await this.driver.getGlobalTcLinkKey();
-    const netParams = await this.driver.blz.execCommand("getNetworkParameters");
+    const netParams = await blz.execCommand("getNetworkParameters");
     const netResult = await this.driver.getNetworkKeyInfo();
     const tclKey = Buffer.from(linkResult.linkKey);
     const netKey = Buffer.from(netResult.nwkKey);
@@ -34,7 +35,7 @@ export class BLZAdapterBackup {
     netKeyFrameCounter = netResult.outgoingFrameCounter;
 
     const ieee = (
-      await this.driver.blz.execCommand("getValue", {
+      await blz.execCommand("getValue", {
         valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
       })
     ).value;

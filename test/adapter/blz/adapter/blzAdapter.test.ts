@@ -26,6 +26,7 @@ describe("BLZ Adapter", () => {
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
+    getBlz: ReturnType<typeof vi.fn>;
     ieee: { toString: () => string };
     networkParams: {
       panId: number;
@@ -79,6 +80,7 @@ describe("BLZ Adapter", () => {
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
+      getBlz: vi.fn(),
       ieee: { toString: () => "0102030405060708" },
       networkParams: {
         panId: 0x1234,
@@ -101,6 +103,7 @@ describe("BLZ Adapter", () => {
       setNetworkKeyInfo: vi.fn(),
       setGlobalTcLinkKey: vi.fn(),
     };
+    driverMock.getBlz.mockReturnValue(driverMock.blz);
 
     vi.mocked(Driver).mockImplementation(() => driverMock as any);
     adapter = new BLZAdapter(

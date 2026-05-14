@@ -109,6 +109,20 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(eui64.toString()).toBe("0000000000003344");
     });
 
+    it("releases the BLZ instance reference when stopping", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        driver.blz = blzMock as unknown as Driver["blz"];
+
+        await driver.stop(false);
+
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("returns false when multicast APS send returns a non-success status", async () => {
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);
         const driver = makeDriverWithApsSender(sendApsData);
