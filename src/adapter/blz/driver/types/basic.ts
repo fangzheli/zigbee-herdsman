@@ -168,6 +168,10 @@ export class LVBytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
         const l = data.readIntLE(0, 1);
+        if (data.length < l + 1) {
+            throw new RangeError(`Buffer too small. Expected at least ${l + 1} bytes, received ${data.length}`);
+        }
+
         const s = data.subarray(1, l + 1);
         return [s, data.subarray(l + 1)];
     }
@@ -207,6 +211,10 @@ class _LVList extends List {
         let item, length;
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
         const r: any[] = [];
+        if (data.length < 1) {
+            throw new RangeError(`Buffer too small. Expected at least 1 byte, received ${data.length}`);
+        }
+
         [length, data] = [data[0], data.subarray(1)];
         for (let i = 0; i < length; i++) {
             [item, data] = cls.itemtype.deserialize(cls.itemtype, data);

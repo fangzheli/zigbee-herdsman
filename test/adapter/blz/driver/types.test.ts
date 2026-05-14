@@ -201,6 +201,10 @@ describe('BLZ Types', () => {
             expect(remaining).toEqual(Buffer.from([0xEF]));
         });
 
+        it('should reject truncated length-prefixed bytes', () => {
+            expect(() => LVBytes.deserialize(LVBytes, Buffer.from([0x02, 0xAB]))).toThrow(RangeError);
+        });
+
         it('should handle empty bytes', () => {
             const result = LVBytes.serialize(LVBytes, []);
             expect(result).toEqual(Buffer.from([0x00]));
@@ -275,6 +279,12 @@ describe('BLZ Types', () => {
             const result = Uint16List.serialize(Uint16List, [0x1234, 0x5678]);
 
             expect(result).toEqual(Buffer.from([0x02, 0x34, 0x12, 0x78, 0x56]));
+        });
+
+        it('should reject a missing length prefix when deserializing length-prefixed lists', () => {
+            const Uint16List = LVList(uint16_t);
+
+            expect(() => Uint16List.deserialize(Uint16List, Buffer.alloc(0))).toThrow(RangeError);
         });
     });
 

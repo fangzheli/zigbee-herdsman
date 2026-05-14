@@ -567,6 +567,8 @@ Future BLZ refactors should follow these rules:
 - Fixed generic BLZ fixed-list serialization to emit every byte produced by the
   declared item type and reject mismatched item counts, preventing truncated or
   shifted schema payloads.
+- Hardened BLZ length-prefixed bytes and lists to reject truncated payloads or
+  missing length headers instead of silently producing short values.
 - Reworked `BlzEUI64.serialize()` to write the fixed eight-byte reversed value
   directly into a preallocated buffer, avoiding per-byte integer serialization
   and intermediate array churn.
