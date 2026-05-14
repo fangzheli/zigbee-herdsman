@@ -298,6 +298,9 @@ Future BLZ refactors should follow these rules:
 - Added adapter-level stop generation and cancellable waits for BLZ channel
   change, so `stop()` rejects an in-flight channel-change delay and prevents
   follow-on leave/reform operations after shutdown begins.
+- Made UART port `close` events perform the same waiter/queue/parser and
+  port/socket reference cleanup as explicit close paths, so unexpected serial
+  disconnects do not retain closed port objects.
 
 ## Next Steps
 

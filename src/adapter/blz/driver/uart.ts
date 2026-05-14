@@ -345,6 +345,19 @@ export class SerialDriver extends EventEmitter {
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
     this.initialized = false;
+    this.queue.clear();
+    this.waitress.clear();
+    this.cleanupParser();
+
+    if (this.serialPort) {
+      this.detachSerialPort();
+      this.serialPort.destroy();
+      this.serialPort = undefined;
+    } else if (this.socketPort) {
+      this.detachSocketPort();
+      this.socketPort.destroy();
+      this.socketPort = undefined;
+    }
 
     if (err != null && err !== false) {
       this.emit("reset");
