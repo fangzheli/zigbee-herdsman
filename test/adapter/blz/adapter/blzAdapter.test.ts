@@ -1146,6 +1146,31 @@ describe("BLZ Adapter", () => {
       await adapter.backup();
       expect(driverMock.backupMan.createBackup).toHaveBeenCalled();
     });
+
+    it("should cancel backup when stopping", async () => {
+      driverMock.blz.isInitialized.mockReturnValue(true);
+      driverMock.backupMan.createBackup.mockReturnValue(new Promise(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const backup = adapter.backup();
+      const backupResult = backup.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        backupResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void backup.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.backupMan.createBackup).toHaveBeenCalled();
+    });
   });
 
   describe("Error handling", () => {

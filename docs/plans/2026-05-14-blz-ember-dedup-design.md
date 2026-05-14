@@ -423,6 +423,9 @@ Future BLZ refactors should follow these rules:
 - Reused adapter operation cancellation for coordinator permit-join requests,
   so `BLZAdapter.stop()` rejects `permitJoin()` while the lower coordinator
   request is still pending.
+- Reused adapter operation cancellation for backup creation, so
+  `BLZAdapter.stop()` rejects `backup()` while backup collection is still
+  pending.
 
 ## Next Steps
 

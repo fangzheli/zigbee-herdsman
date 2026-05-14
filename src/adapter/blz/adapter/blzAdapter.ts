@@ -943,12 +943,16 @@ export class BLZAdapter extends Adapter {
 
   public async backup(): Promise<Models.Backup> {
     const blz = this.driver.getBlz();
+    const generation = this.stopGeneration;
 
     assert(
       blz.isInitialized(),
       "Cannot make backup when blz is not initialized",
     );
-    return await this.driver.backupMan.createBackup();
+    return await this.runOperationWhileRunning(
+      () => this.driver.backupMan.createBackup(),
+      generation,
+    );
   }
 
   public async restoreChannelInterPAN(): Promise<void> {
