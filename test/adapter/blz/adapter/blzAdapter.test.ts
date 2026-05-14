@@ -771,6 +771,47 @@ describe("BLZ Adapter", () => {
       );
     });
 
+    it("should preserve explicit source endpoint zero for endpoint ZCL sends", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await (
+        adapter.sendZclFrameToEndpoint as unknown as (
+          ieeeAddr: string,
+          networkAddress: number,
+          endpoint: number,
+          zclFrame: Zcl.Frame,
+          timeout: number,
+          disableResponse: boolean,
+          disableRecovery: boolean,
+          sourceEndpoint?: number,
+          profileId?: number,
+        ) => Promise<unknown>
+      )("0x0102030405060708", 0x1234, 3, zclFrame, 1000, true, true, 0);
+
+      expect(driverMock.request).toHaveBeenCalledWith(
+        0x1234,
+        expect.objectContaining({
+          sourceEndpoint: 0,
+          destinationEndpoint: 3,
+        }),
+        zclFrame.toBuffer(),
+      );
+    });
+
     it("should not retry endpoint ZCL response waits after stop clears waiters", async () => {
       const apsFrame = new BlzApsFrame();
       apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;

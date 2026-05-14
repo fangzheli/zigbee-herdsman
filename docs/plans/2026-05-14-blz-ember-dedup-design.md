@@ -819,6 +819,9 @@ Future BLZ refactors should follow these rules:
   lists and reused it from counted frame parsing, so the BLZ type layer no
   longer depends on a generic `List` path that requires an unavailable item
   type.
+- Preserved explicit endpoint ZCL `sourceEndpoint` values by replacing truthy
+  defaulting with nullish/default-on-entry handling, matching the group send
+  path and avoiding accidental endpoint rewrites.
 
 ## Next Steps
 

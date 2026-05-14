@@ -763,7 +763,7 @@ export class BLZAdapter extends Adapter {
         ieeeAddr,
         networkAddress,
         endpoint,
-        sourceEndpoint || 1,
+        sourceEndpoint ?? 1,
         zclFrame,
         timeout,
         disableResponse,
@@ -822,7 +822,7 @@ export class BLZAdapter extends Adapter {
     const frame = this.makeZclApsFrame(
       zclFrame.cluster.ID,
       profileId,
-      sourceEndpoint || 0x01,
+      sourceEndpoint,
       endpoint,
       0,
     );
