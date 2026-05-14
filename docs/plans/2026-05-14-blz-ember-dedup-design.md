@@ -542,6 +542,9 @@ Future BLZ refactors should follow these rules:
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.
+- Added a shared preallocating BLZ frame-field serializer for command and ZDO
+  frame data classes, replacing per-frame `Buffer.concat(result)` in the BLZ
+  command serialization hot path.
 
 ## Next Steps
 

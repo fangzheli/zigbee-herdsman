@@ -118,11 +118,7 @@ export class BLZFrameData {
     const frameDesc = this._isRequest_
       ? frame.request || {}
       : frame.response || {};
-    const result = [];
-    for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-      result.push(frameDesc[prop].serialize(frameDesc[prop], this[prop]));
-    }
-    return Buffer.concat(result);
+    return serializeFrameFields(frameDesc, this);
   }
 
   get name(): string {
@@ -196,11 +192,7 @@ export class BLZZDORequestFrameData {
     const frameDesc = this._isRequest_
       ? frame.request || {}
       : frame.response || {};
-    const result = [];
-    for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-      result.push(frameDesc[prop].serialize(frameDesc[prop], this[prop]));
-    }
-    return Buffer.concat(result);
+    return serializeFrameFields(frameDesc, this);
   }
 
   get name(): string {
@@ -250,11 +242,7 @@ export class BLZZDOResponseFrameData {
 
   serialize(): Buffer {
     const frameDesc = BLZZDOResponseFrameData.getFrame(this._cls_);
-    const result = [];
-    for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-      result.push(frameDesc[prop].serialize(frameDesc[prop], this[prop]));
-    }
-    return Buffer.concat(result);
+    return serializeFrameFields(frameDesc, this);
   }
 
   get name(): string {
@@ -264,6 +252,31 @@ export class BLZZDOResponseFrameData {
   get id(): number {
     return this._id_;
   }
+}
+
+function serializeFrameFields(
+  frameDesc: ParamsDesc,
+  values: Record<string, unknown>,
+): Buffer {
+  const fields = Object.getOwnPropertyNames(frameDesc);
+  const buffers: Buffer[] = [];
+  let length = 0;
+
+  for (const prop of fields) {
+    const buffer = frameDesc[prop].serialize(frameDesc[prop], values[prop]);
+    buffers.push(buffer);
+    length += buffer.length;
+  }
+
+  const result = Buffer.allocUnsafe(length);
+  let offset = 0;
+
+  for (const buffer of buffers) {
+    buffer.copy(result, offset);
+    offset += buffer.length;
+  }
+
+  return result;
 }
 
 export class Blz extends EventEmitter {
