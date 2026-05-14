@@ -415,6 +415,29 @@ describe("BLZ Driver", () => {
       ).toBe(0);
     });
 
+    it("should not resolve active reset commands after close interrupts lower send", async () => {
+      let releaseSend: (() => void) | undefined;
+      serialDriverMock.sendDATA.mockReturnValue(
+        new Promise<void>((resolve) => {
+          releaseSend = resolve;
+        }),
+      );
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const command = blz.execCommand("reset");
+      const commandResult = command.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await blz.close(false);
+      releaseSend?.();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(commandResult).resolves.toBe("rejected:Connection closed");
+    });
+
     it("should handle send failures before command waiters start", async () => {
       serialDriverMock.sendDATA.mockRejectedValue(new Error("send failed"));
 

@@ -357,6 +357,9 @@ Future BLZ refactors should follow these rules:
 - Coalesced concurrent lower-level `Blz.connect()` calls into one connect
   promise, preventing overlapping serial open attempts and duplicate temporary
   reconnect listeners on the same UART driver.
+- Added BLZ command connection-generation checks, so active command queue work
+  cannot resolve successfully after `Blz.close()` or reconnect changes the
+  underlying serial connection.
 
 ## Next Steps
 

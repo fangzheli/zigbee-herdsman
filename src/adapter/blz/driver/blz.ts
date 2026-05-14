@@ -435,6 +435,12 @@ export class Blz extends EventEmitter {
     return this.connectGeneration !== connectGeneration;
   }
 
+  private throwIfConnectionChanged(connectGeneration: number): void {
+    if (this.isConnectCancelled(connectGeneration)) {
+      throw new Error("Connection closed");
+    }
+  }
+
   private async waitForConnectRetry(
     milliseconds: number,
     connectGeneration: number,
@@ -582,14 +588,17 @@ export class Blz extends EventEmitter {
 
     return await this.queue.execute<BLZFrameData>(
       async (): Promise<BLZFrameData> => {
+        const commandConnectGeneration = this.connectGeneration;
         const data = this.makeFrame(name, params);
         const waiter = name === "reset" ? undefined : this.waitFor(name);
         try {
           await this.serialDriver.sendDATA(data, FRAMES[name].ID);
+          this.throwIfConnectionChanged(commandConnectGeneration);
 
           // Don't wait for response if this is a reset command
           if (waiter) {
             const response = await waiter.start().promise;
+            this.throwIfConnectionChanged(commandConnectGeneration);
             return response.payload;
           } else {
             // For reset command, return empty BLZFrameData since we don't wait for response
@@ -599,6 +608,7 @@ export class Blz extends EventEmitter {
           if (waiter) {
             this.waitress.remove(waiter.ID);
           }
+          this.throwIfConnectionChanged(commandConnectGeneration);
           throw new Error(`Failure send ${name}:` + JSON.stringify(data));
         }
       },
