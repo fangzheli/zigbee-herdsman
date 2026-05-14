@@ -643,6 +643,9 @@ Future BLZ refactors should follow these rules:
 - Made the high-level driver BLZ reset EventEmitter handler synchronous and
   explicitly logged reset recovery failures, avoiding an unconsumed async
   listener promise on runtime reset events.
+- Made the UART TCP socket `ready` EventEmitter handler synchronous by moving
+  reset/open completion work into an internal async helper, keeping open errors
+  on the existing cleanup path without returning a Promise to EventEmitter.
 
 ## Next Steps
 

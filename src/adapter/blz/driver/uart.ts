@@ -202,7 +202,7 @@ export class SerialDriver extends EventEmitter {
         const onConnect = (): void => {
           logger.debug("Socket connected", NS);
         };
-        const onReady = async (): Promise<void> => {
+        const handleSocketReady = async (): Promise<void> => {
           if (settled) {
             return;
           }
@@ -230,6 +230,11 @@ export class SerialDriver extends EventEmitter {
           this.initialized = true;
 
           resolve();
+        };
+        const onReady = (): void => {
+          void handleSocketReady().catch((error) => {
+            openError(error instanceof Error ? error : new Error(String(error)));
+          });
         };
         this.detachSocketListeners = (): void => {
           socketPort.off("connect", onConnect);
