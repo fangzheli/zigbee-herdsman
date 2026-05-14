@@ -1292,6 +1292,86 @@ describe("BLZ Adapter", () => {
       await change.catch(() => {});
     });
 
+    it("should not stringify NWK update payloads unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      driverMock.makeApsFrame.mockReturnValue({
+        sequence: 9,
+        profileId: Zdo.ZDO_PROFILE_ID,
+        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        sourceEndpoint: 0,
+        destinationEndpoint: 0,
+      });
+      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      const payload = Zdo.Buffalo.buildRequest(
+        true,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        [15],
+        0xfe,
+        undefined,
+        1,
+        undefined,
+      );
+      const rawToStringSpy = vi.spyOn(payload, "toString").mockImplementation(() => {
+        throw new Error("eager raw NWK update payload hex string");
+      });
+      const canonicalToStringSpies: Array<ReturnType<typeof vi.spyOn>> = [];
+      const originalAllocUnsafe = Buffer.allocUnsafe;
+      const allocUnsafeSpy = vi.spyOn(Buffer, "allocUnsafe").mockImplementation(((size: number, ...args: unknown[]) => {
+        const buffer = (originalAllocUnsafe as (...parameters: unknown[]) => Buffer)(size, ...args);
+
+        if (size === payload.length + 2) {
+          canonicalToStringSpies.push(
+            vi.spyOn(buffer, "toString").mockImplementation(() => {
+              throw new Error("eager canonical NWK update payload hex string");
+            }),
+          );
+        }
+
+        return buffer;
+      }) as typeof Buffer.allocUnsafe);
+
+      try {
+        const change = (
+          adapter as unknown as {
+            handleNwkUpdateRequest: (
+              networkAddress: number,
+              clusterId: Zdo.ClusterId,
+              rawPayload: Buffer,
+              disableResponse: boolean,
+            ) => Promise<void>;
+          }
+        ).handleNwkUpdateRequest(
+          ZSpec.BroadcastAddress.SLEEPY,
+          Zdo.ClusterId.NWK_UPDATE_REQUEST,
+          payload,
+          true,
+        );
+        const changeResult = change.then(
+          () => "resolved",
+          (error: Error) => `rejected:${error.message}`,
+        );
+
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+          changeResult,
+          Promise.resolve("pending"),
+        ]);
+
+        expect(observed).toBe("pending");
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+
+        await adapter.stop();
+        await change.catch(() => {});
+      } finally {
+        rawToStringSpy.mockRestore();
+        for (const spy of canonicalToStringSpies) {
+          spy.mockRestore();
+        }
+        allocUnsafeSpy.mockRestore();
+        debug.mockRestore();
+      }
+    });
+
     it("should cancel an in-flight channel change when stopping", async () => {
       driverMock.networkParams.panId = 0x2ea0;
       driverMock.networkParams.extendedPanId = Buffer.from(

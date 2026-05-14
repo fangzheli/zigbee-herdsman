@@ -913,6 +913,8 @@ Future BLZ refactors should follow these rules:
 - Deferred BLZ raw frame hex formatting in the parser, writer, reset writer,
   and received-frame path until debug logging evaluates the message, reducing
   per-frame allocation churn when those debug messages are not emitted.
+- Deferred BLZ NWK update raw/canonical payload hex formatting in the adapter
+  channel-change path until debug logging evaluates the message.
 
 ## Next Steps
 

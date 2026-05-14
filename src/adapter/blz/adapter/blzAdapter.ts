@@ -567,7 +567,7 @@ export class BLZAdapter extends Adapter {
     disableResponse: boolean,
   ): Promise<void> {
     logger.debug(
-      `[BLZ] NWK_UPDATE_REQUEST raw  len=${rawPayload.length}  ${rawPayload.toString("hex")}`,
+      () => `[BLZ] NWK_UPDATE_REQUEST raw  len=${rawPayload.length}  ${rawPayload.toString("hex")}`,
       NS,
     );
 
@@ -578,11 +578,11 @@ export class BLZAdapter extends Adapter {
     const payload = channelChange.payload;
 
     logger.debug(
-      `[BLZ] Canonical payload len=${payload.length} ${payload.toString("hex")}`,
+      () => `[BLZ] Canonical payload len=${payload.length} ${payload.toString("hex")}`,
       NS,
     );
     logger.debug(
-      `[BLZ] Parsed -> mask=0x${channelChange.scanChannelsMask.toString(16)}, ` +
+      () => `[BLZ] Parsed -> mask=0x${channelChange.scanChannelsMask.toString(16)}, ` +
         `duration=0x${channelChange.scanDuration.toString(16)}, ` +
         `updateId=${channelChange.nwkUpdateId}, ` +
         `manager=0x${channelChange.nwkManagerAddr.toString(16)}`,
