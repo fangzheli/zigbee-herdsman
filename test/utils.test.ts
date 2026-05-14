@@ -388,6 +388,33 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
+    it("Test queue treats zero as a valid serialization key", async () => {
+        const queue = new Queue(2);
+        const started: number[] = [];
+
+        let finishFirst: (() => void) | undefined;
+        const firstBlocker = new Promise<void>((resolve) => {
+            finishFirst = resolve;
+        });
+
+        const firstJob = queue.execute(async () => {
+            started.push(1);
+            await firstBlocker;
+        }, 0);
+        const secondJob = queue.execute(async () => {
+            started.push(2);
+        }, 0);
+
+        await Promise.resolve();
+        expect(started).toEqual([1]);
+
+        finishFirst?.();
+        await firstJob;
+        await secondJob;
+
+        expect(started).toEqual([1, 2]);
+    });
+
     it("Test queue clear rejects jobs that have not started", async () => {
         const queue = new Queue(1);
         const started: number[] = [];

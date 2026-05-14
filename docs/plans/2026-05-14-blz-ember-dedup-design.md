@@ -512,6 +512,9 @@ Future BLZ refactors should follow these rules:
 - Preserved explicit BLZ close events when a `Blz.close(true)` caller joins an
   already-running silent `Blz.close(false)`, so coalesced close calls do not
   drop the later caller's notification requirement.
+- Fixed the shared queue's keyed scheduling so numeric key `0` is treated as a
+  real serialization key. This matters for BLZ sends keyed by coordinator
+  network address `0x0000`.
 
 ## Next Steps
 

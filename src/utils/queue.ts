@@ -75,7 +75,7 @@ export class Queue {
         for (let i = 0; i < this.#jobs.length; i++) {
             const job = this.#jobs[i];
 
-            if (!job.running && (!job.key || !this.#jobs.find((j) => j.key === job.key && j.running))) {
+            if (!job.running && (job.key === undefined || !this.#jobs.find((j) => j.key === job.key && j.running))) {
                 return job;
             }
         }
