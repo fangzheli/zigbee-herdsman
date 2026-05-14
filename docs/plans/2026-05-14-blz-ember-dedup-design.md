@@ -756,6 +756,9 @@ Future BLZ refactors should follow these rules:
 - Reworked schema deserialization to preallocate the result array from the
   known schema length and fill by index instead of dynamically growing it with
   `push()`.
+- Reworked length-prefixed and fixed-length list deserialization to preallocate
+  their known-size result arrays and fill by index, leaving only truly
+  unbounded `List.deserialize()` on dynamic growth.
 
 ## Next Steps
 

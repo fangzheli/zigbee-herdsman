@@ -406,6 +406,18 @@ describe('BLZ Types', () => {
             expect(result).toEqual(Buffer.from([0x02, 0x34, 0x12, 0x78, 0x56]));
         });
 
+        it('should deserialize length-prefixed lists into a preallocated result array', () => {
+            const Uint16List = LVList(uint16_t);
+            const source = fs.readFileSync('src/adapter/blz/driver/types/basic.ts', 'utf8');
+
+            const [value, remaining] = Uint16List.deserialize(Uint16List, Buffer.from([0x02, 0x34, 0x12, 0x78, 0x56, 0xff]));
+
+            expect(value).toEqual([0x1234, 0x5678]);
+            expect(remaining).toEqual(Buffer.from([0xff]));
+            expect(source).toContain('new Array(length)');
+            expect(source).toContain('r[i] = item');
+        });
+
         it('should reject a missing length prefix when deserializing length-prefixed lists', () => {
             const Uint16List = LVList(uint16_t);
 
@@ -426,6 +438,18 @@ describe('BLZ Types', () => {
             const FixedUint16List = fixed_list(2, uint16_t);
 
             expect(() => FixedUint16List.serialize(FixedUint16List, [0x1234])).toThrow('Incorrect list length');
+        });
+
+        it('should deserialize fixed lists into a preallocated result array', () => {
+            const FixedUint16List = fixed_list(2, uint16_t);
+            const source = fs.readFileSync('src/adapter/blz/driver/types/basic.ts', 'utf8');
+
+            const [value, remaining] = FixedUint16List.deserialize(FixedUint16List, Buffer.from([0x34, 0x12, 0x78, 0x56, 0xff]));
+
+            expect(value).toEqual([0x1234, 0x5678]);
+            expect(remaining).toEqual(Buffer.from([0xff]));
+            expect(source).toContain('new Array(cls._length)');
+            expect(source).toContain('r[i] = item');
         });
 
         it('should serialize without Array.map', () => {

@@ -221,15 +221,15 @@ class _LVList extends List {
     static deserialize(cls: any, data: Buffer): any[] {
         let item, length;
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-        const r: any[] = [];
         if (data.length < 1) {
             throw new RangeError(`Buffer too small. Expected at least 1 byte, received ${data.length}`);
         }
 
         [length, data] = [data[0], data.subarray(1)];
+        const r: any[] = new Array(length);
         for (let i = 0; i < length; i++) {
             [item, data] = cls.itemtype.deserialize(cls.itemtype, data);
-            r.push(item);
+            r[i] = item;
         }
         return [r, data];
     }
@@ -278,10 +278,10 @@ class _FixedList extends List {
     static deserialize(cls: any, data: Buffer): any[] {
         let item;
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-        const r: any[] = [];
+        const r: any[] = new Array(cls._length);
         for (let i = 0; i < cls._length; i++) {
             [item, data] = cls.itemtype.deserialize(cls.itemtype, data);
-            r.push(item);
+            r[i] = item;
         }
         return [r, data];
     }
