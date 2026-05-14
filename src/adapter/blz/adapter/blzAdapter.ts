@@ -639,6 +639,7 @@ export class BLZAdapter extends Adapter {
   ): Promise<ZclPayload | undefined> {
     return await this.queue.execute<ZclPayload | undefined>(async () => {
       this.checkInterpanLock();
+      const generation = this.stopGeneration;
       return await this.sendZclFrameToEndpointInternal(
         ieeeAddr,
         networkAddress,
@@ -650,6 +651,7 @@ export class BLZAdapter extends Adapter {
         disableRecovery,
         0,
         profileId ?? ZSpec.HA_PROFILE_ID,
+        generation,
       );
     }, networkAddress);
   }
@@ -665,7 +667,9 @@ export class BLZAdapter extends Adapter {
     disableRecovery: boolean,
     responseAttempt: number,
     profileId: number,
+    generation: number,
   ): Promise<ZclPayload | undefined> {
+    this.throwIfStopped(generation);
     if (ieeeAddr == null) {
       ieeeAddr = `0x${this.driver.ieee.toString()}`;
     }
@@ -717,6 +721,7 @@ export class BLZAdapter extends Adapter {
       response?.cancel();
       throw error;
     }
+    this.throwIfStopped(generation);
 
     if (!dataConfirmResult) {
       if (response != null) {
@@ -733,6 +738,7 @@ export class BLZAdapter extends Adapter {
           `Response timeout (${ieeeAddr}:${networkAddress},${responseAttempt})`,
           NS,
         );
+        this.throwIfStopped(generation);
         if (responseAttempt < 1 && !disableRecovery) {
           return await this.sendZclFrameToEndpointInternal(
             ieeeAddr,
@@ -745,6 +751,7 @@ export class BLZAdapter extends Adapter {
             disableRecovery,
             responseAttempt + 1,
             profileId,
+            generation,
           );
         } else {
           throw error;

@@ -339,6 +339,9 @@ Future BLZ refactors should follow these rules:
   retries, high-level APS retries, reset delays, and startup delays.
 - Wrapped BLZ transport connect attempts in `try/finally` so the temporary
   reconnect reset listener is detached even when close cancels a retry delay.
+- Added adapter stop-generation checks around endpoint ZCL response recovery,
+  so `BLZAdapter.stop()` does not let a cleared response waiter trigger a
+  recovery retry or leave the original send promise pending.
 
 ## Next Steps
 

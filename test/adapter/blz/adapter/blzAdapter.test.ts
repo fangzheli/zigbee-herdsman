@@ -216,7 +216,7 @@ describe("BLZ Adapter", () => {
       ]);
 
       releaseRequest?.();
-      await firstSend;
+      await expect(firstSend).rejects.toThrow("Adapter stopped");
       await secondSend.catch(() => {});
 
       expect(observed).toBe("rejected:Queue cleared");
@@ -468,6 +468,52 @@ describe("BLZ Adapter", () => {
         }),
         zclFrame.toBuffer(),
       );
+    });
+
+    it("should not retry endpoint ZCL response waits after stop clears waiters", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockResolvedValue(true);
+      driverMock.stop.mockResolvedValue(undefined);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        false,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToEndpoint(
+        "0x0102030405060708",
+        0x1234,
+        1,
+        zclFrame,
+        1000,
+        false,
+        false,
+      );
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        sendResult,
+        Promise.resolve("pending"),
+      ]);
+      await vi.advanceTimersByTimeAsync(1000);
+      await send.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.request).toHaveBeenCalledTimes(1);
     });
 
     it("should log endpoint ZCL retry state without stale data-request attempts", async () => {
