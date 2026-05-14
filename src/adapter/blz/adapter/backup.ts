@@ -22,6 +22,27 @@ function extendedPanIdToBackupBuffer(value: bigint): Buffer {
   return result;
 }
 
+function fixedBufferFromBytes(
+  value: ArrayLike<number>,
+  length: number,
+  name: string,
+): Buffer {
+  if (value.length !== length) {
+    throw new Error(`${name} must be ${length} bytes.`);
+  }
+
+  const result = Buffer.allocUnsafe(length);
+  if (Buffer.isBuffer(value)) {
+    value.copy(result);
+  } else {
+    for (let i = 0; i < length; i++) {
+      result[i] = value[i] & 0xff;
+    }
+  }
+
+  return result;
+}
+
 export class BLZAdapterBackup {
   private driver: Driver;
   private defaultPath: string;
@@ -43,8 +64,8 @@ export class BLZAdapterBackup {
     assertActive();
     const netResult = await this.driver.getNetworkKeyInfo();
     assertActive();
-    const tclKey = Buffer.from(linkResult.linkKey);
-    const netKey = Buffer.from(netResult.nwkKey);
+    const tclKey = fixedBufferFromBytes(linkResult.linkKey, 16, "Trust Center link key");
+    const netKey = fixedBufferFromBytes(netResult.nwkKey, 16, "Network key");
     let netKeySequenceNumber = 0;
     let netKeyFrameCounter = 0;
     netKeySequenceNumber = netResult.nwkKeySeqNum;
@@ -75,7 +96,7 @@ export class BLZAdapterBackup {
       },
       securityLevel: 5,
       networkUpdateId: netParams.nwkUpdateId,
-      coordinatorIeeeAddress: Buffer.from(ieee),
+      coordinatorIeeeAddress: fixedBufferFromBytes(ieee, 8, "Coordinator IEEE address"),
       devices: [],
     };
   }

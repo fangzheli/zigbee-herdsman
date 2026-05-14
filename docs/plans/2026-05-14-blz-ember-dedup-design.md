@@ -783,6 +783,9 @@ Future BLZ refactors should follow these rules:
 - Reworked network-parameter snapshot extended-PAN-ID copying to use the
   driver fixed-byte helper, preserving the defensive snapshot boundary without
   `Buffer.from()` cloning.
+- Reworked backup creation key and coordinator IEEE copies to fill fixed-size
+  backup-owned buffers directly, keeping the ownership boundary while avoiding
+  generic `Buffer.from(sourceBuffer)` clones.
 
 ## Next Steps
 

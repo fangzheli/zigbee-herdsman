@@ -155,6 +155,53 @@ describe('BLZ Adapter Backup', () => {
             }
         });
 
+        it('should copy backup-owned key and IEEE buffers without Buffer.from source clones', async () => {
+            const linkKey = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+            const networkKey = Buffer.of(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+            const ieee = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8);
+            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+                panId: 0x1234,
+                extPanId: BigInt('0x0102030405060708'),
+                channel: 11,
+                channelMask: 0,
+                nwkUpdateId: 0,
+            });
+            driverMock.getMacAddress.mockResolvedValue(ieee);
+            driverMock.getGlobalTcLinkKey.mockResolvedValue({
+                linkKey,
+                outgoingFrameCounter: 1234,
+            });
+            driverMock.getNetworkKeyInfo.mockResolvedValue({
+                nwkKey: networkKey,
+                nwkKeySeqNum: 5,
+                outgoingFrameCounter: 5678,
+            });
+            const originalFrom = Buffer.from;
+            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+                if (value === linkKey || value === networkKey || value === ieee) {
+                    throw new Error('backup source buffer cloned');
+                }
+
+                return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+            }) as typeof Buffer.from);
+
+            try {
+                const result = await backup.createBackup();
+
+                expect(result.blz!.tclk).toEqual(linkKey);
+                expect(result.networkOptions.networkKey).toEqual(networkKey);
+                expect(result.coordinatorIeeeAddress).toEqual(ieee);
+                expect(result.blz!.tclk).not.toBe(linkKey);
+                expect(result.networkOptions.networkKey).not.toBe(networkKey);
+                expect(result.coordinatorIeeeAddress).not.toBe(ieee);
+                expect(fromSpy).not.toHaveBeenCalledWith(linkKey);
+                expect(fromSpy).not.toHaveBeenCalledWith(networkKey);
+                expect(fromSpy).not.toHaveBeenCalledWith(ieee);
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
         it('should not continue collecting backup data after the active guard fails', async () => {
             let finishLinkKeyRead: (() => void) | undefined;
             let active = true;
