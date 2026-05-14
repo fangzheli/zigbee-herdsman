@@ -151,6 +151,28 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("closes an existing BLZ instance before replacing it during startup", async () => {
+        const oldBlzMock = {
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const newBlzMock = {
+            on: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockRejectedValue(new Error("reset failed")),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => newBlzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = oldBlzMock as unknown as Driver["blz"];
+
+        await expect(driver.startup()).rejects.toThrow("reset failed");
+
+        expect(oldBlzMock.removeAllListeners).toHaveBeenCalled();
+        expect(oldBlzMock.close).toHaveBeenCalledWith(false);
+    });
+
     it("caches sender EUI64 by node ID for incoming APS messages and clears it on leave", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const incomingMessage = vi.fn();

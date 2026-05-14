@@ -157,6 +157,9 @@ Future BLZ refactors should follow these rules:
   subsequent incoming APS messages can include `senderEui64`.
 - Cleared address caches after successful `formNetwork()`, preventing stale
   device mappings from surviving a fresh network formation or restore.
+- Made `Driver.startup()` close any existing `Blz` instance before replacing it,
+  preventing repeated startup from orphaning listeners, waiters, watchdogs, or
+  lower transport resources.
 
 ## Next Steps
 

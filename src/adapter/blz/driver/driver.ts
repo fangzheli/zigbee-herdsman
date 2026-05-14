@@ -201,6 +201,11 @@ export class Driver extends EventEmitter {
   public async startup(): Promise<TsType.StartResult> {
     let result: TsType.StartResult = "resumed";
     this.transactionID = 1;
+
+    if (this.blz) {
+      await this.stop(false);
+    }
+
     this.blz = new Blz();
 
     try {
