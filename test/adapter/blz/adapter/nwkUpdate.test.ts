@@ -29,6 +29,23 @@ describe("BLZ NWK update payload handling", () => {
         }
     });
 
+    it("normalizes missing TSN and manager address without copying the raw payload first", () => {
+        const raw = Buffer.from("00800000fe04", "hex");
+        const expected = Buffer.from("0000800000fe04ffff", "hex");
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(() => {
+            throw new Error("Buffer.from used");
+        });
+
+        try {
+            const result = parseNwkUpdateChannelChange(raw, true);
+
+            expect(result.payload).toStrictEqual(expected);
+            expect(fromSpy).not.toHaveBeenCalled();
+        } finally {
+            fromSpy.mockRestore();
+        }
+    });
+
     it.each([
         {
             name: "TSN and manager address",

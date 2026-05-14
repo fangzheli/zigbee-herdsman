@@ -710,6 +710,9 @@ Future BLZ refactors should follow these rules:
   inbound EUI64 parsing.
 - Reused a shared empty buffer for raw `Bytes.deserialize()` remainders,
   avoiding per-call empty-buffer allocation on terminal raw byte fields.
+- Removed the extra raw-payload copy from NWK update payload normalization;
+  the helper now copies the caller payload once into the canonical broadcast
+  buffer instead of first cloning it and then copying the clone.
 
 ## Next Steps
 
