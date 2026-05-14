@@ -874,6 +874,10 @@ Future BLZ refactors should follow these rules:
 - Aligned `BlzEUI64` string construction with the same case-insensitive `0x`
   prefix handling, so callers that pass `0X...` addresses do not fail before
   reaching the normalized driver cache/waiter paths.
+- Normalized adapter IEEE string formatting for coordinator lookups,
+  coordinator-backed endpoint sends, and device join/leave events through one
+  helper, avoiding malformed `0x0X...` addresses from upper-case prefixed
+  driver values.
 
 ## Next Steps
 

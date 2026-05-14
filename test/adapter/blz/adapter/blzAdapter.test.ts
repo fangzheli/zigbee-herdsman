@@ -471,6 +471,14 @@ describe("BLZ Adapter", () => {
       const ieee = await adapter.getCoordinatorIEEE();
       expect(ieee).toBe("0x0102030405060708");
     });
+
+    it("should normalize uppercase coordinator IEEE prefixes", async () => {
+      driverMock.ieee = { toString: () => "0X0102030405060708" };
+
+      const ieee = await adapter.getCoordinatorIEEE();
+
+      expect(ieee).toBe("0x0102030405060708");
+    });
   });
 
   describe("Network operations", () => {
@@ -833,6 +841,48 @@ describe("BLZ Adapter", () => {
           sourceEndpoint: 0,
           destinationEndpoint: 3,
         }),
+        zclFrame.toBuffer(),
+      );
+    });
+
+    it("should normalize uppercase coordinator IEEE prefixes for endpoint ZCL fallbacks", async () => {
+      driverMock.ieee = { toString: () => "0X0102030405060708" };
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await (
+        adapter.sendZclFrameToEndpoint as unknown as (
+          ieeeAddr: string | undefined,
+          networkAddress: number,
+          endpoint: number,
+          zclFrame: Zcl.Frame,
+          timeout: number,
+          disableResponse: boolean,
+          disableRecovery: boolean,
+        ) => Promise<unknown>
+      )(undefined, 0x1234, 3, zclFrame, 1000, true, true);
+
+      expect(driverMock.setNode).toHaveBeenCalledTimes(1);
+      expect(driverMock.setNode.mock.calls[0][0]).toBe(0x1234);
+      expect(driverMock.setNode.mock.calls[0][1].toString()).toBe(
+        "0102030405060708",
+      );
+      expect(driverMock.request).toHaveBeenCalledWith(
+        0x1234,
+        apsFrame,
         zclFrame.toBuffer(),
       );
     });
@@ -1453,6 +1503,21 @@ describe("BLZ Adapter", () => {
       driverMock.on.mock.calls.find((call) => call[0] === "deviceJoined")?.[1](
         0x1234,
         { toString: () => "0x0102030405060708" },
+      );
+
+      expect(callback).toHaveBeenCalledWith({
+        networkAddress: 0x1234,
+        ieeeAddr: "0x0102030405060708",
+      });
+    });
+
+    it("should normalize uppercase IEEE prefixes from device joins", () => {
+      const callback = vi.fn();
+      adapter.on("deviceJoined", callback);
+
+      driverMock.on.mock.calls.find((call) => call[0] === "deviceJoined")?.[1](
+        0x1234,
+        { toString: () => "0X0102030405060708" },
       );
 
       expect(callback).toHaveBeenCalledWith({

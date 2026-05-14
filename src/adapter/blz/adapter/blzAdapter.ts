@@ -60,6 +60,10 @@ function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
   return requestPayload;
 }
 
+function formatIeeeAddr(ieee: { toString: () => string }): string {
+  return `0x${ieee.toString().replace(/^0x/i, "").toLowerCase()}`;
+}
+
 type ZdoSendWaiter = {
   cancel: () => void;
 };
@@ -171,10 +175,7 @@ export class BLZAdapter extends Adapter {
   }
 
   private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void {
-    // Driver emits ieee as "0x" prefixed string, use as-is
-    const ieeeAddr = ieee.toString().startsWith("0x")
-      ? ieee.toString()
-      : `0x${ieee.toString()}`;
+    const ieeeAddr = formatIeeeAddr(ieee);
     logger.debug(() => `Device join request received: ${nwk} ${ieeeAddr}`, NS);
 
     this.emit("deviceJoined", {
@@ -184,9 +185,7 @@ export class BLZAdapter extends Adapter {
   }
 
   private handleDeviceLeft(nwk: number, ieee: BlzEUI64): void {
-    const ieeeAddr = ieee.toString().startsWith("0x")
-      ? ieee.toString()
-      : `0x${ieee.toString()}`;
+    const ieeeAddr = formatIeeeAddr(ieee);
     logger.debug(
       () => `Device left network request received: ${nwk} ${ieeeAddr}`,
       NS,
@@ -332,7 +331,7 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getCoordinatorIEEE(): Promise<string> {
-    return `0x${this.driver.getCoordinatorIeee().toString()}`;
+    return formatIeeeAddr(this.driver.getCoordinatorIeee());
   }
 
   public async permitJoin(
@@ -793,7 +792,7 @@ export class BLZAdapter extends Adapter {
   ): Promise<ZclPayload | undefined> {
     this.throwIfStopped(generation);
     if (ieeeAddr == null) {
-      ieeeAddr = `0x${this.driver.getCoordinatorIeee().toString()}`;
+      ieeeAddr = formatIeeeAddr(this.driver.getCoordinatorIeee());
     }
     logger.debug(
       `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +
