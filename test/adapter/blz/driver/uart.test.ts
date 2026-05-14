@@ -797,6 +797,32 @@ describe("BLZ Serial Driver", () => {
       );
     });
 
+    it("should serialize concurrent DATA sends before ACK", async () => {
+      const frameId = 0x0000;
+      writerMock.sendData.mockReturnValue(undefined);
+
+      const firstSend = driver.sendDATA(Buffer.from([0x01]), frameId);
+      const secondSend = driver.sendDATA(Buffer.from([0x02]), frameId);
+      await Promise.resolve();
+
+      expect(writerMock.sendData).toHaveBeenCalledTimes(1);
+      expect(writerMock.sendData.mock.calls[0][1]).toBe(0);
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](
+        createFrame(frameId, 0x01, 0x00),
+      );
+      await firstSend;
+      await Promise.resolve();
+
+      expect(writerMock.sendData).toHaveBeenCalledTimes(2);
+      expect(writerMock.sendData.mock.calls[1][1]).toBe(1);
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](
+        createFrame(frameId, 0x02, 0x00),
+      );
+      await secondSend;
+    });
+
     it("should clear UART waiters with the reset reason when resetting", async () => {
       const waiter = waitForDataAck();
       const waiterResult = waiter.start().promise.then(

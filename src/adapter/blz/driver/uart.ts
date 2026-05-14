@@ -515,6 +515,30 @@ export class SerialDriver extends EventEmitter {
     frameId: number,
     retries = 2,
   ): Promise<void> {
+    try {
+      return await this.queue.execute(() =>
+        this.sendDATAInternal(data, frameId, retries),
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === "Connection reset" ||
+          error.message === "Connection closed")
+      ) {
+        throw new Error("Send cancelled by driver reset or close", {
+          cause: error,
+        });
+      }
+
+      throw error;
+    }
+  }
+
+  private async sendDATAInternal(
+    data: Buffer,
+    frameId: number,
+    retries: number,
+  ): Promise<void> {
     const seq = this.sendSeq;
     const ackSeq = this.recvSeq;
     const generation = this.operationGeneration;

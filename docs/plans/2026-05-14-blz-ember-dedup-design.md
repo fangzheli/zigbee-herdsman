@@ -891,6 +891,9 @@ Future BLZ refactors should follow these rules:
 - Made UART serial/TCP open-attempt cleanup ownership-aware, so an explicit
   `close()` that cancels an in-flight open releases the port once and the
   abandoned connect path does not detach/destroy the same transport again.
+- Serialized public UART `sendDATA()` calls through the same low-level queue as
+  resets, preventing concurrent sends from sharing stale `sendSeq` state or
+  overlapping response waiters while preserving the existing send-cancel error.
 - Extended shared `Waitress.clear()` to accept an explicit rejection reason and
   wired BLZ adapter, high-level driver, low-level BLZ, and UART cleanup paths to
   preserve stop/close/reset causes instead of reporting generic
