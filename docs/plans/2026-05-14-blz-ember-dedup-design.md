@@ -617,6 +617,9 @@ Future BLZ refactors should follow these rules:
 - Removed the unused `disableResponse` argument from high-level APS frame
   construction, keeping response-waiter decisions at the adapter layer where
   they are actually used.
+- Reused adapter-level cancellable operations for ZDO sends and ZCL endpoint,
+  group, and broadcast lower driver sends, so `BLZAdapter.stop()` can release
+  active adapter jobs without waiting for lower send promises to settle.
 
 ## Next Steps
 

@@ -584,6 +584,44 @@ describe("BLZ Adapter", () => {
       expect(observed).toBe("rejected:Adapter stopped");
     });
 
+    it("should register active group lower sends as cancellable adapter operations", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.mrequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToGroup(0x1234, zclFrame);
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const runningOperations = (
+        adapter as unknown as {runningOperations: {count: () => number}}
+      ).runningOperations;
+      expect(runningOperations.count()).toBe(1);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
+      expect(runningOperations.count()).toBe(0);
+      void send.catch(() => {});
+    });
+
     it("should reject when broadcast ZCL send fails", async () => {
       const apsFrame = new BlzApsFrame();
       apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
@@ -611,6 +649,49 @@ describe("BLZ Adapter", () => {
 
       await vi.advanceTimersByTimeAsync(200);
       await rejection;
+    });
+
+    it("should register active broadcast lower sends as cancellable adapter operations", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToAll(
+        3,
+        zclFrame,
+        1,
+        ZSpec.BroadcastAddress.DEFAULT,
+      );
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const runningOperations = (
+        adapter as unknown as {runningOperations: {count: () => number}}
+      ).runningOperations;
+      expect(runningOperations.count()).toBe(1);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
+      expect(runningOperations.count()).toBe(0);
+      void send.catch(() => {});
     });
 
     it("should use explicit profile ID for endpoint ZCL sends", async () => {
@@ -735,6 +816,52 @@ describe("BLZ Adapter", () => {
       expect(
         (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
       ).toBe(0);
+    });
+
+    it("should register active endpoint lower sends as cancellable adapter operations", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToEndpoint(
+        "0x0102030405060708",
+        0x1234,
+        1,
+        zclFrame,
+        1000,
+        true,
+        true,
+      );
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const runningOperations = (
+        adapter as unknown as {runningOperations: {count: () => number}}
+      ).runningOperations;
+      expect(runningOperations.count()).toBe(1);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
+      expect(runningOperations.count()).toBe(0);
+      void send.catch(() => {});
     });
 
     it("should log endpoint ZCL retry state without stale data-request attempts", async () => {
@@ -1498,6 +1625,46 @@ describe("BLZ Adapter", () => {
 
       await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
       expect(driverMock.handleNodeLeft).not.toHaveBeenCalled();
+    });
+
+    it("should register active ZDO lower sends as cancellable adapter operations", async () => {
+      const lowerRequest = new Promise<boolean>(() => {});
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
+      apsFrame.clusterId = Zdo.ClusterId.LEAVE_REQUEST;
+      apsFrame.sourceEndpoint = 0;
+      apsFrame.destinationEndpoint = 0;
+      apsFrame.sequence = 4;
+
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockReturnValue(lowerRequest);
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const send = adapter.sendZdo(
+        "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.LEAVE_REQUEST,
+        Buffer.from([0x00]),
+        true,
+      );
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const runningOperations = (
+        adapter as unknown as {runningOperations: {count: () => number}}
+      ).runningOperations;
+      expect(runningOperations.count()).toBe(1);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
+      expect(runningOperations.count()).toBe(0);
+      expect(driverMock.handleNodeLeft).not.toHaveBeenCalled();
+      void send.catch(() => {});
     });
 
     it("should handle ZCL send failures before response waiters start", async () => {

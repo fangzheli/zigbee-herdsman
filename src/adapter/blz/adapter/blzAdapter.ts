@@ -499,9 +499,13 @@ export class BLZAdapter extends Adapter {
     );
 
     try {
-      const req = isBroadcast
-        ? await this.driver.brequest(networkAddress, frame, payload)
-        : await this.driver.request(networkAddress, frame, payload);
+      const req = await this.runOperationWhileRunning(
+        () =>
+          isBroadcast
+            ? this.driver.brequest(networkAddress, frame, payload)
+            : this.driver.request(networkAddress, frame, payload),
+        generation,
+      );
 
       this.throwIfStopped(generation);
       logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
@@ -791,10 +795,9 @@ export class BLZAdapter extends Adapter {
     let dataConfirmResult: boolean;
     try {
       this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
-      dataConfirmResult = await this.driver.request(
-        networkAddress,
-        frame,
-        zclFrame.toBuffer(),
+      dataConfirmResult = await this.runOperationWhileRunning(
+        () => this.driver.request(networkAddress, frame, zclFrame.toBuffer()),
+        generation,
       );
     } catch (error) {
       response?.cancel();
@@ -856,7 +859,10 @@ export class BLZAdapter extends Adapter {
         groupID,
       );
 
-      const sent = await this.driver.mrequest(frame, zclFrame.toBuffer());
+      const sent = await this.runOperationWhileRunning(
+        () => this.driver.mrequest(frame, zclFrame.toBuffer()),
+        generation,
+      );
       if (!sent) {
         throw new Error(`Failed to send group request`);
       }
@@ -896,7 +902,10 @@ export class BLZAdapter extends Adapter {
         destination,
       );
 
-      const sent = await this.driver.brequest(destination, frame, zclFrame.toBuffer());
+      const sent = await this.runOperationWhileRunning(
+        () => this.driver.brequest(destination, frame, zclFrame.toBuffer()),
+        generation,
+      );
       if (!sent) {
         throw new Error(`Failed to send broadcast request`);
       }
