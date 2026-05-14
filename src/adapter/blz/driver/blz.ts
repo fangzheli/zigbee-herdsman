@@ -626,7 +626,7 @@ export class Blz extends EventEmitter {
     let valueBuffer: Buffer;
     if (typeof value === "number") {
       // For numbers, use a 4-byte buffer
-      valueBuffer = Buffer.alloc(4);
+      valueBuffer = Buffer.allocUnsafe(4);
       valueBuffer.writeUInt32LE(value, 0);
     } else if (Buffer.isBuffer(value)) {
       valueBuffer = value;

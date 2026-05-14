@@ -636,6 +636,33 @@ describe("BLZ Driver", () => {
       expect(result).toEqual(mockValue);
     }, 10000); // Increase timeout for this test
 
+    it("should serialize numeric setValue payloads without zero-fill allocation", async () => {
+      const execCommand = vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.SUCCESS,
+      } as BLZFrameData);
+      const originalAlloc = Buffer.alloc;
+      const allocSpy = vi.spyOn(Buffer, "alloc").mockImplementation(((size: number, ...args: unknown[]) => {
+        if (size === 4) {
+          throw new Error("Buffer.alloc(4) used");
+        }
+
+        return (originalAlloc as (...parameters: unknown[]) => Buffer)(size, ...args);
+      }) as typeof Buffer.alloc);
+
+      try {
+        await blz.setValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION, 0x12345678);
+
+        expect(execCommand).toHaveBeenCalledWith("setValue", {
+          valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+          valueLength: 4,
+          value: Buffer.from([0x78, 0x56, 0x34, 0x12]),
+        });
+        expect(allocSpy).not.toHaveBeenCalledWith(4);
+      } finally {
+        allocSpy.mockRestore();
+      }
+    });
+
     it("should not retain waiters for reset commands that do not wait for response", async () => {
       serialDriverMock.sendDATA.mockResolvedValue(undefined);
 

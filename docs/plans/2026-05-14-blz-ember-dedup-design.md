@@ -740,6 +740,8 @@ Future BLZ refactors should follow these rules:
 - Changed startup network-parameter snapshot creation to allocate the
   extended-PAN-ID buffer with `allocUnsafe(8)` because the subsequent
   `writeBigUInt64BE()` covers the complete buffer.
+- Changed numeric `setValue()` payload construction to use `allocUnsafe(4)`
+  because `writeUInt32LE()` fully initializes the outgoing value buffer.
 
 ## Next Steps
 
