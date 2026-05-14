@@ -107,6 +107,37 @@ describe('BLZ Adapter Backup', () => {
             });
             expect(driverMock.blz.execCommand).not.toHaveBeenCalled();
         });
+
+        it('should not continue collecting backup data after the active guard fails', async () => {
+            let finishLinkKeyRead: (() => void) | undefined;
+            let active = true;
+            driverMock.getGlobalTcLinkKey.mockReturnValue(
+                new Promise((resolve) => {
+                    finishLinkKeyRead = () =>
+                        resolve({
+                            linkKey: Buffer.alloc(16),
+                            outgoingFrameCounter: 1234,
+                        });
+                }),
+            );
+            driverMock.getCurrentNetworkParameters.mockReturnValue(new Promise(() => {}));
+
+            const result = (backup as unknown as {
+                createBackup: (assertActive: () => void) => Promise<unknown>;
+            }).createBackup(() => {
+                if (!active) {
+                    throw new Error('backup stopped');
+                }
+            }).catch((error: Error) => error.message);
+
+            await Promise.resolve();
+            active = false;
+            finishLinkKeyRead?.();
+            await Promise.resolve();
+
+            expect(driverMock.getCurrentNetworkParameters).not.toHaveBeenCalled();
+            await expect(result).resolves.toBe('backup stopped');
+        });
     });
 
     describe('Loading backup', () => {

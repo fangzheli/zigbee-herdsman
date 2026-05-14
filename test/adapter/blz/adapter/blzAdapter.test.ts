@@ -1295,6 +1295,43 @@ describe("BLZ Adapter", () => {
       expect(observed).toBe("rejected:Adapter stopped");
       expect(driverMock.backupMan.createBackup).toHaveBeenCalled();
     });
+
+    it("should pass a stop guard that prevents backup continuation after stop", async () => {
+      driverMock.blz.isInitialized.mockReturnValue(true);
+      driverMock.stop.mockResolvedValue(undefined);
+      let finishBackupStep: (() => void) | undefined;
+      const continuedAfterStop = vi.fn();
+      driverMock.backupMan.createBackup.mockImplementation(
+        async (assertActive?: () => void) => {
+          await new Promise<void>((resolve) => {
+            finishBackupStep = resolve;
+          });
+          assertActive?.();
+          continuedAfterStop();
+          return {};
+        },
+      );
+
+      const backup = adapter.backup();
+      const backupResult = backup.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      finishBackupStep?.();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        backupResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void backup.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(continuedAfterStop).not.toHaveBeenCalled();
+    });
   });
 
   describe("Error handling", () => {

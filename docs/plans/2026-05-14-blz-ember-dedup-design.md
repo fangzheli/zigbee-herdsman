@@ -519,6 +519,11 @@ Future BLZ refactors should follow these rules:
   operations, so `Driver.stop()` cannot reject startup while still allowing a
   late `networkInit()` or network-key update to continue into follow-on BLZ
   commands against a stopped transport.
+- Added a stop guard to BLZ backup creation and checked it between each driver
+  read, so an adapter stop cannot reject `backup()` while the underlying backup
+  collector continues into later network/security reads. Backup creation also
+  reads the BLZ version without retaining the whole transport object across the
+  async collection flow.
 
 ## Next Steps
 

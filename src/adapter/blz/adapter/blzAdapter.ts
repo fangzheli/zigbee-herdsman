@@ -947,15 +947,19 @@ export class BLZAdapter extends Adapter {
   }
 
   public async backup(): Promise<Models.Backup> {
-    const blz = this.driver.getBlz();
     const generation = this.stopGeneration;
+    this.throwIfStopped(generation);
+    const blz = this.driver.getBlz();
 
     assert(
       blz.isInitialized(),
       "Cannot make backup when blz is not initialized",
     );
     return await this.runOperationWhileRunning(
-      () => this.driver.backupMan.createBackup(),
+      () =>
+        this.driver.backupMan.createBackup(() =>
+          this.throwIfStopped(generation),
+        ),
       generation,
     );
   }

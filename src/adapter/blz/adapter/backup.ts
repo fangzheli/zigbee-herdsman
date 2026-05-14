@@ -19,13 +19,18 @@ export class BLZAdapterBackup {
     this.defaultPath = path;
   }
 
-  public async createBackup(): Promise<Models.Backup> {
+  public async createBackup(
+    assertActive: () => void = () => {},
+  ): Promise<Models.Backup> {
     logger.debug("creating backup", NS);
-    const blz = this.driver.getBlz();
-    const version: number = blz.version.product;
+    assertActive();
+    const version: number = this.driver.getBlz().version.product;
     const linkResult = await this.driver.getGlobalTcLinkKey();
+    assertActive();
     const netParams = await this.driver.getCurrentNetworkParameters();
+    assertActive();
     const netResult = await this.driver.getNetworkKeyInfo();
+    assertActive();
     const tclKey = Buffer.from(linkResult.linkKey);
     const netKey = Buffer.from(netResult.nwkKey);
     let netKeySequenceNumber = 0;
@@ -34,6 +39,7 @@ export class BLZAdapterBackup {
     netKeyFrameCounter = netResult.outgoingFrameCounter;
 
     const ieee = await this.driver.getMacAddress();
+    assertActive();
     /* return backup structure */
     /* istanbul ignore next */
     return {
