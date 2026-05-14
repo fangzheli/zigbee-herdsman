@@ -377,6 +377,9 @@ Future BLZ refactors should follow these rules:
 - Added a BLZ transport connect-attempt close abort, so `Blz.close()` rejects
   an in-flight lower serial `connect()` immediately instead of relying on the
   UART layer to settle the pending attempt.
+- Added a high-level driver startup-connect abort, so `Driver.stop()` rejects
+  `Driver.startup()` while it is still awaiting `Blz.connect()` and releases the
+  newly-created BLZ instance without waiting on lower-layer behavior.
 
 ## Next Steps
 

@@ -87,6 +87,7 @@ export class Driver extends EventEmitter {
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
+  private cancelPendingStartupConnect?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestRetryDelay = new CancellableDelay();
@@ -249,6 +250,7 @@ export class Driver extends EventEmitter {
       this.stopGeneration += 1;
       this.resetDelay.cancel();
       this.startupDelay.cancel();
+      this.cancelPendingStartupConnect?.(new Error("Driver stopped"));
     }
 
     try {
@@ -308,7 +310,25 @@ export class Driver extends EventEmitter {
       blz.on("close", this.onBlzCloseHandler);
 
       try {
-        await blz.connect(this.serialOpt);
+        let rejectStartupConnect: ((error: Error) => void) | undefined;
+        const startupConnectCancelled = new Promise<never>((_, reject): void => {
+          rejectStartupConnect = reject;
+          this.cancelPendingStartupConnect = reject;
+        });
+
+        try {
+          await Promise.race([
+            blz.connect(this.serialOpt),
+            startupConnectCancelled,
+          ]);
+        } finally {
+          if (
+            rejectStartupConnect &&
+            this.cancelPendingStartupConnect === rejectStartupConnect
+          ) {
+            this.cancelPendingStartupConnect = undefined;
+          }
+        }
       } catch (error) {
         logger.debug(`BLZ could not connect: ${error}`, NS);
         throw error;
