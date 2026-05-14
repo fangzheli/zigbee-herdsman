@@ -871,6 +871,9 @@ Future BLZ refactors should follow these rules:
 - Normalized string IEEE addresses when matching high-level driver waiters, so
   `NETWORK_ADDRESS_RESPONSE` waiters resolve across `0x`/case differences
   instead of being retained until timeout.
+- Aligned `BlzEUI64` string construction with the same case-insensitive `0x`
+  prefix handling, so callers that pass `0X...` addresses do not fail before
+  reaching the normalized driver cache/waiter paths.
 
 ## Next Steps
 

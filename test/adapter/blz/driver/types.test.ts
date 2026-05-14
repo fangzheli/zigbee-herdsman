@@ -674,6 +674,11 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should create from hex string with uppercase 0X prefix', () => {
+                const eui = new BlzEUI64('0X0102030405060708');
+                expect(eui.toString()).toBe('0102030405060708');
+            });
+
             it('should create from hex string without Buffer.from', () => {
                 const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
                     throw new Error('Buffer.from used');

@@ -12,7 +12,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
         if (value instanceof BlzEUI64) {
             this._value = fixedBufferFromBytes(value._value, 8, 'Incorrect value passed');
         } else if (typeof value === 'string') {
-            if (value.startsWith('0x')) value = value.slice(2);
+            if (/^0x/i.test(value)) value = value.slice(2);
             this._value = fixedBufferFromHex(value, 8, 'Incorrect value passed');
         } else {
             this._value = fixedBufferFromBytes(value, 8, 'Incorrect value passed');
