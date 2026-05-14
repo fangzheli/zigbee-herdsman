@@ -69,6 +69,7 @@ describe("Utils", () => {
         const wait2_3 = waitress.waitFor(2, 10000).start();
         const wait2_4 = waitress.waitFor(2, 5000).start();
         const wait2_5 = waitress.waitFor(2, 5000).start();
+        wait2_3.promise.catch(() => {});
 
         waitress.remove(wait2_3.ID);
         vi.advanceTimersByTime(6000);
@@ -163,6 +164,27 @@ describe("Utils", () => {
                 new Promise((resolve) => setImmediate(() => resolve("pending"))),
             ]),
         ).toBe("rejected:Waitress cleared");
+    });
+
+    it("Test waitress remove rejects removed waiters", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000).start();
+        const result = waiter.promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        waitress.remove(waiter.ID);
+
+        expect(
+            await Promise.race([
+                result,
+                new Promise((resolve) => setImmediate(() => resolve("pending"))),
+            ]),
+        ).toBe("rejected:Waitress removed");
     });
 
     it("Test waitress removes timed out waiters immediately", async () => {

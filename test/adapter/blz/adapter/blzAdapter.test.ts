@@ -194,6 +194,49 @@ describe("BLZ Adapter", () => {
       });
     });
 
+    it("should send ZCL frame to all through broadcast request", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      apsFrame.sequence = 0x33;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.brequest.mockResolvedValue(true);
+      driverMock.mrequest.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToAll(
+        3,
+        zclFrame,
+        1,
+        ZSpec.BroadcastAddress.DEFAULT,
+      );
+
+      await vi.advanceTimersByTimeAsync(200);
+      await send;
+
+      expect(driverMock.brequest).toHaveBeenCalledWith(
+        ZSpec.BroadcastAddress.DEFAULT,
+        expect.objectContaining({
+          profileId: ZSpec.HA_PROFILE_ID,
+          clusterId: Zcl.Clusters.genOnOff.ID,
+          sourceEndpoint: 1,
+          destinationEndpoint: 3,
+          groupId: ZSpec.BroadcastAddress.DEFAULT,
+        }),
+        zclFrame.toBuffer(),
+      );
+      expect(driverMock.mrequest).not.toHaveBeenCalled();
+    });
+
     it("should preserve the extended PAN ID when changing channel", async () => {
       driverMock.networkParams.panId = 0x2ea0;
       driverMock.networkParams.extendedPanId = Buffer.from(

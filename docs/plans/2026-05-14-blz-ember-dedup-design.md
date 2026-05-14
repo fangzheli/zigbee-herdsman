@@ -217,6 +217,11 @@ Future BLZ refactors should follow these rules:
 - Removed timed-out waiters from shared `Waitress` as soon as their timeout
   fires, preventing BLZ request waiters from remaining in memory until a later
   unrelated frame happens to scan the waiter map.
+- Extended shared `Waitress.remove()` to reject removed waiters, so explicit
+  BLZ waiter cancellation does not leave external request promises pending.
+- Changed BLZ `sendZclFrameToAll()` to use the broadcast APS path instead of
+  the multicast path, matching the method contract and preserving the existing
+  post-send settle delay.
 
 ## Next Steps
 

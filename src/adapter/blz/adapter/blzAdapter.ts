@@ -716,9 +716,7 @@ export class BLZAdapter extends Adapter {
       frame.destinationEndpoint = endpoint;
       frame.groupId = destination;
 
-      // XXX: should be:
-      // await this.driver.brequest(destination, frame, zclFrame.toBuffer())
-      await this.driver.mrequest(frame, zclFrame.toBuffer());
+      await this.driver.brequest(destination, frame, zclFrame.toBuffer());
 
       /**
        * As a broadcast command is not confirmed and thus immidiately returns

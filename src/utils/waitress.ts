@@ -48,6 +48,7 @@ export class Waitress<TPayload, TMatcher> {
                 clearTimeout(waiter.timer);
             }
 
+            waiter.reject(new Error("Waitress removed"));
             this.waiters.delete(id);
         }
     }
