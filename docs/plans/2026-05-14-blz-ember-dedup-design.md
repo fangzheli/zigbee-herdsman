@@ -825,6 +825,10 @@ Future BLZ refactors should follow these rules:
 - Made low-level BLZ `getValue()` and `setValue()` fail fast on non-success
   command statuses, preventing startup/version reads or value updates from
   continuing with stale or missing payload data after the NCP reports failure.
+- Preserved the original lower-level error as `cause` when `execCommand()`
+  wraps send/wait failures, so command callers still get the existing
+  high-level failure message without losing the underlying UART or waiter
+  evidence.
 
 ## Next Steps
 

@@ -670,12 +670,14 @@ export class Blz extends EventEmitter {
             // For reset command, return empty BLZFrameData since we don't wait for response
             return new BLZFrameData("reset", false, {});
           }
-        } catch {
+        } catch (error) {
           if (waiter) {
             this.waitress.remove(waiter.ID);
           }
           this.throwIfConnectionChanged(commandConnectGeneration);
-          throw new Error(`Failure send ${name}:` + JSON.stringify(data));
+          throw new Error(`Failure send ${name}:` + JSON.stringify(data), {
+            cause: error,
+          });
         }
       },
     );

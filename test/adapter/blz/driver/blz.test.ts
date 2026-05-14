@@ -786,13 +786,15 @@ describe("BLZ Driver", () => {
     });
 
     it("should handle send failures before command waiters start", async () => {
-      serialDriverMock.sendDATA.mockRejectedValue(new Error("send failed"));
+      const sendError = new Error("send failed");
+      serialDriverMock.sendDATA.mockRejectedValue(sendError);
 
-      await expect(
-        blz.execCommand("getValue", {
+      const command = blz.execCommand("getValue", {
           valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
-        }),
-      ).rejects.toThrow("Failure send getValue");
+      });
+
+      await expect(command).rejects.toThrow("Failure send getValue");
+      await expect(command).rejects.toHaveProperty("cause", sendError);
     });
   });
 
