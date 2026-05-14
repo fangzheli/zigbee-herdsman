@@ -236,6 +236,9 @@ Future BLZ refactors should follow these rules:
 - Defused UART waiter cancellation when `writer.sendData()` throws before the
   waiter is started, preventing `Waitress.remove()` from creating an unhandled
   internal rejection.
+- Defused BLZ command waiter cancellation when lower `sendDATA()` rejects before
+  the command waiter is started, avoiding the same unhandled internal rejection
+  at the command queue layer.
 
 ## Next Steps
 

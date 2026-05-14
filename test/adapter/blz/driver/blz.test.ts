@@ -304,6 +304,16 @@ describe("BLZ Driver", () => {
         (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
       ).toBe(0);
     });
+
+    it("should handle send failures before command waiters start", async () => {
+      serialDriverMock.sendDATA.mockRejectedValue(new Error("send failed"));
+
+      await expect(
+        blz.execCommand("getValue", {
+          valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+        }),
+      ).rejects.toThrow("Failure send getValue");
+    });
   });
 
   describe("Event handling", () => {
