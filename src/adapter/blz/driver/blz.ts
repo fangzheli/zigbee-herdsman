@@ -288,8 +288,6 @@ function serializeFrameFields(
 }
 
 export class Blz extends EventEmitter {
-  cmdSeq = 0; // command sequence
-
   private serialDriver: SerialDriver;
   private waitress: Waitress<BLZFrame, BLZWaitressMatcher>;
   private queue: Queue;
@@ -664,11 +662,6 @@ export class Blz extends EventEmitter {
     if (!handled) {
       this.emit("frame", frm.name, frm);
     }
-  }
-
-  public makeZDOframe(name: string | number, params: ParamsDesc): Buffer {
-    const frmData = new BLZZDORequestFrameData(name, true, params);
-    return frmData.serialize();
   }
 
   private makeFrame(name: string, params: ParamsDesc | undefined): Buffer {

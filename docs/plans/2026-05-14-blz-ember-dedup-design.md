@@ -565,6 +565,8 @@ Future BLZ refactors should follow these rules:
   request waiter ownership inside their respective lifecycle cleanup paths.
 - Made the BLZ adapter's driver-close event handler private, so disconnected
   emission stays owned by the adapter's attached driver listener.
+- Removed unused public BLZ transport leftovers (`cmdSeq` and `makeZDOframe()`),
+  reducing mutable and command-construction surface not owned by current flows.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot
