@@ -515,6 +515,10 @@ Future BLZ refactors should follow these rules:
 - Fixed the shared queue's keyed scheduling so numeric key `0` is treated as a
   real serialization key. This matters for BLZ sends keyed by coordinator
   network address `0x0000`.
+- Split startup network validation and formation into per-step cancellable
+  operations, so `Driver.stop()` cannot reject startup while still allowing a
+  late `networkInit()` or network-key update to continue into follow-on BLZ
+  commands against a stopped transport.
 
 ## Next Steps
 

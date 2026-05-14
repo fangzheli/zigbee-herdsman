@@ -396,12 +396,7 @@ export class Driver extends EventEmitter {
         startupStopGeneration,
       );
 
-      if (
-        await this.runStartupOperation(
-          () => this.needsToBeInitialised(this.nwkOpt),
-          startupStopGeneration,
-        )
-      ) {
+      if (await this.needsToBeInitialised(this.nwkOpt, startupStopGeneration)) {
         logger.info("The network setup need to be initialized", NS);
         await this.waitForStartupDelay(1000, startupStopGeneration);
         const restore = await this.runStartupOperation(
@@ -425,17 +420,11 @@ export class Driver extends EventEmitter {
 
         if (restore) {
           logger.info("Restore network from backup", NS);
-          await this.runStartupOperation(
-            () => this.formNetwork(true),
-            startupStopGeneration,
-          );
+          await this.formNetwork(true, startupStopGeneration);
           result = "restored";
         } else {
           logger.info("Form a new network", NS);
-          await this.runStartupOperation(
-            () => this.formNetwork(false),
-            startupStopGeneration,
-          );
+          await this.formNetwork(false, startupStopGeneration);
           result = "reset";
         }
       }
@@ -516,15 +505,22 @@ export class Driver extends EventEmitter {
 
   private async needsToBeInitialised(
     options: TsType.NetworkOptions,
+    startupStopGeneration: number,
   ): Promise<boolean> {
     const blz = this.getBlz();
-    const stackUp = await blz.networkInit();
+    const stackUp = await this.runStartupOperation(
+      () => blz.networkInit(),
+      startupStopGeneration,
+    );
     logger.debug(`needToBeInitialized success stack up: ${stackUp}`, NS);
     if (!stackUp) {
       return true;
     }
 
-    const netParams = await blz.execCommand("getNetworkParameters");
+    const netParams = await this.runStartupOperation(
+      () => blz.execCommand("getNetworkParameters"),
+      startupStopGeneration,
+    );
     logger.debug(
       `Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`,
       NS,
@@ -582,11 +578,22 @@ export class Driver extends EventEmitter {
     return !sameExtendedPanId;
   }
 
-  private async formNetwork(restore: boolean): Promise<void> {
+  private async formNetwork(
+    restore: boolean,
+    startupStopGeneration?: number,
+  ): Promise<void> {
+    const run = async <T>(operation: () => Promise<T>): Promise<T> => {
+      if (startupStopGeneration === undefined) {
+        return await operation();
+      }
+
+      return await this.runStartupOperation(operation, startupStopGeneration);
+    };
+
     const blz = this.getBlz();
     let backup;
     if (restore) {
-      backup = await this.backupMan.getStoredBackup();
+      backup = await run(() => this.backupMan.getStoredBackup());
 
       if (!backup) {
         throw new Error(`No valid backup found.`);
@@ -598,12 +605,14 @@ export class Driver extends EventEmitter {
         networkKey = Buffer.from(networkKey, "hex");
       }
       // can only change network key and link key when the stack is on and leave the current network
-      await this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber);
+      await run(() =>
+        this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber),
+      );
       // await this.setGlobalTcLinkKey(backup.blz!.tclk!, backup.blz!.tclkFrameCounter!);
     } else {
       if (this.nwkOpt.networkKey) {
-        let networkKey = this.nwkOpt.networkKey;
-        await this.setNetworkKeyInfo(Buffer.from(networkKey), 0, 0);
+        const networkKey = this.nwkOpt.networkKey;
+        await run(() => this.setNetworkKeyInfo(Buffer.from(networkKey), 0, 0));
       }
     }
 
@@ -613,20 +622,24 @@ export class Driver extends EventEmitter {
         uint64_t,
         Buffer.from(backup!.networkOptions.extendedPanId),
       );
-      formStatus = await blz.formNetwork(
-        backupextendedPanID,
-        backup!.networkOptions.panId,
-        backup!.logicalChannel,
+      formStatus = await run(() =>
+        blz.formNetwork(
+          backupextendedPanID,
+          backup!.networkOptions.panId,
+          backup!.logicalChannel,
+        ),
       );
     } else {
       const [nwkoptextendedPanID] = uint64_t.deserialize(
         uint64_t,
         Buffer.from(this.nwkOpt.extendedPanID!),
       );
-      formStatus = await blz.formNetwork(
-        nwkoptextendedPanID,
-        this.nwkOpt.panID,
-        this.nwkOpt.channelList[0],
+      formStatus = await run(() =>
+        blz.formNetwork(
+          nwkoptextendedPanID,
+          this.nwkOpt.panID,
+          this.nwkOpt.channelList[0],
+        ),
       );
     }
 

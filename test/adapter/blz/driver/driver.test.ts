@@ -978,6 +978,50 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("does not continue startup network validation after stop interrupts network init", async () => {
+        vi.useFakeTimers();
+        let finishNetworkInit: (() => void) | undefined;
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockReturnValue(
+                new Promise<boolean>((resolve) => {
+                    finishNetworkInit = () => resolve(true);
+                }),
+            ),
+            execCommand: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(2000);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        finishNetworkInit?.();
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            startupResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void startup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(blzMock.execCommand).not.toHaveBeenCalled();
+    });
+
     it("forms a new network when initial network parameters return only an error status", async () => {
         vi.useFakeTimers();
         const blzMock = {
@@ -1279,6 +1323,62 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(observed).toBe("rejected:Driver stopped");
         expect(blzMock.close).toHaveBeenCalledWith(false);
         expect(blzMock.formNetwork).toHaveBeenCalledTimes(1);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
+    it("does not continue startup network formation after stop interrupts key update", async () => {
+        vi.useFakeTimers();
+        let finishSetNetworkKeyInfo: (() => void) | undefined;
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn().mockResolvedValue({
+                status: BlzStatus.SUCCESS,
+                nodeType: 1,
+                panId: networkOptions.panID,
+                extPanId: 0x0807060504030201n,
+                channel: 11,
+                nwkUpdateId: 0,
+            }),
+            leaveNetwork: vi.fn().mockResolvedValue(BlzStatus.SUCCESS),
+            formNetwork: vi.fn().mockResolvedValue(BlzStatus.SUCCESS),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        vi.spyOn(driver, "setNetworkKeyInfo").mockReturnValue(
+            new Promise<BlzStatus>((resolve) => {
+                finishSetNetworkKeyInfo = () => resolve(BlzStatus.SUCCESS);
+            }),
+        );
+        vi.spyOn(driver.backupMan, "getStoredBackup").mockResolvedValue(null);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(4000);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        finishSetNetworkKeyInfo?.();
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            startupResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void startup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(blzMock.formNetwork).not.toHaveBeenCalled();
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
