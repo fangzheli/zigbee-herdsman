@@ -516,7 +516,7 @@ export class Driver extends EventEmitter {
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
       const networkParams = new BlzNetworkParameters();
       // Convert number/bigint to 8-byte Buffer in big-endian format
-      const buf = Buffer.alloc(8);
+      const buf = Buffer.allocUnsafe(8);
       if (typeof netParams.extPanId === "bigint") {
         buf.writeBigUInt64BE(netParams.extPanId);
       } else {

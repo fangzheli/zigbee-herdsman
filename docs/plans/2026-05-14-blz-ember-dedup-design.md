@@ -737,6 +737,9 @@ Future BLZ refactors should follow these rules:
 - Changed fixed-width integer serialization to allocate with `allocUnsafe()`
   because every integer write covers the complete target width, avoiding
   unnecessary zero-fill work on BLZ command serialization.
+- Changed startup network-parameter snapshot creation to allocate the
+  extended-PAN-ID buffer with `allocUnsafe(8)` because the subsequent
+  `writeBigUInt64BE()` covers the complete buffer.
 
 ## Next Steps
 

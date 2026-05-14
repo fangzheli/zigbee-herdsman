@@ -1087,6 +1087,65 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(reset).not.toHaveBeenCalled();
     });
 
+    it("stores startup extended PAN ID without zero-fill allocation", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const originalAlloc = Buffer.alloc;
+        const allocSpy = vi.spyOn(Buffer, "alloc").mockImplementation(((size: number, ...args: unknown[]) => {
+            if (size === 8) {
+                throw new Error("Buffer.alloc(8) used");
+            }
+
+            return (originalAlloc as (...parameters: unknown[]) => Buffer)(size, ...args);
+        }) as typeof Buffer.alloc);
+
+        try {
+            const startup = driver.startup();
+            await vi.advanceTimersByTimeAsync(3000);
+            await startup;
+
+            expect(driver.getNetworkParametersSnapshot().extendedPanId).toEqual(
+                Buffer.from("0807060504030201", "hex"),
+            );
+            expect(allocSpy).not.toHaveBeenCalledWith(8);
+        } finally {
+            allocSpy.mockRestore();
+        }
+    });
+
     it("fails startup when final network parameter probe reports a non-success status", async () => {
         vi.useFakeTimers();
         const blzMock = {
