@@ -89,6 +89,13 @@ describe("BLZ high-level driver lifecycle", () => {
         await expect(waiterResult).resolves.toEqual(new Error("Waitress cleared"));
     });
 
+    it("handles waiter cancellation before waiters start", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+
+        waiter.cancel();
+    });
+
     it("clears address cache when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         driver.handleNodeJoined(0x3344, 0x1111);

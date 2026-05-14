@@ -242,6 +242,9 @@ Future BLZ refactors should follow these rules:
 - Defused BLZ adapter ZCL response waiter cancellation when APS send fails before
   the response waiter is started, preventing `Waitress.remove()` from surfacing
   an unhandled internal rejection.
+- Defused high-level driver waiter cancellation before `waiter.start()`, so ZDO
+  send-failure cleanup can cancel driver waiters without unhandled internal
+  rejections.
 
 ## Next Steps
 
