@@ -41,12 +41,12 @@ export function parseNwkUpdateChannelChange(rawPayload: Buffer, hasZdoMessageOve
 }
 
 function normalizeNwkUpdatePayload(rawPayload: Buffer, hasZdoMessageOverhead: boolean): Buffer {
-    let payload = Buffer.from(rawPayload);
+    const raw = Buffer.from(rawPayload);
     let needsTsn = false;
     let needsManagerAddress = false;
 
     if (hasZdoMessageOverhead) {
-        switch (payload.length) {
+        switch (raw.length) {
             case 9:
                 break;
             case 8:
@@ -61,11 +61,11 @@ function normalizeNwkUpdatePayload(rawPayload: Buffer, hasZdoMessageOverhead: bo
                 break;
             default:
                 throw new Error(
-                    `Unexpected NWK_UPDATE_REQUEST length ${payload.length} bytes. Expected 6, 7, 8, or 9 bytes when hasZdoMessageOverhead=true`,
+                    `Unexpected NWK_UPDATE_REQUEST length ${raw.length} bytes. Expected 6, 7, 8, or 9 bytes when hasZdoMessageOverhead=true`,
                 );
         }
     } else {
-        switch (payload.length) {
+        switch (raw.length) {
             case 8:
                 break;
             case 6:
@@ -73,17 +73,23 @@ function normalizeNwkUpdatePayload(rawPayload: Buffer, hasZdoMessageOverhead: bo
                 break;
             default:
                 throw new Error(
-                    `Unexpected NWK_UPDATE_REQUEST length ${payload.length} bytes. Expected 6 or 8 bytes when hasZdoMessageOverhead=false`,
+                    `Unexpected NWK_UPDATE_REQUEST length ${raw.length} bytes. Expected 6 or 8 bytes when hasZdoMessageOverhead=false`,
                 );
         }
     }
 
+    const payload = Buffer.allocUnsafe(raw.length + (needsTsn ? 1 : 0) + (needsManagerAddress ? 2 : 0));
+    let offset = 0;
+
     if (needsTsn) {
-        payload = Buffer.concat([Buffer.from([0x00]), payload]);
+        payload[offset++] = 0x00;
     }
 
+    raw.copy(payload, offset);
+    offset += raw.length;
+
     if (needsManagerAddress) {
-        payload = Buffer.concat([payload, Buffer.from([DEFAULT_NWK_MANAGER_ADDR & 0xff, (DEFAULT_NWK_MANAGER_ADDR >> 8) & 0xff])]);
+        payload.writeUInt16LE(DEFAULT_NWK_MANAGER_ADDR, offset);
     }
 
     return payload;

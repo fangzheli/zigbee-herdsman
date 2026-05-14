@@ -539,6 +539,9 @@ Future BLZ refactors should follow these rules:
 - Added a high-level `Driver.isInitialized()` API and moved BLZ adapter permit
   join checks off the public `driver.blz` transport field, reducing adapter
   coupling to driver internals.
+- Reworked NWK update channel-change payload normalization to preallocate the
+  canonical payload and write optional TSN/manager-address fields directly,
+  avoiding repeated `Buffer.concat()` in the channel-change entry path.
 
 ## Next Steps
 

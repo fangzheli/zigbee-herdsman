@@ -1,4 +1,4 @@
-import {describe, expect, it} from "vitest";
+import {describe, expect, it, vi} from "vitest";
 
 import {parseNwkUpdateChannelChange} from "../../../../src/adapter/blz/adapter/nwkUpdate";
 import * as Zdo from "../../../../src/zspec/zdo";
@@ -13,6 +13,20 @@ describe("BLZ NWK update payload handling", () => {
         expect(result.nwkUpdateId).toBe(1);
         expect(result.nwkManagerAddr).toBe(0xffff);
         expect(result.payload).toStrictEqual(Buffer.from("0000800000fe01ffff", "hex"));
+    });
+
+    it("normalizes missing TSN and manager address without Buffer.concat allocation churn", () => {
+        const concatSpy = vi.spyOn(Buffer, "concat");
+        try {
+            const raw = Buffer.from("00800000fe04", "hex");
+
+            const result = parseNwkUpdateChannelChange(raw, true);
+
+            expect(result.payload).toStrictEqual(Buffer.from("0000800000fe04ffff", "hex"));
+            expect(concatSpy).not.toHaveBeenCalled();
+        } finally {
+            concatSpy.mockRestore();
+        }
     });
 
     it.each([
