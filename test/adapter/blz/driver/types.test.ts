@@ -327,6 +327,27 @@ describe('BLZ Types', () => {
             expect(result).toEqual(input);
         });
 
+        it('should serialize fixed Buffer input without cloning it first', () => {
+            const input = Buffer.alloc(16, 0xAB);
+            const originalFrom = Buffer.from;
+            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+                if (value === input) {
+                    throw new Error('Buffer.from input clone used');
+                }
+
+                return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+            }) as typeof Buffer.from);
+
+            try {
+                const result = Fixed16Bytes.serialize(Fixed16Bytes, input);
+
+                expect(result).toBe(input);
+                expect(fromSpy).not.toHaveBeenCalledWith(input);
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
         it('should throw for wrong size buffer', () => {
             const input = Buffer.alloc(10, 0xAB);
             expect(() => Fixed16Bytes.serialize(Fixed16Bytes, input)).toThrow();

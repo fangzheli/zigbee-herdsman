@@ -325,7 +325,7 @@ export class Fixed16Bytes extends Bytes {
         if (!Buffer.isBuffer(value) || value.length !== cls._size) {
             throw new Error(`Value must be a buffer with exactly ${cls._size} bytes.`);
         }
-        return Buffer.from(value);  // Simply returns the value as it should already be 16 bytes
+        return value;  // The enclosing frame serializer copies this into its final buffer.
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
