@@ -627,14 +627,14 @@ export class BLZAdapter extends Adapter {
       );
     }
 
-    const frame = this.driver.makeApsFrame(
+    const frame = this.makeZclApsFrame(
       zclFrame.cluster.ID,
       disableResponse || zclFrame.header.frameControl.disableDefaultResponse,
+      profileId,
+      sourceEndpoint || 0x01,
+      endpoint,
+      0,
     );
-    frame.profileId = profileId;
-    frame.sourceEndpoint = sourceEndpoint || 0x01;
-    frame.destinationEndpoint = endpoint;
-    frame.groupId = 0;
 
     this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
     const dataConfirmResult = await this.driver.request(
@@ -686,11 +686,14 @@ export class BLZAdapter extends Adapter {
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
       this.checkInterpanLock();
-      const frame = this.driver.makeApsFrame(zclFrame.cluster.ID, false);
-      frame.profileId = profileId ?? ZSpec.HA_PROFILE_ID;
-      frame.sourceEndpoint = sourceEndpoint ?? 0x01;
-      frame.destinationEndpoint = 0xff;
-      frame.groupId = groupID;
+      const frame = this.makeZclApsFrame(
+        zclFrame.cluster.ID,
+        false,
+        profileId ?? ZSpec.HA_PROFILE_ID,
+        sourceEndpoint ?? 0x01,
+        0xff,
+        groupID,
+      );
 
       const sent = await this.driver.mrequest(frame, zclFrame.toBuffer());
       if (!sent) {
@@ -714,19 +717,23 @@ export class BLZAdapter extends Adapter {
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
       this.checkInterpanLock();
-      const frame = this.driver.makeApsFrame(zclFrame.cluster.ID, false);
       // Green Power is not supported by BLZ
       if (endpoint === ZSpec.GP_ENDPOINT) {
         return;
       }
-      frame.profileId =
+      const resolvedProfileId =
         profileId ??
         (sourceEndpoint === ZSpec.GP_ENDPOINT && endpoint === ZSpec.GP_ENDPOINT
           ? ZSpec.GP_PROFILE_ID
           : ZSpec.HA_PROFILE_ID);
-      frame.sourceEndpoint = sourceEndpoint;
-      frame.destinationEndpoint = endpoint;
-      frame.groupId = destination;
+      const frame = this.makeZclApsFrame(
+        zclFrame.cluster.ID,
+        false,
+        resolvedProfileId,
+        sourceEndpoint,
+        endpoint,
+        destination,
+      );
 
       const sent = await this.driver.brequest(destination, frame, zclFrame.toBuffer());
       if (!sent) {
@@ -740,6 +747,23 @@ export class BLZAdapter extends Adapter {
        */
       await wait(200);
     });
+  }
+
+  private makeZclApsFrame(
+    clusterId: number,
+    disableResponse: boolean,
+    profileId: number,
+    sourceEndpoint: number,
+    destinationEndpoint: number,
+    groupId: number,
+  ): BlzApsFrame {
+    const frame = this.driver.makeApsFrame(clusterId, disableResponse);
+    frame.profileId = profileId;
+    frame.sourceEndpoint = sourceEndpoint;
+    frame.destinationEndpoint = destinationEndpoint;
+    frame.groupId = groupId;
+
+    return frame;
   }
 
   public async getNetworkParameters(): Promise<NetworkParameters> {

@@ -256,6 +256,9 @@ Future BLZ refactors should follow these rules:
 - Aligned BLZ ZCL endpoint/group/broadcast sends with the common adapter
   interface by honoring optional `profileId`, honoring group `sourceEndpoint`,
   and using endpoint `0xff` for group APS frames.
+- Centralized BLZ ZCL APS frame construction for endpoint, group, and broadcast
+  sends in one helper so profile/source/destination/group field propagation
+  stays consistent across send paths.
 
 ## Next Steps
 
