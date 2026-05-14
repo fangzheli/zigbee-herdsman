@@ -165,6 +165,21 @@ describe("BLZ Adapter", () => {
       expect(driverMock.stop).toHaveBeenCalled();
     });
 
+    it("should stop the driver silently during expected adapter stop", async () => {
+      const disconnected = vi.fn();
+      adapter.on("disconnected", disconnected);
+      driverMock.stop.mockImplementation(async (emitClose = true) => {
+        if (emitClose) {
+          driverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+        }
+      });
+
+      await adapter.stop();
+
+      expect(driverMock.stop).toHaveBeenCalledWith(false);
+      expect(disconnected).not.toHaveBeenCalled();
+    });
+
     it("should detach owned driver listeners after a successful stop", async () => {
       driverMock.stop.mockResolvedValue(undefined);
 
