@@ -788,7 +788,7 @@ export class Blz extends EventEmitter {
     const frameNames =
       typeof matcher.frameId == "string"
         ? [matcher.frameId]
-        : FRAME_NAMES_BY_ID[matcher.frameId];
+        : FRAME_NAMES_BY_ID[matcher.frameId] ?? [];
     return frameNames.includes(payload.frameName);
   }
 

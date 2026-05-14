@@ -652,6 +652,8 @@ Future BLZ refactors should follow these rules:
 - Made BLZ frame decode fallback explicit: `BLZFrameData.createFrame()` now
   advertises that all parser candidates can fail and returns `undefined`
   without a non-null assertion.
+- Guarded BLZ transport waiter matching for unknown numeric frame IDs, returning
+  a clean non-match instead of throwing from the waiter validator.
 
 ## Next Steps
 

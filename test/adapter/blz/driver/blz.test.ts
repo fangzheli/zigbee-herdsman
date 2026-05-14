@@ -646,6 +646,22 @@ describe("BLZ Driver", () => {
       ).toBe(0);
     });
 
+    it("should not throw when matching an unknown numeric frame waiter", () => {
+      const result = (
+        blz as unknown as {
+          waitressValidator: (
+            payload: {frameName: string},
+            matcher: {frameId: number},
+          ) => boolean;
+        }
+      ).waitressValidator(
+        {frameName: "getValue"},
+        {frameId: 0xffff},
+      );
+
+      expect(result).toBe(false);
+    });
+
     it("should not resolve active reset commands after close interrupts lower send", async () => {
       let releaseSend: (() => void) | undefined;
       serialDriverMock.sendDATA.mockReturnValue(
