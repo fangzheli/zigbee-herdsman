@@ -365,6 +365,8 @@ export class BLZAdapter extends Adapter {
 
     return await this.queue.execute(async () => {
       this.checkInterpanLock();
+      const generation = this.stopGeneration;
+      this.throwIfStopped(generation);
 
       const clusterName = Zdo.ClusterId[clusterId];
       const frame = this.driver.makeApsFrame(clusterId, disableResponse);
@@ -392,7 +394,9 @@ export class BLZAdapter extends Adapter {
         frame,
         payload,
         waiter,
+        generation,
       );
+      this.throwIfStopped(generation);
 
       // BLZ hardware does not provide a device leave callback/indication.
       // Route the synthetic leave through the driver so its address cache is
@@ -408,6 +412,7 @@ export class BLZAdapter extends Adapter {
 
       if (waiter && responseClusterId !== undefined) {
         const response = await waiter.start().promise;
+        this.throwIfStopped(generation);
 
         logger.debug(
           () =>
@@ -427,6 +432,7 @@ export class BLZAdapter extends Adapter {
     frame: BlzApsFrame,
     payload: Buffer,
     waiter: ZdoSendWaiter | undefined,
+    generation: number,
   ): Promise<void> {
     const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
     const route = isBroadcast
@@ -443,6 +449,7 @@ export class BLZAdapter extends Adapter {
         ? await this.driver.brequest(networkAddress, frame, payload)
         : await this.driver.request(networkAddress, frame, payload);
 
+      this.throwIfStopped(generation);
       logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
 
       if (!req) {
@@ -450,6 +457,7 @@ export class BLZAdapter extends Adapter {
       }
     } catch (error) {
       waiter?.cancel();
+      this.throwIfStopped(generation);
       throw error;
     }
   }
@@ -501,6 +509,8 @@ export class BLZAdapter extends Adapter {
 
     await this.queue.execute(async () => {
       this.checkInterpanLock();
+      const generation = this.stopGeneration;
+      this.throwIfStopped(generation);
       const frame = this.driver.makeApsFrame(clusterId, disableResponse);
 
       if (this.hasZdoMessageOverhead) {
@@ -514,6 +524,7 @@ export class BLZAdapter extends Adapter {
         frame,
         payload,
         undefined,
+        generation,
       );
     }, networkAddress);
 

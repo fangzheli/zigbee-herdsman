@@ -342,6 +342,9 @@ Future BLZ refactors should follow these rules:
 - Added adapter stop-generation checks around endpoint ZCL response recovery,
   so `BLZAdapter.stop()` does not let a cleared response waiter trigger a
   recovery retry or leave the original send promise pending.
+- Added the same adapter stop-generation guard to ZDO sends, preventing an
+  in-flight lower request from resolving after `BLZAdapter.stop()` and running
+  follow-up work such as synthetic leave cache cleanup/events.
 
 ## Next Steps
 

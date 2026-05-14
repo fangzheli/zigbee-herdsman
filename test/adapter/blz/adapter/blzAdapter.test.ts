@@ -1031,6 +1031,43 @@ describe("BLZ Adapter", () => {
       expect(start).not.toHaveBeenCalled();
     });
 
+    it("should not finish active ZDO sends after stop interrupts the lower request", async () => {
+      let releaseRequest: (() => void) | undefined;
+      const lowerRequest = new Promise<boolean>((resolve) => {
+        releaseRequest = () => resolve(true);
+      });
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
+      apsFrame.clusterId = Zdo.ClusterId.LEAVE_REQUEST;
+      apsFrame.sourceEndpoint = 0;
+      apsFrame.destinationEndpoint = 0;
+      apsFrame.sequence = 4;
+
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockReturnValue(lowerRequest);
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const send = adapter.sendZdo(
+        "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.LEAVE_REQUEST,
+        Buffer.from([0x00]),
+        true,
+      );
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      releaseRequest?.();
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(sendResult).resolves.toBe("rejected:Adapter stopped");
+      expect(driverMock.handleNodeLeft).not.toHaveBeenCalled();
+    });
+
     it("should handle ZCL send failures before response waiters start", async () => {
       driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
         const apsFrame = new BlzApsFrame();
