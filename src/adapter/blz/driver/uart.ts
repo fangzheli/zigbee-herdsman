@@ -56,6 +56,10 @@ export class SerialDriver extends EventEmitter {
   }
 
   async connect(options: SerialPortOptions): Promise<void> {
+    if (this.serialPort || this.socketPort || this.initialized) {
+      await this.close(false);
+    }
+
     if (isTcpPath(options.path!)) {
       await this.openSocketPort(options.path!);
     } else {

@@ -553,6 +553,9 @@ Future BLZ refactors should follow these rules:
   well, keeping mutable network state behind defensive snapshot/update APIs.
 - Made the high-level driver's lower-transport getter private, so callers
   cannot retain the BLZ transport object through a public escape hatch.
+- Hardened the UART serial driver against direct repeated `connect()` calls by
+  closing any existing serial/socket resource before opening a replacement,
+  avoiding orphaned pipes, listeners, or port references at the lower layer.
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.

@@ -184,6 +184,47 @@ describe("BLZ Serial Driver", () => {
       expect(driver.isInitialized()).toBe(true);
     });
 
+    it("should close an existing serial connection before opening a replacement", async () => {
+      const firstPort = {
+        ...serialPortMock,
+        asyncOpen: vi.fn().mockResolvedValue(undefined),
+        asyncFlushAndClose: vi.fn().mockResolvedValue(undefined),
+        pipe: vi.fn(),
+        unpipe: vi.fn(),
+        once: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn(),
+        destroy: vi.fn(),
+        isOpen: true,
+      };
+      const secondPort = {
+        ...serialPortMock,
+        asyncOpen: vi.fn().mockResolvedValue(undefined),
+        asyncFlushAndClose: vi.fn().mockResolvedValue(undefined),
+        pipe: vi.fn(),
+        unpipe: vi.fn(),
+        once: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn(),
+        destroy: vi.fn(),
+        isOpen: true,
+      };
+      vi.mocked(SerialPort)
+        .mockImplementationOnce(() => firstPort as any)
+        .mockImplementationOnce(() => secondPort as any);
+
+      await driver.connect(serialPortOptions);
+      await driver.connect(serialPortOptions);
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(firstPort);
+      expect(firstPort.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(firstPort.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(firstPort.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(firstPort.asyncFlushAndClose).toHaveBeenCalled();
+      expect(secondPort.asyncOpen).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBe(secondPort);
+    });
+
     it("should handle connection failure", async () => {
       serialPortMock.asyncOpen.mockRejectedValue(
         new Error("Connection failed"),
