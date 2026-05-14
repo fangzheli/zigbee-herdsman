@@ -636,6 +636,17 @@ describe("BLZ Driver", () => {
       expect(result).toEqual(mockValue);
     }, 10000); // Increase timeout for this test
 
+    it("should reject getValue when the command status is not success", async () => {
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+        value: Buffer.from([1, 2]),
+      } as BLZFrameData);
+
+      await expect(
+        blz.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION),
+      ).rejects.toThrow("Failed to get value BLZ_VALUE_ID_STACK_VERSION: status 1");
+    });
+
     it("should serialize numeric setValue payloads without zero-fill allocation", async () => {
       const execCommand = vi.spyOn(blz, "execCommand").mockResolvedValue({
         status: BlzStatus.SUCCESS,
@@ -661,6 +672,16 @@ describe("BLZ Driver", () => {
       } finally {
         allocSpy.mockRestore();
       }
+    });
+
+    it("should reject setValue when the command status is not success", async () => {
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+      } as BLZFrameData);
+
+      await expect(
+        blz.setValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION, 0x12345678),
+      ).rejects.toThrow("Failed to set value BLZ_VALUE_ID_STACK_VERSION: status 1");
     });
 
     it("should not retain waiters for reset commands that do not wait for response", async () => {

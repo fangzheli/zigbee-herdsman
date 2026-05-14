@@ -822,6 +822,9 @@ Future BLZ refactors should follow these rules:
 - Preserved explicit endpoint ZCL `sourceEndpoint` values by replacing truthy
   defaulting with nullish/default-on-entry handling, matching the group send
   path and avoiding accidental endpoint rewrites.
+- Made low-level BLZ `getValue()` and `setValue()` fail fast on non-success
+  command statuses, preventing startup/version reads or value updates from
+  continuing with stale or missing payload data after the NCP reports failure.
 
 ## Next Steps
 

@@ -708,7 +708,7 @@ export class Blz extends EventEmitter {
     valueId: t.BlzValueId,
     value: number | Buffer,
   ): Promise<BLZFrameData> {
-    const valueName = t.BlzValueId.valueToName(t.BlzValueId, valueId);
+    const valueName = t.BlzValueId.valueName(t.BlzValueId, valueId);
     logger.debug(`Set ${valueName} = ${value}`, NS);
 
     // Convert value to Buffer if it's a number
@@ -737,13 +737,14 @@ export class Blz extends EventEmitter {
         `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
       );
+      throw new Error(`Failed to set value ${valueName}: status ${ret.status}`);
     }
 
     return ret;
   }
 
   async getValue(valueId: t.BlzValueId): Promise<Buffer> {
-    const valueName = t.BlzValueId.valueToName(t.BlzValueId, valueId);
+    const valueName = t.BlzValueId.valueName(t.BlzValueId, valueId);
     logger.debug(`Get ${valueName}`, NS);
     const ret = await this.execCommand("getValue", { valueId });
 
@@ -752,6 +753,7 @@ export class Blz extends EventEmitter {
         `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
       );
+      throw new Error(`Failed to get value ${valueName}: status ${ret.status}`);
     }
 
     // logger.debug(`Got ${valueName} = ${ret.value}`, NS);
