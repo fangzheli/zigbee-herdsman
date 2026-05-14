@@ -24,12 +24,17 @@ import {
 } from "../../tstype";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzStatus } from "../driver/types";
+import type { BlzApsFrame } from "../driver/types/struct";
 
 const NS = "zh:blz";
 
 const autoDetectDefinitions = [
   { manufacturer: "wch.cn", vendorId: "1A86", productId: "7523" }, // ThirdReality Zigbee USB Dongle
 ];
+
+type ZdoSendWaiter = {
+  cancel: () => void;
+};
 
 export class BLZAdapter extends Adapter {
   private driver: Driver;
@@ -305,41 +310,14 @@ export class BLZAdapter extends Adapter {
         }
       }
 
-      if (ZSpec.Utils.isBroadcastAddress(networkAddress)) {
-        logger.debug(
-          () =>
-            `~~~> [ZDO ${clusterName} BROADCAST to=${networkAddress} payload=${payload.toString("hex")}]`,
-          NS,
-        );
-
-        const req = await this.driver.brequest(networkAddress, frame, payload);
-
-        logger.debug("~~~> [SENT ZDO BROADCAST]", NS);
-
-        if (!req) {
-          waiter?.cancel();
-          throw new Error(
-            `~x~> [ZDO ${clusterName} BROADCAST to=${networkAddress}] Failed to send request.`,
-          );
-        }
-      } else {
-        logger.debug(
-          () =>
-            `~~~> [ZDO ${clusterName} UNICAST to=${ieeeAddress}:${networkAddress} payload=${payload.toString("hex")}]`,
-          NS,
-        );
-
-        const req = await this.driver.request(networkAddress, frame, payload);
-
-        logger.debug("~~~> [SENT ZDO UNICAST]", NS);
-
-        if (!req) {
-          waiter?.cancel();
-          throw new Error(
-            `~x~> [ZDO ${clusterName} UNICAST to=${ieeeAddress}:${networkAddress}] Failed to send request.`,
-          );
-        }
-      }
+      await this.sendZdoFrame(
+        ieeeAddress,
+        networkAddress,
+        clusterName,
+        frame,
+        payload,
+        waiter,
+      );
 
       // BLZ hardware does not provide a device leave callback/indication.
       // After successfully sending LEAVE_REQUEST, emit deviceLeave immediately
@@ -368,6 +346,40 @@ export class BLZAdapter extends Adapter {
         return response.zdoResponse! as ZdoTypes.RequestToResponseMap[K];
       }
     }, networkAddress);
+  }
+
+  private async sendZdoFrame(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterName: string,
+    frame: BlzApsFrame,
+    payload: Buffer,
+    waiter: ZdoSendWaiter | undefined,
+  ): Promise<void> {
+    const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
+    const route = isBroadcast
+      ? `BROADCAST to=${networkAddress}`
+      : `UNICAST to=${ieeeAddress}:${networkAddress}`;
+
+    logger.debug(
+      () => `~~~> [ZDO ${clusterName} ${route} payload=${payload.toString("hex")}]`,
+      NS,
+    );
+
+    try {
+      const req = isBroadcast
+        ? await this.driver.brequest(networkAddress, frame, payload)
+        : await this.driver.request(networkAddress, frame, payload);
+
+      logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
+
+      if (!req) {
+        throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
+      }
+    } catch (error) {
+      waiter?.cancel();
+      throw error;
+    }
   }
 
   /**

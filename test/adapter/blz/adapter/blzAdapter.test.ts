@@ -373,6 +373,34 @@ describe("BLZ Adapter", () => {
   });
 
   describe("Error handling", () => {
+    it("should cancel ZDO waiters when the driver send rejects", async () => {
+      const cancel = vi.fn();
+      const start = vi.fn();
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
+      apsFrame.clusterId = Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST;
+      apsFrame.sourceEndpoint = 0;
+      apsFrame.destinationEndpoint = 0;
+      apsFrame.sequence = 4;
+
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.waitFor.mockReturnValue({ cancel, start });
+      driverMock.request.mockRejectedValue(new Error("driver send failed"));
+
+      await expect(
+        adapter.sendZdo(
+          "0x0102030405060708",
+          0x1234,
+          Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+          Buffer.from([0x00, 0x34, 0x12]),
+          false,
+        ),
+      ).rejects.toThrow("driver send failed");
+
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(start).not.toHaveBeenCalled();
+    });
+
     it("should handle unsupported operations", async () => {
       await expect(adapter.reset("soft")).rejects.toThrow("Not supported");
       await expect(
