@@ -299,6 +299,21 @@ export class Driver extends EventEmitter {
 
   private onBlzClose(): void {
     logger.debug("onBlzClose()", NS);
+    const closeError = new Error("Driver closed");
+    this.requestGeneration += 1;
+    this.cancelRequestOperations(closeError);
+    this.requestRetryDelay.cancel();
+    this.stopGeneration += 1;
+    this.resetDelay.cancel();
+    this.startupDelay.cancel();
+    this.resetForceOperations.cancel(closeError);
+    this.startupOperations.cancel(closeError);
+    if (this.blz) {
+      this.detachBlzListeners(this.blz);
+      this.blz = undefined;
+    }
+    this.waitress.clear();
+    this.clearCoordinatorAndNetworkState();
     this.emit("close");
   }
 

@@ -659,6 +659,10 @@ Future BLZ refactors should follow these rules:
 - Aligned high-level `Driver.stop(true)` with the lower BLZ/UART close
   semantics: explicit close requests now emit one driver `close` event, even
   when they join an in-flight silent stop.
+- Cleaned high-level driver state on unexpected lower BLZ close events:
+  pending request/startup/reset operations and waiters are cancelled, BLZ
+  listeners are detached, cached network state is cleared, and the lower BLZ
+  reference is released before emitting `close`.
 
 ## Next Steps
 

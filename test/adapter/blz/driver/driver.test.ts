@@ -207,6 +207,36 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("cleans pending state when the lower BLZ transport closes unexpectedly", async () => {
+        vi.useFakeTimers();
+        const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiterResult = waiter.start().promise.catch((error: Error) => error);
+        const callback = vi.fn();
+        const blzMock = {
+            off: vi.fn(),
+            close: vi.fn(),
+        };
+        setDriverBlz(driver, blzMock);
+        driver.handleNodeJoined(0x3344, 0x1111);
+        driver.on("close", callback);
+
+        (driver as unknown as {onBlzClose: () => void}).onBlzClose();
+        const observed = await Promise.race([
+            waiterResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
+
+        expect(clearTimeoutSpy).toHaveBeenCalled();
+        expect(observed).toEqual(new Error("Waitress cleared"));
+        expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+        expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("handles waiter cancellation before waiters start", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const waiter = driver.waitFor(0x1234, 0x8000, 1000);
