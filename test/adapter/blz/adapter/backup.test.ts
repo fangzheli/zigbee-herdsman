@@ -2,7 +2,6 @@ import {vi, describe, it, expect, beforeEach} from 'vitest';
 import * as fs from 'fs';
 import {BLZAdapterBackup} from '../../../../src/adapter/blz/adapter/backup';
 import {Driver} from '../../../../src/adapter/blz/driver/driver';
-import {BlzStatus, BlzValueId} from '../../../../src/adapter/blz/driver/types/named';
 import * as BackupUtils from '../../../../src/utils/backup';
 
 vi.mock('fs', () => ({
@@ -25,6 +24,8 @@ describe('BLZ Adapter Backup', () => {
         getBlz: ReturnType<typeof vi.fn>;
         getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
         getNetworkKeyInfo: ReturnType<typeof vi.fn>;
+        getCurrentNetworkParameters: ReturnType<typeof vi.fn>;
+        getMacAddress: ReturnType<typeof vi.fn>;
     };
 
     const backupPath = '/path/to/backup.json';
@@ -39,6 +40,8 @@ describe('BLZ Adapter Backup', () => {
             getBlz: vi.fn(),
             getGlobalTcLinkKey: vi.fn(),
             getNetworkKeyInfo: vi.fn(),
+            getCurrentNetworkParameters: vi.fn(),
+            getMacAddress: vi.fn(),
         };
         driverMock.getBlz.mockReturnValue(driverMock.blz);
 
@@ -49,22 +52,19 @@ describe('BLZ Adapter Backup', () => {
     describe('Creating backup', () => {
         it('should create backup successfully', async () => {
             // Mock network parameters response
-            driverMock.blz.execCommand.mockImplementation((cmd: string, params?: any) => {
-                if (cmd === 'getNetworkParameters') {
-                    return Promise.resolve({
-                        panId: 0x1234,
-                        extPanId: BigInt('0x0102030405060708'),
-                        channel: 11,
-                        channelMask: 0x800, // Channel 11
-                        nwkUpdateId: 0,
-                    });
-                } else if (cmd === 'getValue' && params?.valueId === BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS) {
-                    return Promise.resolve({
-                        value: Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
-                    });
-                }
-                return Promise.resolve({status: BlzStatus.SUCCESS});
+            driverMock.blz.execCommand.mockRejectedValue(
+                new Error('backup should use driver command wrappers'),
+            );
+            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+                panId: 0x1234,
+                extPanId: BigInt('0x0102030405060708'),
+                channel: 11,
+                channelMask: 0x800, // Channel 11
+                nwkUpdateId: 0,
             });
+            driverMock.getMacAddress.mockResolvedValue(
+                Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
+            );
 
             // Mock key responses
             driverMock.getGlobalTcLinkKey.mockResolvedValue({
@@ -105,6 +105,7 @@ describe('BLZ Adapter Backup', () => {
                 coordinatorIeeeAddress: Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
                 devices: [],
             });
+            expect(driverMock.blz.execCommand).not.toHaveBeenCalled();
         });
     });
 

@@ -1232,6 +1232,44 @@ export class Driver extends EventEmitter {
     return frameResponse;
   }
 
+  public async getCurrentNetworkParameters(): Promise<BLZFrameData> {
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("getNetworkParameters"),
+    );
+
+    const { status } = frameResponse;
+
+    if (status !== BlzStatus.SUCCESS) {
+      logger.error(
+        `getCurrentNetworkParameters() returned unexpected BLZ status: ${status}`,
+        NS,
+      );
+      throw new Error(`Failed to get network parameters: status ${status}`);
+    }
+
+    return frameResponse;
+  }
+
+  public async getMacAddress(): Promise<Buffer> {
+    const frameResponse = await this.runBlzCommandOperation((blz) =>
+      blz.execCommand("getValue", {
+        valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
+      }),
+    );
+
+    const { status, value } = frameResponse;
+
+    if (status !== BlzStatus.SUCCESS) {
+      logger.error(
+        `getMacAddress() returned unexpected BLZ status: ${status}`,
+        NS,
+      );
+      throw new Error(`Failed to get MAC address: status ${status}`);
+    }
+
+    return value;
+  }
+
   public async setNetworkKeyInfo(
     nwkKey: Bytes,
     outgoingFrameCounter: uint32_t,

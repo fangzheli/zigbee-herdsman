@@ -7,7 +7,6 @@ import { BackupUtils } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { uint32MaskToChannels } from "../../../zspec/utils";
 import type { Driver } from "../driver";
-import { BlzValueId } from "../driver/types/named";
 
 const NS = "zh:blz:backup";
 
@@ -25,7 +24,7 @@ export class BLZAdapterBackup {
     const blz = this.driver.getBlz();
     const version: number = blz.version.product;
     const linkResult = await this.driver.getGlobalTcLinkKey();
-    const netParams = await blz.execCommand("getNetworkParameters");
+    const netParams = await this.driver.getCurrentNetworkParameters();
     const netResult = await this.driver.getNetworkKeyInfo();
     const tclKey = Buffer.from(linkResult.linkKey);
     const netKey = Buffer.from(netResult.nwkKey);
@@ -34,11 +33,7 @@ export class BLZAdapterBackup {
     netKeySequenceNumber = netResult.nwkKeySeqNum;
     netKeyFrameCounter = netResult.outgoingFrameCounter;
 
-    const ieee = (
-      await blz.execCommand("getValue", {
-        valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
-      })
-    ).value;
+    const ieee = await this.driver.getMacAddress();
     /* return backup structure */
     /* istanbul ignore next */
     return {

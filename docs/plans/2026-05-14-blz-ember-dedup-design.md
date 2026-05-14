@@ -477,6 +477,10 @@ Future BLZ refactors should follow these rules:
   request-operation cancellation path, so `Driver.stop()` now rejects pending
   permit-join, endpoint registration, network-key, and trust-center-key
   operations instead of leaving their callers waiting on lower BLZ commands.
+- Moved backup network-parameter and coordinator-MAC reads behind high-level
+  driver command wrappers, so backup creation no longer reaches directly into
+  the lower BLZ transport and those reads share the same stop-cancellation and
+  status-check behavior as the other driver command helpers.
 
 ## Next Steps
 

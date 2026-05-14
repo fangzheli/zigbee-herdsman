@@ -183,6 +183,20 @@ describe("BLZ high-level driver lifecycle", () => {
             hasParameters: false,
         },
         {
+            name: "getCurrentNetworkParameters",
+            invoke: (driver: Driver & {getCurrentNetworkParameters: () => Promise<unknown>}) =>
+                driver.getCurrentNetworkParameters(),
+            expectedCommand: "getNetworkParameters",
+            hasParameters: false,
+        },
+        {
+            name: "getMacAddress",
+            invoke: (driver: Driver & {getMacAddress: () => Promise<unknown>}) =>
+                driver.getMacAddress(),
+            expectedCommand: "getValue",
+            hasParameters: true,
+        },
+        {
             name: "setNetworkKeyInfo",
             invoke: (driver: Driver) =>
                 driver.setNetworkKeyInfo(Buffer.alloc(16), 0, 0),
