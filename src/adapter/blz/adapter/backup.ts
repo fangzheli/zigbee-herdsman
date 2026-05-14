@@ -10,6 +10,18 @@ import type { Driver } from "../driver";
 
 const NS = "zh:blz:backup";
 
+function extendedPanIdToBackupBuffer(value: bigint): Buffer {
+  const result = Buffer.allocUnsafe(8);
+  let extPanId = value;
+
+  for (let i = 0; i < result.length; i++) {
+    result[i] = Number(extPanId & 0xffn);
+    extPanId >>= 8n;
+  }
+
+  return result;
+}
+
 export class BLZAdapterBackup {
   private driver: Driver;
   private defaultPath: string;
@@ -50,16 +62,8 @@ export class BLZAdapterBackup {
       },
       networkOptions: {
         panId: netParams.panId,
-        extendedPanId: (() => {
-          const bytes = [];
-          // in zigpy/open-coordinator-backup, all binary sequences in this format need to be stored MSB-LSB (big endian)
-          let extPanId = netParams.extPanId;
-          for (let i = 0; i < 8; i++) {
-            bytes.push(Number(extPanId & 0xffn));
-            extPanId >>= 8n;
-          }
-          return Buffer.from(bytes);
-        })(),
+        // in zigpy/open-coordinator-backup, all binary sequences in this format need to be stored MSB-LSB (big endian)
+        extendedPanId: extendedPanIdToBackupBuffer(netParams.extPanId),
         channelList: uint32MaskToChannels(netParams.channelMask),
         networkKey: netKey,
         networkKeyDistribute: true,

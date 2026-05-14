@@ -117,6 +117,44 @@ describe('BLZ Adapter Backup', () => {
             expect(driverMock.blz.execCommand).not.toHaveBeenCalled();
         });
 
+        it('should serialize the extended PAN ID without an intermediate byte array', async () => {
+            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+                panId: 0x1234,
+                extPanId: BigInt('0x0102030405060708'),
+                channel: 11,
+                channelMask: 0,
+                nwkUpdateId: 0,
+            });
+            driverMock.getMacAddress.mockResolvedValue(Buffer.alloc(8));
+            driverMock.getGlobalTcLinkKey.mockResolvedValue({
+                linkKey: Buffer.alloc(16),
+                outgoingFrameCounter: 1234,
+            });
+            driverMock.getNetworkKeyInfo.mockResolvedValue({
+                nwkKey: Buffer.alloc(16),
+                nwkKeySeqNum: 5,
+                outgoingFrameCounter: 5678,
+            });
+            const expectedExtendedPanId = Buffer.from([8, 7, 6, 5, 4, 3, 2, 1]);
+            const originalFrom = Buffer.from;
+            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+                if (Array.isArray(value)) {
+                    throw new Error('array-backed Buffer.from used');
+                }
+
+                return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+            }) as typeof Buffer.from);
+
+            try {
+                const result = await backup.createBackup();
+
+                expect(result.networkOptions.extendedPanId).toEqual(expectedExtendedPanId);
+                expect(fromSpy).not.toHaveBeenCalledWith(expect.any(Array));
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
         it('should not continue collecting backup data after the active guard fails', async () => {
             let finishLinkKeyRead: (() => void) | undefined;
             let active = true;

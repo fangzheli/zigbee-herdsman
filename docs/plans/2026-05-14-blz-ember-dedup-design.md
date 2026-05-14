@@ -722,6 +722,9 @@ Future BLZ refactors should follow these rules:
 - Removed the adapter-level NWK update raw-payload copy that existed only for
   debug logging; channel-change handling now logs the caller payload directly
   before building its canonical broadcast buffer.
+- Reworked backup extended-PAN-ID serialization to write directly into the
+  backup buffer, avoiding an intermediate byte array and array-backed
+  `Buffer.from()` during backup creation.
 
 ## Next Steps
 
