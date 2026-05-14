@@ -884,6 +884,10 @@ Future BLZ refactors should follow these rules:
 - Changed expected adapter shutdown to call `Driver.stop(false)`, keeping normal
   stop cleanup on the explicit stop path instead of routing it through the
   driver's close-event/disconnect handler.
+- Split TCP socket open-phase and runtime listener cleanup in the BLZ UART
+  driver, releasing `connect`/`ready`/open `error`/open `close` handlers as soon
+  as ready-time reset succeeds while retaining only runtime `close`/`error`
+  handlers until transport close.
 
 ## Next Steps
 

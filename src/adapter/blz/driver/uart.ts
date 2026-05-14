@@ -223,10 +223,10 @@ export class SerialDriver extends EventEmitter {
             return;
           }
 
-          socketPort.off("error", openError);
-          socketPort.off("close", openClose);
+          detachOpenListeners();
           socketPort.once("close", this.onPortCloseHandler);
           socketPort.on("error", this.onPortErrorHandler);
+          this.detachSocketListeners = detachRuntimeListeners;
 
           settled = true;
           this.initialized = true;
@@ -238,13 +238,19 @@ export class SerialDriver extends EventEmitter {
             openError(error instanceof Error ? error : new Error(String(error)));
           });
         };
-        this.detachSocketListeners = (): void => {
+        const detachOpenListeners = (): void => {
           socketPort.off("connect", onConnect);
           socketPort.off("ready", onReady);
           socketPort.off("error", openError);
           socketPort.off("close", openClose);
+        };
+        const detachRuntimeListeners = (): void => {
           socketPort.off("close", this.onPortCloseHandler);
           socketPort.off("error", this.onPortErrorHandler);
+        };
+        this.detachSocketListeners = (): void => {
+          detachOpenListeners();
+          detachRuntimeListeners();
         };
         socketPort.on("connect", onConnect);
         socketPort.on("ready", onReady);

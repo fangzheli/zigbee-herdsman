@@ -567,6 +567,22 @@ describe("BLZ Serial Driver", () => {
       await connect;
     });
 
+    it("should release TCP open listeners after ready reset succeeds", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      const ready = socketPortMock.on.mock.calls.find(
+        (call) => call[0] === "ready",
+      )?.[1];
+
+      expect(ready).toBeDefined();
+      await ready();
+      await connect;
+
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+    });
+
     it("should remove TCP socket listeners when closing", async () => {
       const connect = driver.connect(tcpPortOptions);
       await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
@@ -591,10 +607,10 @@ describe("BLZ Serial Driver", () => {
 
       await driver.close(true);
 
-      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
-      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
       expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(socketPortMock.off).not.toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).not.toHaveBeenCalledWith("ready", expect.any(Function));
       expect(socketPortMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
