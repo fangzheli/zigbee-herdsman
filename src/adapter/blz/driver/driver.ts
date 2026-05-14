@@ -194,7 +194,10 @@ export class Driver extends EventEmitter {
    */
   private convertBlzMacToIeeeEui64(rawMacBuffer: Buffer): Buffer {
     // BLZ hardware returns MAC address in little-endian format, need to reverse it
-    const reversedBuffer = Buffer.from(rawMacBuffer).reverse();
+    const reversedBuffer = Buffer.allocUnsafe(rawMacBuffer.length);
+    for (let i = 0; i < rawMacBuffer.length; i++) {
+      reversedBuffer[i] = rawMacBuffer[rawMacBuffer.length - 1 - i];
+    }
     return reversedBuffer;
 
     // TODO: IEEE EUI-64 expansion method (commented out for now)

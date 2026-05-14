@@ -713,6 +713,9 @@ Future BLZ refactors should follow these rules:
 - Removed the extra raw-payload copy from NWK update payload normalization;
   the helper now copies the caller payload once into the canonical broadcast
   buffer instead of first cloning it and then copying the clone.
+- Reworked BLZ MAC-to-EUI64 conversion to write reversed bytes directly into
+  the result buffer, avoiding the `Buffer.from(...).reverse()` copy-and-mutate
+  pattern during startup coordinator identity conversion.
 
 ## Next Steps
 

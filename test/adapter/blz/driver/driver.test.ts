@@ -53,6 +53,28 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("void this.reset().catch");
     });
 
+    it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const raw = Buffer.from([0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01]);
+        const original = Buffer.from(raw);
+        const expected = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(() => {
+            throw new Error("Buffer.from used");
+        });
+
+        try {
+            const result = (
+                driver as unknown as {convertBlzMacToIeeeEui64: (rawMacBuffer: Buffer) => Buffer}
+            ).convertBlzMacToIeeeEui64(raw);
+
+            expect(result).toEqual(expected);
+            expect(raw).toEqual(original);
+            expect(fromSpy).not.toHaveBeenCalled();
+        } finally {
+            fromSpy.mockRestore();
+        }
+    });
+
     afterEach(() => {
         vi.useRealTimers();
         blzConstructorMock.mockReset();
