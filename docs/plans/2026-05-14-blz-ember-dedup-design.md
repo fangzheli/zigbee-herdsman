@@ -99,11 +99,22 @@ Future BLZ refactors should follow these rules:
   timeout formatter.
 - Added a regression test proving BLZ now resolves a waiter on a ZCL default
   response the same way the shared adapter matcher does.
+- Changed `Blz.connect()` to clear an existing watchdog interval before creating
+  a replacement interval, with a regression test for repeated reconnects.
+- Extracted BLZ ZDO unicast/broadcast transmission into `sendZdoFrame()`.
+  The helper now owns logging, driver dispatch, false-send errors, thrown-send
+  errors, and waiter cancellation.
+- Added a regression test proving a ZDO waiter is cancelled when the lower driver
+  send rejects before the waiter is started.
+- Changed `BLZAdapter.start()` to reset the `closing` state after a previous
+  `stop()`, with a regression test proving a driver close after restart still
+  emits `disconnected`.
 
 ## Next Steps
 
-1. Extract a BLZ adapter send helper for ZDO unicast/broadcast logging, waiter
-   setup, send failure cancellation, and response logging.
+1. Extract NWK update payload normalization/parsing into pure helpers. That
+   block is currently long, has multiple layouts, and can be tested without
+   hardware.
 2. Add lifecycle tests around `BLZAdapter.stop()`, `Driver.stop()`, `Blz.close()`,
    and `SerialDriver.close()` to lock down waitress/listener/timer cleanup.
 3. Only then consider parser/CRC/stuffing extraction, because the driver layer is

@@ -146,6 +146,7 @@ export class BLZAdapter extends Adapter {
    * Adapter methods
    */
   public async start(): Promise<StartResult> {
+    this.closing = false;
     const result = await this.driver.startup();
     await wait(1000);
     return result;
