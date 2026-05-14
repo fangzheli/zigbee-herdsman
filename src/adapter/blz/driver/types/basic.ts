@@ -270,6 +270,20 @@ export class WordList extends List {
         }
         return result;
     }
+
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+    static deserialize(cls: any, data: Buffer): any[] {
+        if (data.length % 2 !== 0) {
+            throw new RangeError(`WordList requires an even byte length, received ${data.length}`);
+        }
+
+        const result = new Array<number>(data.length / 2);
+        for (let i = 0; i < result.length; i++) {
+            result[i] = data.readUInt16LE(i * 2);
+        }
+
+        return [result, EMPTY_BUFFER];
+    }
 }
 
 class _FixedList extends List {

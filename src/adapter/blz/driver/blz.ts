@@ -236,10 +236,10 @@ function deserializeCountedWordList(
     );
   }
 
-  const values = new Array<number>(itemCount);
-  for (let i = 0; i < itemCount; i++) {
-    values[i] = data.readUInt16LE(i * 2);
-  }
+  const [values] = WordList.deserialize(
+    WordList,
+    data.subarray(0, byteLength),
+  );
 
   return [values, data.subarray(byteLength)];
 }

@@ -815,6 +815,10 @@ Future BLZ refactors should follow these rules:
   of the first list consuming all remaining request bytes.
 - Corrected UART DATA control-flag propagation: initial sends no longer set
   the retransmission bit, and retry sends no longer set the debug bit.
+- Added a real `WordList.deserialize()` implementation for uint16 cluster
+  lists and reused it from counted frame parsing, so the BLZ type layer no
+  longer depends on a generic `List` path that requires an unavailable item
+  type.
 
 ## Next Steps
 

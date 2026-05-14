@@ -483,6 +483,16 @@ describe('BLZ Types', () => {
                 Buffer.from([0x34, 0x12, 0x78, 0x56]),
             );
         });
+
+        it('should deserialize list of uint16', () => {
+            const [value, remaining] = WordList.deserialize(
+                WordList,
+                Buffer.from([0x34, 0x12, 0x78, 0x56]),
+            );
+
+            expect(value).toEqual([0x1234, 0x5678]);
+            expect(remaining.length).toBe(0);
+        });
     });
 
     describe('Generic lists', () => {
