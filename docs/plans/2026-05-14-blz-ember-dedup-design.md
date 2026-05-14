@@ -649,6 +649,9 @@ Future BLZ refactors should follow these rules:
 - Validated parsed backup data before reading backup metadata and replaced
   legacy `Promise.resolve/reject` returns in the async backup loader with native
   `return` and `throw` paths.
+- Made BLZ frame decode fallback explicit: `BLZFrameData.createFrame()` now
+  advertises that all parser candidates can fail and returns `undefined`
+  without a non-null assertion.
 
 ## Next Steps
 

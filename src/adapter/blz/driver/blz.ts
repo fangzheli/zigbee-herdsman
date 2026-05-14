@@ -67,23 +67,21 @@ export class BLZFrameData {
     frame_id: number,
     isRequest: boolean,
     params: ParamsDesc | Buffer,
-  ): BLZFrameData {
+  ): BLZFrameData | undefined {
     const names = FRAME_NAMES_BY_ID[frame_id];
     if (!names) {
       throw new Error(`Unrecognized frame FrameID ${frame_id}`);
     }
-    let frm: BLZFrameData;
-    names.every((frameName) => {
-      const frameDesc = BLZFrameData.getFrame(frameName);
+
+    for (const frameName of names) {
       try {
-        frm = new BLZFrameData(frameName, isRequest, params);
+        return new BLZFrameData(frameName, isRequest, params);
       } catch (error) {
         logger.error(`Frame ${frameName} parsing error: ${error}`, NS);
-        return true;
       }
-      return false;
-    });
-    return frm!;
+    }
+
+    return undefined;
   }
 
   static getFrame(name: string): BLZFrameDesc {
@@ -532,7 +530,7 @@ export class Blz extends EventEmitter {
     const sequence = (data[1] & 0x70) >> 4;
     data = data.subarray(4, -2);
 
-    let frm: BLZFrameData;
+    let frm: BLZFrameData | undefined;
     try {
       frm = BLZFrameData.createFrame(frameId, false, data);
     } catch (error) {

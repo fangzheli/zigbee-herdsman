@@ -1,10 +1,19 @@
 import {describe, expect, it, vi} from "vitest";
+import * as fs from "node:fs";
 
 import {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {FRAMES} from "../../../../src/adapter/blz/driver/commands";
 import {BlzValueId} from "../../../../src/adapter/blz/driver/types";
 
 describe("BLZFrameData", () => {
+    it("uses explicit frame parser fallback without non-null assertions", () => {
+        const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+        expect(source).not.toContain("names.every");
+        expect(source).not.toContain("return frm!");
+        expect(source).toContain("): BLZFrameData | undefined");
+    });
+
     it("serializes frames with uint64 fields to JSON for debug logging", () => {
         const payload = Buffer.from("0000dddddddddddddddd621a0e0b00000000080000", "hex");
         const frame = BLZFrameData.createFrame(FRAMES.getNetworkParameters.ID, false, payload);
