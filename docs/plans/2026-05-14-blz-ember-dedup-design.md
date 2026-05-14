@@ -116,15 +116,14 @@ Future BLZ refactors should follow these rules:
   `nwkManagerAddr`, and ZDO overhead, plus non-channel-change, multi-channel
   mask, empty-mask, and invalid-length rejection cases.
 - Tightened close-path cleanup for BLZ lifecycle layers:
-  `SerialDriver` now removes parser listeners and detaches serial-port listeners
-  on failed open and normal close, and `Driver.stop()` clears pending waiters in
-  a `finally` block if the lower BLZ close throws.
+  `SerialDriver` now removes parser listeners and detaches serial-port and TCP
+  socket listeners on failed open and normal close, and `Driver.stop()` clears
+  pending waiters in a `finally` block if the lower BLZ close throws.
 - Added regression tests for UART failed-open cleanup, UART close listener
-  cleanup, and high-level driver waiter timer cleanup when BLZ close rejects.
+  cleanup, TCP socket failed-open/close cleanup, and high-level driver waiter
+  timer cleanup when BLZ close rejects.
 
 ## Next Steps
 
-1. Add socket-port lifecycle tests for TCP paths, mirroring the serial cleanup
-   cases.
-2. Consider parser/CRC/stuffing extraction, because the driver layer is
+1. Consider parser/CRC/stuffing extraction, because the driver layer is
    closer to hardware and easier to regress.

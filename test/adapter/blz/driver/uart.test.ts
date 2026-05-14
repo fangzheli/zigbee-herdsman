@@ -6,6 +6,13 @@ import { Parser } from "../../../../src/adapter/blz/driver/parser";
 import { Writer } from "../../../../src/adapter/blz/driver/writer";
 import { SerialPortOptions } from "../../../../src/adapter/tstype";
 
+const socketConstructorMock = vi.hoisted(() => vi.fn());
+
+vi.mock("net", () => ({
+  default: {
+    Socket: socketConstructorMock,
+  },
+}));
 vi.mock("../../../../src/adapter/serialPort");
 vi.mock("../../../../src/adapter/blz/driver/parser");
 vi.mock("../../../../src/adapter/blz/driver/writer");
@@ -40,6 +47,18 @@ describe("BLZ Serial Driver", () => {
     destroy: ReturnType<typeof vi.fn>;
     isOpen: boolean;
   };
+  let socketPortMock: {
+    setNoDelay: ReturnType<typeof vi.fn>;
+    setKeepAlive: ReturnType<typeof vi.fn>;
+    pipe: ReturnType<typeof vi.fn>;
+    unpipe: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
+    once: ReturnType<typeof vi.fn>;
+    removeListener: ReturnType<typeof vi.fn>;
+    removeAllListeners: ReturnType<typeof vi.fn>;
+    connect: ReturnType<typeof vi.fn>;
+    destroy: ReturnType<typeof vi.fn>;
+  };
   let parserMock: {
     on: ReturnType<typeof vi.fn>;
     reset: ReturnType<typeof vi.fn>;
@@ -55,6 +74,12 @@ describe("BLZ Serial Driver", () => {
 
   const serialPortOptions: SerialPortOptions = {
     path: "/dev/ttyUSB0",
+    baudRate: 115200,
+    rtscts: false,
+  };
+
+  const tcpPortOptions: SerialPortOptions = {
+    path: "tcp://127.0.0.1:6638",
     baudRate: 115200,
     rtscts: false,
   };
@@ -98,6 +123,19 @@ describe("BLZ Serial Driver", () => {
       isOpen: true,
     };
 
+    socketPortMock = {
+      setNoDelay: vi.fn(),
+      setKeepAlive: vi.fn(),
+      pipe: vi.fn(),
+      unpipe: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn(),
+      removeListener: vi.fn(),
+      removeAllListeners: vi.fn(),
+      connect: vi.fn(),
+      destroy: vi.fn(),
+    };
+
     parserMock = {
       on: vi.fn(),
       reset: vi.fn(),
@@ -113,6 +151,7 @@ describe("BLZ Serial Driver", () => {
     };
 
     vi.mocked(SerialPort).mockImplementation(() => serialPortMock as any);
+    socketConstructorMock.mockImplementation(() => socketPortMock);
     vi.mocked(Parser).mockImplementation(() => parserMock as any);
     vi.mocked(Writer).mockImplementation(() => writerMock as any);
 
@@ -187,6 +226,34 @@ describe("BLZ Serial Driver", () => {
 
       expect(parserMock.removeAllListeners).toHaveBeenCalled();
       expect(serialPortMock.removeAllListeners).toHaveBeenCalled();
+    });
+
+    it("should clean listeners and pipes when TCP socket open fails", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      socketPortMock.once.mock.calls.find((call) => call[0] === "error")?.[1](
+        new Error("Socket failed"),
+      );
+
+      await expect(connect).rejects.toThrow("Socket failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should remove TCP socket listeners when closing", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
+      await connect;
+
+      await driver.close(true);
+
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.destroy).toHaveBeenCalled();
     });
   });
 

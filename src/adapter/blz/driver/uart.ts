@@ -124,6 +124,10 @@ export class SerialDriver extends EventEmitter {
     return await new Promise((resolve, reject): void => {
       const openError = (err: Error): void => {
         this.initialized = false;
+        this.cleanupParser();
+        this.detachSocketPort();
+        this.socketPort?.destroy();
+        this.socketPort = undefined;
 
         reject(err);
       };
@@ -272,9 +276,9 @@ export class SerialDriver extends EventEmitter {
           throw error;
         }
       } else if (this.socketPort) {
-        this.writer.unpipe(this.socketPort);
-        this.socketPort.unpipe(this.parser);
+        this.detachSocketPort();
         this.socketPort.destroy();
+        this.socketPort = undefined;
       }
     }
 
@@ -297,6 +301,19 @@ export class SerialDriver extends EventEmitter {
     this.serialPort.unpipe(this.parser);
     this.serialPort.removeAllListeners("close");
     this.serialPort.removeAllListeners("error");
+  }
+
+  private detachSocketPort(): void {
+    if (!this.socketPort) {
+      return;
+    }
+
+    this.writer.unpipe(this.socketPort);
+    this.socketPort.unpipe(this.parser);
+    this.socketPort.removeAllListeners("connect");
+    this.socketPort.removeAllListeners("ready");
+    this.socketPort.removeAllListeners("close");
+    this.socketPort.removeAllListeners("error");
   }
 
   private onPortError(error: Error): void {
