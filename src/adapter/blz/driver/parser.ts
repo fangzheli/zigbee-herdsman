@@ -27,7 +27,19 @@ export class Parser extends stream.Transform {
     let startPlace = buffer.indexOf(consts.START);
     let endPlace = buffer.indexOf(consts.END, startPlace + 1);
 
-    while (startPlace >= 0 && endPlace > startPlace) {
+    while (startPlace >= 0) {
+      const nextStart = buffer.indexOf(consts.START, startPlace + 1);
+      if (nextStart >= 0 && (endPlace === -1 || nextStart < endPlace)) {
+        buffer = buffer.subarray(nextStart);
+        startPlace = 0;
+        endPlace = buffer.indexOf(consts.END, startPlace + 1);
+        continue;
+      }
+
+      if (endPlace <= startPlace) {
+        break;
+      }
+
       // Extract a complete frame from START to END
       const frameBuffer = buffer.subarray(startPlace + 1, endPlace); // Exclude delimiters
 

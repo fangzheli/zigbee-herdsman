@@ -282,6 +282,21 @@ describe('BLZ Parser', () => {
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
+        it('should resynchronize when a new START arrives before END', async () => {
+            const brokenPrefix = Buffer.from([consts.START, 0x00, 0x01, 0x02]);
+            const validFrame = createCompleteFrame(0x00, 0x01, 0x0010);
+            const combined = Buffer.concat([brokenPrefix, validFrame]);
+
+            const parsePromise = getParsedFrame(parser);
+            parser._transform(combined, 'binary', () => {});
+            const parsedFrame = await Promise.race([
+                parsePromise,
+                new Promise((resolve) => setImmediate(() => resolve('pending'))),
+            ]);
+
+            expect(parsedFrame).toMatchObject({frameId: 0x0010});
+        });
+
         it('should ignore data before first START delimiter', async () => {
             const garbage = Buffer.from([0xFF, 0xFE, 0xFD]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);

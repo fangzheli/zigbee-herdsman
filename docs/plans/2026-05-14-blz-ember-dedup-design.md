@@ -892,6 +892,9 @@ Future BLZ refactors should follow these rules:
   wired BLZ adapter, high-level driver, low-level BLZ, and UART cleanup paths to
   preserve stop/close/reset causes instead of reporting generic
   `Waitress cleared`.
+- Made the BLZ parser resynchronize on a new unescaped START delimiter before
+  END, so a corrupted partial frame cannot consume the following valid frame and
+  force reset recovery through a stale bad frame.
 
 ## Next Steps
 
