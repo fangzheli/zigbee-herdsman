@@ -12,6 +12,7 @@ import {
     LVBytes,
     list,
     LVList,
+    fixed_list,
     Bytes,
     Fixed16Bytes,
     WordList,
@@ -274,6 +275,22 @@ describe('BLZ Types', () => {
             const result = Uint16List.serialize(Uint16List, [0x1234, 0x5678]);
 
             expect(result).toEqual(Buffer.from([0x02, 0x34, 0x12, 0x78, 0x56]));
+        });
+    });
+
+    describe('Fixed lists', () => {
+        it('should serialize every byte from the declared item type', () => {
+            const FixedUint16List = fixed_list(2, uint16_t);
+
+            const result = FixedUint16List.serialize(FixedUint16List, [0x1234, 0x5678]);
+
+            expect(result).toEqual(Buffer.from([0x34, 0x12, 0x78, 0x56]));
+        });
+
+        it('should reject values with the wrong item count', () => {
+            const FixedUint16List = fixed_list(2, uint16_t);
+
+            expect(() => FixedUint16List.serialize(FixedUint16List, [0x1234])).toThrow('Incorrect list length');
         });
     });
 

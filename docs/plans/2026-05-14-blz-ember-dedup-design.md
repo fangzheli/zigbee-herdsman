@@ -564,6 +564,9 @@ Future BLZ refactors should follow these rules:
 - Aligned raw `Bytes.deserialize()` with the generic schema contract by
   returning an empty remaining buffer, preventing future non-terminal raw byte
   fields from poisoning subsequent deserialization state.
+- Fixed generic BLZ fixed-list serialization to emit every byte produced by the
+  declared item type and reject mismatched item counts, preventing truncated or
+  shifted schema payloads.
 - Reworked `BlzEUI64.serialize()` to write the fixed eight-byte reversed value
   directly into a preallocated buffer, avoiding per-byte integer serialization
   and intermediate array churn.

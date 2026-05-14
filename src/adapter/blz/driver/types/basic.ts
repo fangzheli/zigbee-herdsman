@@ -248,8 +248,11 @@ export class WordList extends List {
 class _FixedList extends List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        const data = value.map((i) => cls.itemtype.serialize(cls.itemtype, i)[0]);
-        return Buffer.from(data);
+        if (value.length !== cls._length) {
+            throw new Error(`Incorrect list length. Expected ${cls._length}, received ${value.length}`);
+        }
+
+        return serializeBufferSegments(value.map((i) => cls.itemtype.serialize(cls.itemtype, i)));
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
