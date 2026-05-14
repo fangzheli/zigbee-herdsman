@@ -289,9 +289,11 @@ export class Driver extends EventEmitter {
     }
   }
 
-  private async onBlzReset(): Promise<void> {
+  private onBlzReset(): void {
     logger.debug("onBlzReset()", NS);
-    await this.reset();
+    void this.reset().catch((error) => {
+      logger.error(`BLZ reset recovery failed: ${error}`, NS);
+    });
   }
 
   private onBlzClose(): void {

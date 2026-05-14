@@ -640,6 +640,9 @@ Future BLZ refactors should follow these rules:
 - Simplified the BLZ adapter unsupported `reset()` path to throw directly like
   the other unsupported adapter APIs, removing a stale `return await
   Promise.reject(...)` pattern.
+- Made the high-level driver BLZ reset EventEmitter handler synchronous and
+  explicitly logged reset recovery failures, avoiding an unconsumed async
+  listener promise on runtime reset events.
 
 ## Next Steps
 
