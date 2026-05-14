@@ -557,7 +557,6 @@ export class Driver extends EventEmitter {
   ): Promise<boolean> {
     for (let attempt = 0; attempt < REQUEST_ATTEMPT_DELAYS.length; attempt++) {
       try {
-        const seq = (apsFrame.sequence + 1) & 0xff;
         let resolvedNwk: number;
 
         if (typeof nwk !== "number") {
@@ -580,18 +579,11 @@ export class Driver extends EventEmitter {
           resolvedNwk = nwk;
         }
 
-        const sendResult = await this.blz.sendApsData(
-          BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST, // msgType
-          resolvedNwk, // dstShortAddr
-          apsFrame.profileId, // profileId
-          apsFrame.clusterId, // clusterId
-          apsFrame.sourceEndpoint, // srcEp
-          apsFrame.destinationEndpoint, // dstEp
-          0, // txOptions
-          5, // radius
-          seq, // messageTag
-          data.length, // payloadLen
-          data, // payload
+        const sendResult = await this.sendApsData(
+          BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
+          resolvedNwk,
+          apsFrame,
+          data,
         );
 
         if (sendResult === BlzStatus.SUCCESS) {
@@ -618,31 +610,17 @@ export class Driver extends EventEmitter {
     return false;
   }
 
-  // Modify mrequest to use sendApsData with multicast msgType
   public async mrequest(
     apsFrame: BlzApsFrame,
     data: Buffer,
     timeout = 30000,
   ): Promise<boolean> {
-    try {
-      const seq = (apsFrame.sequence + 1) & 0xff;
-      const sendResult = await this.blz.sendApsData(
-        BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST, // msgType
-        apsFrame.groupId ?? 0, // dstShortAddr
-        apsFrame.profileId, // profileId
-        apsFrame.clusterId, // clusterId
-        apsFrame.sourceEndpoint, // srcEp
-        apsFrame.destinationEndpoint, // dstEp
-        0, // txOptions
-        5, // radius
-        seq, // messageTag
-        data.length, // payloadLen
-        data, // payload
-      );
-    } catch {
-      return false;
-    }
-    return true;
+    return await this.sendApsDataStatus(
+      BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
+      apsFrame.groupId ?? 0,
+      apsFrame,
+      data,
+    );
   }
 
   public async brequest(
@@ -650,25 +628,51 @@ export class Driver extends EventEmitter {
     apsFrame: BlzApsFrame,
     data: Buffer,
   ): Promise<boolean> {
+    return await this.sendApsDataStatus(
+      BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+      destination,
+      apsFrame,
+      data,
+    );
+  }
+
+  private async sendApsDataStatus(
+    messageType: number,
+    destination: number,
+    apsFrame: BlzApsFrame,
+    data: Buffer,
+  ): Promise<boolean> {
     try {
-      const seq = (apsFrame.sequence + 1) & 0xff;
-      const sendResult = await this.blz.sendApsData(
-        BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST, // msgType
-        destination, // dstShortAddr
-        apsFrame.profileId, // profileId
-        apsFrame.clusterId, // clusterId
-        apsFrame.sourceEndpoint, // srcEp
-        apsFrame.destinationEndpoint, // dstEp
-        0, // txOptions
-        5, // radius
-        seq, // messageTag
-        data.length, // payloadLen
-        data, // payload
+      return (
+        (await this.sendApsData(messageType, destination, apsFrame, data)) ===
+        BlzStatus.SUCCESS
       );
     } catch {
       return false;
     }
-    return true;
+  }
+
+  private async sendApsData(
+    messageType: number,
+    destination: number,
+    apsFrame: BlzApsFrame,
+    data: Buffer,
+  ): Promise<BlzStatus> {
+    const seq = (apsFrame.sequence + 1) & 0xff;
+
+    return await this.blz.sendApsData(
+      messageType,
+      destination,
+      apsFrame.profileId,
+      apsFrame.clusterId,
+      apsFrame.sourceEndpoint,
+      apsFrame.destinationEndpoint,
+      0,
+      5,
+      seq,
+      data.length,
+      data,
+    );
   }
 
   public nextTransactionID(): number {

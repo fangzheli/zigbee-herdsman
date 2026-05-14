@@ -140,8 +140,12 @@ Future BLZ refactors should follow these rules:
 - Fixed TCP socket open cleanup when the socket reaches `ready` but reset
   fails: the connect promise now rejects and parser/socket listeners, pipes, and
   socket resources are cleaned up through the same failed-open path.
+- Centralized high-level APS send argument construction for unicast, multicast,
+  and broadcast driver requests. Multicast and broadcast requests now return
+  `false` when the lower BLZ `sendApsData` status is non-success instead of
+  reporting success after a rejected send status.
 
 ## Next Steps
 
-1. Review high-level driver request retries for duplicated error handling and
-   waiter cancellation guarantees.
+1. Audit high-level startup/restart listener ownership and network-parameter
+   caching gaps against the `ember` adapter patterns.
