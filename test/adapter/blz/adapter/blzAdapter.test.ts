@@ -27,6 +27,7 @@ describe("BLZ Adapter", () => {
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
+    off: ReturnType<typeof vi.fn>;
     getBlz: ReturnType<typeof vi.fn>;
     ieee: { toString: () => string };
     networkParams: {
@@ -82,6 +83,7 @@ describe("BLZ Adapter", () => {
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
+      off: vi.fn(),
       getBlz: vi.fn(),
       ieee: { toString: () => "0102030405060708" },
       networkParams: {
@@ -122,6 +124,17 @@ describe("BLZ Adapter", () => {
       driverMock.stop.mockResolvedValue(undefined);
       await adapter.stop();
       expect(driverMock.stop).toHaveBeenCalled();
+    });
+
+    it("should detach owned driver listeners after a successful stop", async () => {
+      driverMock.stop.mockResolvedValue(undefined);
+
+      await adapter.stop();
+
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
     it("should reject queued adapter jobs when stopping", async () => {

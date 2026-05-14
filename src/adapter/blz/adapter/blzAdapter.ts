@@ -45,6 +45,11 @@ export class BLZAdapter extends Adapter {
   private closing: boolean;
   private stopGeneration: number;
   private readonly stopWaiters = new Set<() => void>();
+  private driverListenersAttached = false;
+  private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
+  private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
+  private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
+  private readonly onIncomingMessageHandler = this.processMessage.bind(this);
 
   public constructor(
     networkOptions: NetworkOptions,
@@ -73,10 +78,31 @@ export class BLZAdapter extends Adapter {
       this.networkOptions,
       backupPath,
     );
-    this.driver.on("close", this.onDriverClose.bind(this));
-    this.driver.on("deviceJoined", this.handleDeviceJoin.bind(this));
-    this.driver.on("deviceLeft", this.handleDeviceLeft.bind(this));
-    this.driver.on("incomingMessage", this.processMessage.bind(this));
+    this.attachDriverListeners();
+  }
+
+  private attachDriverListeners(): void {
+    if (this.driverListenersAttached) {
+      return;
+    }
+
+    this.driver.on("close", this.onDriverCloseHandler);
+    this.driver.on("deviceJoined", this.onDeviceJoinedHandler);
+    this.driver.on("deviceLeft", this.onDeviceLeftHandler);
+    this.driver.on("incomingMessage", this.onIncomingMessageHandler);
+    this.driverListenersAttached = true;
+  }
+
+  private detachDriverListeners(): void {
+    if (!this.driverListenersAttached) {
+      return;
+    }
+
+    this.driver.off("close", this.onDriverCloseHandler);
+    this.driver.off("deviceJoined", this.onDeviceJoinedHandler);
+    this.driver.off("deviceLeft", this.onDeviceLeftHandler);
+    this.driver.off("incomingMessage", this.onIncomingMessageHandler);
+    this.driverListenersAttached = false;
   }
 
   private processMessage(frame: BlzIncomingMessage): void {
@@ -145,6 +171,7 @@ export class BLZAdapter extends Adapter {
    */
   public async start(): Promise<StartResult> {
     this.closing = false;
+    this.attachDriverListeners();
     const result = await this.driver.startup();
     await wait(1000);
     return result;
@@ -159,6 +186,7 @@ export class BLZAdapter extends Adapter {
 
     try {
       await this.driver.stop();
+      this.detachDriverListeners();
     } catch (error) {
       this.closing = false;
       throw error;

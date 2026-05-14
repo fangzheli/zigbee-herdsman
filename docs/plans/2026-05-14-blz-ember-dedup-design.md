@@ -307,6 +307,9 @@ Future BLZ refactors should follow these rules:
 - Replaced UART TCP socket listener cleanup with an owned detach closure and
   targeted `off()` calls for open-time and runtime socket listeners, avoiding
   broad listener removal on the TCP path.
+- Replaced BLZ adapter-to-driver event registration with stable bound handlers
+  and explicit attach/detach guards, so successful adapter stop releases
+  driver listeners without breaking restart or failed-stop close handling.
 
 ## Next Steps
 
