@@ -193,9 +193,37 @@ function serializeFrameFields(
   values: Record<string, unknown>,
 ): Buffer {
   const fields = Object.getOwnPropertyNames(frameDesc);
-  return serializeMappedBufferSegments(fields, (prop) =>
-    frameDesc[prop].serialize(frameDesc[prop], values[prop]),
-  );
+  return serializeMappedBufferSegments(fields, (prop) => {
+    validateDeclaredFieldLength(prop, values);
+    return frameDesc[prop].serialize(frameDesc[prop], values[prop]);
+  });
+}
+
+function validateDeclaredFieldLength(
+  fieldName: string,
+  values: Record<string, unknown>,
+): void {
+  const byteLength = getDeclaredByteFieldLength(fieldName, values);
+  if (byteLength !== undefined) {
+    const value = values[fieldName] as ArrayLike<number> | undefined;
+    const actualLength = value?.length ?? 0;
+    if (actualLength !== byteLength) {
+      throw new RangeError(
+        `Byte field ${fieldName} expected ${byteLength} bytes, received ${actualLength}`,
+      );
+    }
+  }
+
+  const itemCount = getDeclaredWordListItemCount(fieldName, values);
+  if (itemCount !== undefined) {
+    const value = values[fieldName] as ArrayLike<number> | undefined;
+    const actualCount = value?.length ?? 0;
+    if (actualCount !== itemCount) {
+      throw new RangeError(
+        `WordList field ${fieldName} expected ${itemCount} items, received ${actualCount}`,
+      );
+    }
+  }
 }
 
 function getDeclaredByteFieldLength(

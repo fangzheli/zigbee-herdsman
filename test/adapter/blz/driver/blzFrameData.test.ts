@@ -54,6 +54,16 @@ describe("BLZFrameData", () => {
         ).toThrow("Byte field value expected 3 bytes, received 2");
     });
 
+    it("rejects declared byte fields with mismatched serialized payload length", () => {
+        const frame = new BLZFrameData("getValue", false, {
+            status: 0x00,
+            valueLength: 1,
+            value: Buffer.from([0xaa, 0xbb]),
+        });
+
+        expect(() => frame.serialize()).toThrow("Byte field value expected 1 bytes, received 2");
+    });
+
     it("rejects trailing bytes after a declared byte field", () => {
         expect(() =>
             new BLZFrameData("getValue", false, Buffer.from([0x00, 0x02, 0xaa, 0xbb, 0xcc])),
@@ -79,5 +89,20 @@ describe("BLZFrameData", () => {
 
         expect(frame.inputClusterList).toEqual([0x0006, 0x0008]);
         expect(frame.outputClusterList).toEqual([0x0019]);
+    });
+
+    it("rejects counted WordList fields with mismatched serialized item count", () => {
+        const frame = new BLZFrameData("addEndpoint", true, {
+            endpoint: 1,
+            profileId: 0x0104,
+            deviceId: 0x0000,
+            appFlags: 0,
+            inputClusterCount: 1,
+            outputClusterCount: 0,
+            inputClusterList: [0x0006, 0x0008],
+            outputClusterList: [],
+        });
+
+        expect(() => frame.serialize()).toThrow("WordList field inputClusterList expected 1 items, received 2");
     });
 });

@@ -898,6 +898,9 @@ Future BLZ refactors should follow these rules:
 - Corrected `LVBytes` length deserialization to treat the one-byte length as
   unsigned, so payloads of 128-255 bytes are not truncated by signed length
   interpretation.
+- Added symmetric serialize-time validation for BLZ declared byte lengths and
+  counted `WordList` fields, preventing internally inconsistent frames from
+  being emitted when a length/count property does not match its payload.
 
 ## Next Steps
 
