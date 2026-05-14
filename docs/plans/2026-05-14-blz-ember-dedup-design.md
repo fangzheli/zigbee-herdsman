@@ -144,8 +144,11 @@ Future BLZ refactors should follow these rules:
   and broadcast driver requests. Multicast and broadcast requests now return
   `false` when the lower BLZ `sendApsData` status is non-success instead of
   reporting success after a rejected send status.
+- Tightened high-level startup failure cleanup: if `Driver.startup()` creates
+  and connects a `Blz` instance but a later initialization step fails, it now
+  tears down listeners, waiters, watchdogs, and lower transport resources through
+  `stop(false)` while preserving the original startup error.
 
 ## Next Steps
 
-1. Audit high-level startup/restart listener ownership and network-parameter
-   caching gaps against the `ember` adapter patterns.
+1. Audit network-parameter caching gaps against the `ember` adapter patterns.

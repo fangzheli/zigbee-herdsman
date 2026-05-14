@@ -201,102 +201,119 @@ export class Driver extends EventEmitter {
     let result: TsType.StartResult = "resumed";
     this.transactionID = 1;
     this.blz = new Blz();
-    this.blz.on("close", this.onBlzClose.bind(this));
 
     try {
-      await this.blz.connect(this.serialOpt);
-    } catch (error) {
-      logger.debug(`BLZ could not connect: ${error}`, NS);
-      throw error;
-    }
+      this.blz.on("close", this.onBlzClose.bind(this));
 
-    this.blz.on("reset", this.onBlzReset.bind(this));
-
-    await this.blz.forceReset();
-    await wait(2000);
-
-    await this.addEndpoint({
-      inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
-      outputClusters: [
-        0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300, 0x0400,
-      ],
-    });
-
-    await this.blz.getVersion();
-
-    if (await this.needsToBeInitialised(this.nwkOpt)) {
-      logger.info("The network setup need to be initialized", NS);
-      await wait(1000);
-      const restore = await this.needsToBeRestore(this.nwkOpt);
-
-      logger.info(`Leaving the current network`, NS);
-
-      const st = await this.blz.leaveNetwork();
-
-      if (st != BlzStatus.SUCCESS) {
-        logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
+      try {
+        await this.blz.connect(this.serialOpt);
+      } catch (error) {
+        logger.debug(`BLZ could not connect: ${error}`, NS);
+        throw error;
       }
 
-      await wait(1000);
-      logger.info(`Left the current network`, NS);
+      this.blz.on("reset", this.onBlzReset.bind(this));
 
-      if (restore) {
-        logger.info("Restore network from backup", NS);
-        await this.formNetwork(true);
-        result = "restored";
-      } else {
-        logger.info("Form a new network", NS);
-        await this.formNetwork(false);
-        result = "reset";
+      await this.blz.forceReset();
+      await wait(2000);
+
+      await this.addEndpoint({
+        inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
+        outputClusters: [
+          0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300,
+          0x0400,
+        ],
+      });
+
+      await this.blz.getVersion();
+
+      if (await this.needsToBeInitialised(this.nwkOpt)) {
+        logger.info("The network setup need to be initialized", NS);
+        await wait(1000);
+        const restore = await this.needsToBeRestore(this.nwkOpt);
+
+        logger.info(`Leaving the current network`, NS);
+
+        const st = await this.blz.leaveNetwork();
+
+        if (st != BlzStatus.SUCCESS) {
+          logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
+        }
+
+        await wait(1000);
+        logger.info(`Left the current network`, NS);
+
+        if (restore) {
+          logger.info("Restore network from backup", NS);
+          await this.formNetwork(true);
+          result = "restored";
+        } else {
+          logger.info("Form a new network", NS);
+          await this.formNetwork(false);
+          result = "reset";
+        }
       }
-    }
-    await wait(1000);
-    // TODO: make sure the stack is running
-    logger.info("The Zigbee network is formed", NS);
+      await wait(1000);
+      // TODO: make sure the stack is running
+      logger.info("The Zigbee network is formed", NS);
 
-    const netParams = await this.blz.execCommand("getNetworkParameters");
-    logger.info(
-      `Command (getNetworkParameters) returned: ${netParams.status}`,
-      NS,
-    );
-    if (netParams.status !== BlzStatus.SUCCESS) {
-      logger.error(
-        `Command (getNetworkParameters) returned unexpected state: ${netParams.status}`,
+      const netParams = await this.blz.execCommand("getNetworkParameters");
+      logger.info(
+        `Command (getNetworkParameters) returned: ${netParams.status}`,
         NS,
       );
-    }
-    logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
-    logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
-    this.networkParams = new BlzNetworkParameters();
-    // Convert number/bigint to 8-byte Buffer in big-endian format
-    const buf = Buffer.alloc(8);
-    if (typeof netParams.extPanId === "bigint") {
-      buf.writeBigUInt64BE(netParams.extPanId);
-    } else {
-      buf.writeBigUInt64BE(BigInt(netParams.extPanId));
-    }
-    this.networkParams.extendedPanId = buf;
-    this.networkParams.panId = netParams.panId;
-    this.networkParams.Channel = netParams.channel;
-    this.networkParams.nwkUpdateId = netParams.nwkUpdateId;
-    logger.debug(
-      `Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`,
-      NS,
-    );
+      if (netParams.status !== BlzStatus.SUCCESS) {
+        logger.error(
+          `Command (getNetworkParameters) returned unexpected state: ${netParams.status}`,
+          NS,
+        );
+      }
+      logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
+      logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
+      this.networkParams = new BlzNetworkParameters();
+      // Convert number/bigint to 8-byte Buffer in big-endian format
+      const buf = Buffer.alloc(8);
+      if (typeof netParams.extPanId === "bigint") {
+        buf.writeBigUInt64BE(netParams.extPanId);
+      } else {
+        buf.writeBigUInt64BE(BigInt(netParams.extPanId));
+      }
+      this.networkParams.extendedPanId = buf;
+      this.networkParams.panId = netParams.panId;
+      this.networkParams.Channel = netParams.channel;
+      this.networkParams.nwkUpdateId = netParams.nwkUpdateId;
+      logger.debug(
+        `Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`,
+        NS,
+      );
 
-    const ieee = (
-      await this.blz.execCommand("getValue", {
-        valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
-      })
-    ).value;
-    // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
-    const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
-    this.ieee = new BlzEUI64(ieeeEui64);
-    this.blz.on("frame", this.handleFrame.bind(this));
-    logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
-    logger.debug("Network ready", NS);
+      const ieee = (
+        await this.blz.execCommand("getValue", {
+          valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
+        })
+      ).value;
+      // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
+      const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
+      this.ieee = new BlzEUI64(ieeeEui64);
+      this.blz.on("frame", this.handleFrame.bind(this));
+      logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
+      logger.debug("Network ready", NS);
 
-    return result;
+      return result;
+    } catch (error) {
+      await this.cleanupFailedStartup(error);
+      throw error;
+    }
+  }
+
+  private async cleanupFailedStartup(error: unknown): Promise<void> {
+    logger.debug(`Startup failed, cleaning up BLZ resources: ${error}`, NS);
+
+    try {
+      await this.stop(false);
+    } catch (stopError) {
+      logger.debug(`Failed to stop after failed startup ${stopError}`, NS);
+    }
   }
 
   private async needsToBeInitialised(

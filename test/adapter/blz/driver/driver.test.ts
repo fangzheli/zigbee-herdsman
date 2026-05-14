@@ -1,5 +1,16 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
 
+const blzConstructorMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../../../../src/adapter/blz/driver/blz")>();
+
+    return {
+        ...actual,
+        Blz: blzConstructorMock,
+    };
+});
+
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
 import {BlzOutgoingMessageType, BlzStatus} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame} from "../../../../src/adapter/blz/driver/types/struct";
@@ -21,6 +32,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
     afterEach(() => {
         vi.useRealTimers();
+        blzConstructorMock.mockReset();
         vi.restoreAllMocks();
     });
 
@@ -104,5 +116,22 @@ describe("BLZ high-level driver lifecycle", () => {
             data.length,
             data,
         );
+    });
+
+    it("closes BLZ resources when startup fails after connecting", async () => {
+        const blzMock = {
+            on: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockRejectedValue(new Error("reset failed")),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        await expect(driver.startup()).rejects.toThrow("reset failed");
+
+        expect(blzMock.removeAllListeners).toHaveBeenCalled();
+        expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 });
