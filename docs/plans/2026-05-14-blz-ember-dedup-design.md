@@ -844,6 +844,9 @@ Future BLZ refactors should follow these rules:
 - Made TCP socket `ready` handling one-shot during UART open, preventing
   repeated `ready` emissions while reset is pending from running duplicate
   reset/open-completion flows or attaching runtime listeners repeatedly.
+- Kept TCP open-phase error/close listeners attached until the ready-time reset
+  succeeds, so socket failures during reset still reject and clean up the open
+  attempt instead of being treated as runtime-only log events.
 
 ## Next Steps
 

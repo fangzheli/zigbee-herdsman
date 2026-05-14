@@ -209,10 +209,6 @@ export class SerialDriver extends EventEmitter {
           readyStarted = true;
           logger.debug("Socket ready", NS);
           socketPort.off("ready", onReady);
-          socketPort.off("error", openError);
-          socketPort.off("close", openClose);
-          socketPort.once("close", this.onPortCloseHandler);
-          socketPort.on("error", this.onPortErrorHandler);
 
           try {
             // reset
@@ -226,6 +222,11 @@ export class SerialDriver extends EventEmitter {
             openError(new Error("Connection closed"));
             return;
           }
+
+          socketPort.off("error", openError);
+          socketPort.off("close", openClose);
+          socketPort.once("close", this.onPortCloseHandler);
+          socketPort.on("error", this.onPortErrorHandler);
 
           settled = true;
           this.initialized = true;
