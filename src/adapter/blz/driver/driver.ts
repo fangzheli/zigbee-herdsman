@@ -987,12 +987,27 @@ export class Driver extends EventEmitter {
     data: Buffer,
     timeout = 30000,
   ): Promise<boolean> {
-    return await this.sendApsDataStatus(
-      BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
-      apsFrame.groupId ?? 0,
-      apsFrame,
-      data,
-    );
+    this.getBlz();
+    const requestGeneration = this.requestGeneration;
+
+    try {
+      return await this.runRequestOperation(
+        () =>
+          this.sendApsDataStatus(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
+            apsFrame.groupId ?? 0,
+            apsFrame,
+            data,
+          ),
+        requestGeneration,
+      );
+    } catch (error) {
+      if (this.isRequestCancelled(requestGeneration)) {
+        return false;
+      }
+
+      throw error;
+    }
   }
 
   public async brequest(
@@ -1000,12 +1015,27 @@ export class Driver extends EventEmitter {
     apsFrame: BlzApsFrame,
     data: Buffer,
   ): Promise<boolean> {
-    return await this.sendApsDataStatus(
-      BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
-      destination,
-      apsFrame,
-      data,
-    );
+    this.getBlz();
+    const requestGeneration = this.requestGeneration;
+
+    try {
+      return await this.runRequestOperation(
+        () =>
+          this.sendApsDataStatus(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+            destination,
+            apsFrame,
+            data,
+          ),
+        requestGeneration,
+      );
+    } catch (error) {
+      if (this.isRequestCancelled(requestGeneration)) {
+        return false;
+      }
+
+      throw error;
+    }
   }
 
   private async sendApsDataStatus(

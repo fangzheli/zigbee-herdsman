@@ -323,6 +323,41 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("stops active multicast and broadcast APS requests when driver stop interrupts the lower send", async () => {
+        vi.useFakeTimers();
+        const sendApsData = vi.fn().mockReturnValue(new Promise(() => {}));
+        const blzMock = {
+            sendApsData,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = blzMock as unknown as Driver["blz"];
+        const apsFrame = makeApsFrame();
+        const data = Buffer.from([0x06, 0x07]);
+        const multicast = driver.mrequest(apsFrame, data);
+        const broadcast = driver.brequest(0xfffc, apsFrame, data);
+        const multicastResult = multicast.then((value) => `resolved:${value}`);
+        const broadcastResult = broadcast.then((value) => `resolved:${value}`);
+
+        await vi.advanceTimersByTimeAsync(0);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observedPromise = Promise.race([
+            Promise.all([multicastResult, broadcastResult]),
+            new Promise((resolve) => setTimeout(() => resolve("pending"), 1)),
+        ]);
+        await vi.advanceTimersByTimeAsync(1);
+        const observed = await observedPromise;
+
+        void multicast.catch(() => {});
+        void broadcast.catch(() => {});
+
+        expect(observed).toEqual(["resolved:false", "resolved:false"]);
+        expect(sendApsData).toHaveBeenCalledTimes(2);
+    });
+
     it("stops retrying APS requests when driver stop interrupts the retry delay", async () => {
         vi.useFakeTimers();
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);

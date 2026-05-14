@@ -429,6 +429,9 @@ Future BLZ refactors should follow these rules:
 - Added high-level driver request-operation cancellation, so `Driver.stop()`
   resolves active unicast requests while EUI64 lookup or APS send is still
   pending instead of waiting for the lower BLZ operation to settle.
+- Reused high-level driver request-operation cancellation for multicast and
+  broadcast APS sends, so direct `mrequest()` and `brequest()` calls also
+  resolve on stop while the lower send is still pending.
 
 ## Next Steps
 
