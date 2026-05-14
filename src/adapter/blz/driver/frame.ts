@@ -1,8 +1,6 @@
 /* istanbul ignore file */
 
-import crc16ccitt from "./utils/crc16ccitt";
-
-
+import { verifyFrameCrc } from "./framing";
 /**
  * Class representing a BLZ protocol frame.
  */
@@ -47,14 +45,7 @@ export class Frame {
      * Throws an error if the CRC does not match.
      */
     public checkCRC(): void {
-        const data = this.buffer.subarray(0, -2); // Exclude the CRC bytes
-        const crc = crc16ccitt(data, 0xffff); // Compute the CRC
-        const crcBytes = Buffer.from([crc >> 8, crc & 0xFF]); // Convert to bytes
-        const frameCrc = this.buffer.subarray(-2); // Extract CRC bytes from the frame
-
-        if (!frameCrc.equals(crcBytes)) {
-            throw new Error(`CRC mismatch: expected ${crcBytes.toString("hex")}, got ${frameCrc.toString("hex")}`);
-        }
+        verifyFrameCrc(this.buffer);
     }
 
     /**

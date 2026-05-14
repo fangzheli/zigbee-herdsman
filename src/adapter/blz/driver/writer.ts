@@ -3,8 +3,7 @@
 import * as stream from 'stream';
 import { logger } from '../../../utils/logger';
 import * as consts from './consts';
-import { stuffFrameData } from './framing';
-import { crc16ccitt } from './utils';
+import { appendFrameCrc, stuffFrameData } from './framing';
 
 const NS = 'zh:blz:uart';
 
@@ -61,11 +60,9 @@ export class Writer extends stream.Readable {
             ...(data || []),
         ];
 
-        const crc = crc16ccitt(Buffer.from(frameBuffer), 0xFFFF);
-        frameBuffer.push(crc >> 8);
-        frameBuffer.push(crc & 0xFF);
+        const frameWithCrc = appendFrameCrc(Buffer.from(frameBuffer));
 
-        return Buffer.from([consts.START, ...stuffFrameData(Buffer.from(frameBuffer)), consts.END]);
+        return Buffer.from([consts.START, ...stuffFrameData(frameWithCrc), consts.END]);
     }
 
     private makeControlByte(isDebug: boolean=false, isRetransmission: boolean): number {

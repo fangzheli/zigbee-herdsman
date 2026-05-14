@@ -1,4 +1,23 @@
 import * as consts from "./consts";
+import crc16ccitt from "./utils/crc16ccitt";
+
+const BLZ_CRC_INITIAL_VALUE = 0xffff;
+
+export function appendFrameCrc(data: Buffer): Buffer {
+    const crc = crc16ccitt(data, BLZ_CRC_INITIAL_VALUE);
+
+    return Buffer.concat([data, Buffer.from([crc >> 8, crc & 0xff])]);
+}
+
+export function verifyFrameCrc(frame: Buffer): void {
+    const data = frame.subarray(0, -2);
+    const expected = appendFrameCrc(data).subarray(-2);
+    const actual = frame.subarray(-2);
+
+    if (!actual.equals(expected)) {
+        throw new Error(`CRC mismatch: expected ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+    }
+}
 
 export function stuffFrameData(buffer: Buffer): Buffer {
     const result: number[] = [];

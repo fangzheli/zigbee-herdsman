@@ -128,9 +128,12 @@ Future BLZ refactors should follow these rules:
 - Extracted BLZ byte stuffing and unstuffing into `framing.ts`, so `Parser` and
   `Writer` now share one delimiter escaping implementation. Added pure helper
   tests for reserved-byte escaping, unescaping, and round trips.
+- Centralized BLZ frame CRC append and verification in `framing.ts`, so
+  `Writer` and `Frame` use the same CRC byte ordering and mismatch message
+  behavior. Added pure tests for non-mutating CRC append and mismatch handling.
 
 ## Next Steps
 
-1. Consider CRC/frame construction helpers now that stuffing is shared.
+1. Consider frame construction helpers now that CRC and stuffing are shared.
 2. Continue reducing transport-layer allocation churn where tests can pin the
    behavior.
