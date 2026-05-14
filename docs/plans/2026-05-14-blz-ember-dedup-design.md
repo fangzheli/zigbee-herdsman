@@ -716,6 +716,9 @@ Future BLZ refactors should follow these rules:
 - Reworked BLZ MAC-to-EUI64 conversion to write reversed bytes directly into
   the result buffer, avoiding the `Buffer.from(...).reverse()` copy-and-mutate
   pattern during startup coordinator identity conversion.
+- Added direct `BlzEUI64` instance copying and used it for the driver's
+  coordinator IEEE snapshot, preserving the defensive copy boundary without
+  converting the cached identity through a hex string.
 
 ## Next Steps
 

@@ -187,6 +187,24 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(driver.getCoordinatorIeee().toString()).toBe("0102030405060708");
     });
 
+    it("copies cached coordinator IEEE without a string round trip", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+        const expected = Buffer.from("0102030405060708", "hex");
+        const toStringSpy = vi.spyOn(BlzEUI64.prototype, "toString").mockImplementation(() => {
+            throw new Error("toString used");
+        });
+
+        try {
+            const ieee = driver.getCoordinatorIeee();
+
+            expect(ieee.value).toEqual(expected);
+            expect(toStringSpy).not.toHaveBeenCalled();
+        } finally {
+            toStringSpy.mockRestore();
+        }
+    });
+
     it("routes leave network through the driver command operation path", async () => {
         const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");

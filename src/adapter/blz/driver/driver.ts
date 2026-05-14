@@ -168,7 +168,7 @@ export class Driver extends EventEmitter {
       throw new Error("BLZ coordinator IEEE is not available");
     }
 
-    return new BlzEUI64(this.ieee.toString());
+    return new BlzEUI64(this.ieee);
   }
 
   public updateNetworkParametersSnapshot(

@@ -6,9 +6,11 @@ import {fixed_list} from './basic';
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     private readonly _value: Buffer;
 
-    constructor(value: ArrayLike<number> | string) {
+    constructor(value: ArrayLike<number> | string | BlzEUI64) {
         super();
-        if (typeof value === 'string') {
+        if (value instanceof BlzEUI64) {
+            this._value = Buffer.from(value._value);
+        } else if (typeof value === 'string') {
             if (value.startsWith('0x')) value = value.slice(2);
             if (value.length !== 16) {
                 throw new Error('Incorrect value passed');
