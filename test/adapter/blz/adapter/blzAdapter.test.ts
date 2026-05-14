@@ -797,6 +797,41 @@ describe("BLZ Adapter", () => {
       ).rejects.toThrow("sendZclFrameToEndpointInternal error");
     });
 
+    it("should cancel ZCL response waiters when endpoint request rejects", async () => {
+      driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
+        const apsFrame = new BlzApsFrame();
+        apsFrame.clusterId = clusterId;
+        return apsFrame;
+      });
+      driverMock.request.mockRejectedValue(new Error("driver request failed"));
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        false,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await expect(
+        adapter.sendZclFrameToEndpoint(
+          "0x0102030405060708",
+          0x1234,
+          1,
+          zclFrame,
+          1000,
+          false,
+          true,
+        ),
+      ).rejects.toThrow("driver request failed");
+      expect(
+        (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+      ).toBe(0);
+    });
+
     it("should handle unsupported operations", async () => {
       await expect(adapter.reset("soft")).rejects.toThrow("Not supported");
       await expect(

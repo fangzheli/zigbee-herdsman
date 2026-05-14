@@ -262,6 +262,9 @@ Future BLZ refactors should follow these rules:
 - Broadened BLZ ZCL receive handling to process any non-ZDO, non-Touchlink,
   non-Green-Power profile as ZCL, so custom-profile ZCL responses are not
   dropped after custom-profile sends.
+- Cancelled pending ZCL response waiters when endpoint APS request throws,
+  preventing unstarted adapter waiters from remaining in memory after lower
+  request failures.
 
 ## Next Steps
 
