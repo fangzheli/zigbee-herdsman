@@ -18,6 +18,7 @@ import {Driver} from "../../../../src/adapter/blz/driver/driver";
 import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame, BlzNetworkParameters} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
+import * as Zdo from "../../../../src/zspec/zdo";
 
 describe("BLZ high-level driver lifecycle", () => {
     const networkOptions: NetworkOptions = {
@@ -89,6 +90,15 @@ describe("BLZ high-level driver lifecycle", () => {
             lqi: 255,
             rssi: -40,
             message: Buffer.from([0x18, 0x01, 0x0a]),
+        } as BLZFrameData;
+    }
+
+    function makeIncomingZdoResponseFrame(srcShortAddr: number, message: Buffer): BLZFrameData {
+        return {
+            ...makeIncomingApsFrame(srcShortAddr),
+            profileId: Zdo.ZDO_PROFILE_ID,
+            clusterId: Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE,
+            message,
         } as BLZFrameData;
     }
 
@@ -1676,6 +1686,28 @@ describe("BLZ high-level driver lifecycle", () => {
             expect.objectContaining({
                 sender: 0x3344,
                 senderEui64: undefined,
+            }),
+        );
+    });
+
+    it("emits malformed ZDO responses without throwing from the receive handler", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const incomingMessage = vi.fn();
+        const message = Buffer.from([0x00]);
+        driver.on("incomingMessage", incomingMessage);
+
+        expect(() =>
+            (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+                "apsDataIndication",
+                makeIncomingZdoResponseFrame(0x3344, message),
+            ),
+        ).not.toThrow();
+
+        expect(incomingMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sender: 0x3344,
+                message,
+                zdoResponse: undefined,
             }),
         );
     });

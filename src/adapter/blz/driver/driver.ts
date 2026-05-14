@@ -720,40 +720,50 @@ export class Driver extends EventEmitter {
           frame.profileId == Zdo.ZDO_PROFILE_ID &&
           frame.clusterId >= 0x8000 /* response only */
         ) {
-          const zdoResponse = Zdo.Buffalo.readResponse(
-            true,
-            frame.clusterId,
-            frame.message,
-          );
+          let zdoResponse: GenericZdoResponse | undefined;
+          try {
+            zdoResponse = Zdo.Buffalo.readResponse(
+              true,
+              frame.clusterId,
+              frame.message,
+            );
+          } catch (error) {
+            logger.error(
+              `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${error}`,
+              NS,
+            );
+          }
 
-          if (frame.clusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE) {
-            // special case to properly resolve a NETWORK_ADDRESS_RESPONSE following a NETWORK_ADDRESS_REQUEST (based on EUI64 from ZDO payload)
-            // NOTE: if response has invalid status (no EUI64 available), response waiter will eventually time out
-            /* istanbul ignore else */
-            if (
-              Zdo.Buffalo.checkStatus<Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE>(
-                zdoResponse,
-              )
-            ) {
-              const eui64 = zdoResponse[1].eui64;
+          if (zdoResponse) {
+            if (frame.clusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE) {
+              // special case to properly resolve a NETWORK_ADDRESS_RESPONSE following a NETWORK_ADDRESS_REQUEST (based on EUI64 from ZDO payload)
+              // NOTE: if response has invalid status (no EUI64 available), response waiter will eventually time out
+              /* istanbul ignore else */
+              if (
+                Zdo.Buffalo.checkStatus<Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE>(
+                  zdoResponse,
+                )
+              ) {
+                const eui64 = zdoResponse[1].eui64;
 
-              // update cache with new network address
-              this.cacheNodeIeee(frame.srcShortAddr, eui64);
+                // update cache with new network address
+                this.cacheNodeIeee(frame.srcShortAddr, eui64);
 
+                this.waitress.resolve({
+                  address: eui64,
+                  payload: frame.message,
+                  frame: apsFrame,
+                  zdoResponse,
+                });
+              }
+            } else {
               this.waitress.resolve({
-                address: eui64,
+                address: frame.srcShortAddr,
                 payload: frame.message,
                 frame: apsFrame,
                 zdoResponse,
               });
             }
-          } else {
-            this.waitress.resolve({
-              address: frame.srcShortAddr,
-              payload: frame.message,
-              frame: apsFrame,
-              zdoResponse,
-            });
           }
 
           // always pass ZDO to bubble up to controller

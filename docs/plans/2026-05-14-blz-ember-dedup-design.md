@@ -666,6 +666,9 @@ Future BLZ refactors should follow these rules:
 - Cleaned BLZ adapter state on unexpected high-level driver close events:
   adapter delays, queued jobs, ZCL waiters, running operations, and driver
   listeners are released before emitting `disconnected`.
+- Contained malformed ZDO response parsing at the high-level driver receive
+  boundary, so truncated ZDO payloads are logged and forwarded as raw incoming
+  messages without throwing from the BLZ frame EventEmitter listener.
 
 ## Next Steps
 
