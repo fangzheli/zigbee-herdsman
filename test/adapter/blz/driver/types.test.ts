@@ -502,6 +502,21 @@ describe('BLZ Types', () => {
                 }
             });
 
+            it('should serialize EUI64 instances without copying through the public value getter', () => {
+                const eui = new BlzEUI64('0102030405060708');
+                const expected = Buffer.from([0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01]);
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    expect(BlzEUI64.serialize(BlzEUI64, eui)).toEqual(expected);
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
+
             it('should serialize from array', () => {
                 const result = BlzEUI64.serialize(BlzEUI64, [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
                 expect(result.length).toBe(8);

@@ -32,16 +32,19 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: ArrayLike<number> | BlzEUI64): Buffer {
+        let source: ArrayLike<number>;
         if (value instanceof BlzEUI64) {
-            value = (value as BlzEUI64).value as Buffer;
+            source = value._value;
+        } else {
+            source = value;
         }
-        if (value.length !== 8) {
+        if (source.length !== 8) {
             throw new Error('Incorrect value passed');
         }
 
         const result = Buffer.allocUnsafe(8);
         for (let i = 0; i < 8; i++) {
-            result[i] = value[7 - i];
+            result[i] = source[7 - i];
         }
         return result;
     }

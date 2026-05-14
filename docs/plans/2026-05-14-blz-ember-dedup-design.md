@@ -699,6 +699,9 @@ Future BLZ refactors should follow these rules:
 - Tightened `BlzEUI64` internal storage to a private Buffer and made
   `toString()` read that backing store directly, avoiding an extra Buffer copy
   on address-cache and join/leave hot paths while keeping `value` defensive.
+- Reworked `BlzEUI64.serialize()` to read instance backing storage directly
+  from inside the class, avoiding the defensive `value` getter copy while still
+  preserving public immutability.
 
 ## Next Steps
 
