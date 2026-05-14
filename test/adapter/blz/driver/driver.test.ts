@@ -111,9 +111,9 @@ describe("BLZ high-level driver lifecycle", () => {
     }
 
     it("reports coordinator version from the active BLZ transport", () => {
-        const version = {product: 7, major: "1", minor: "2", patch: "3"};
+        const version = {product: 7, major: "1", minor: "2", patch: "3", build: "4"};
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        setDriverBlz(driver, {version});
+        setDriverBlz(driver, {getVersionSnapshot: () => version});
 
         const coordinatorVersion = driver.getCoordinatorVersion();
 
@@ -125,9 +125,9 @@ describe("BLZ high-level driver lifecycle", () => {
     });
 
     it("does not expose mutable coordinator version metadata", () => {
-        const version = {product: 7, major: "1", minor: "2", patch: "3"};
+        const version = {product: 7, major: "1", minor: "2", patch: "3", build: "4"};
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        setDriverBlz(driver, {version});
+        setDriverBlz(driver, {getVersionSnapshot: () => version});
 
         const coordinatorVersion = driver.getCoordinatorVersion();
         coordinatorVersion.meta.product = 99;

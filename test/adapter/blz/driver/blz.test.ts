@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Blz, BLZFrameData } from "../../../../src/adapter/blz/driver/blz";
 import { SerialDriver } from "../../../../src/adapter/blz/driver/uart";
@@ -86,6 +88,18 @@ describe("BLZ Driver", () => {
   });
 
   describe("Connection", () => {
+    it("should keep cached version behind defensive snapshots", () => {
+      const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+      expect(source).toContain("private version:");
+      expect(source).not.toContain("public version:");
+
+      const version = blz.getVersionSnapshot();
+      version.product = 99;
+
+      expect(blz.getVersionSnapshot().product).toBe(1);
+    });
+
     it("should connect successfully", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

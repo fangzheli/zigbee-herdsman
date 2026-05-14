@@ -52,6 +52,14 @@ type BLZWaitressMatcher = {
   frameId: number | string;
 };
 
+export type BlzVersion = {
+  product: number;
+  major: string;
+  minor: string;
+  patch: string;
+  build: string;
+};
+
 export class BLZFrameData {
   _cls_: string;
   _id_: number;
@@ -301,13 +309,7 @@ export class Blz extends EventEmitter {
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
   private readonly onFrameReceivedHandler = this.onFrameReceived.bind(this);
   private readonly watchdogHandlerRef = this.watchdogHandler.bind(this);
-  public version: {
-    product: number;
-    major: string;
-    minor: string;
-    patch: string;
-    build: string;
-  };
+  private version: BlzVersion;
 
   constructor() {
     super();
@@ -326,6 +328,10 @@ export class Blz extends EventEmitter {
       patch: "0",
       build: "0",
     };
+  }
+
+  public getVersionSnapshot(): BlzVersion {
+    return { ...this.version };
   }
 
   public async connect(options: SerialPortOptions): Promise<void> {

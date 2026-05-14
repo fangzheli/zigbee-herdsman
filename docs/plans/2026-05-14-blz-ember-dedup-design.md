@@ -556,6 +556,8 @@ Future BLZ refactors should follow these rules:
 - Hardened the UART serial driver against direct repeated `connect()` calls by
   closing any existing serial/socket resource before opening a replacement,
   avoiding orphaned pipes, listeners, or port references at the lower layer.
+- Made the BLZ transport's cached version private and exposed it through a
+  defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.

@@ -137,7 +137,7 @@ export class Driver extends EventEmitter {
   }
 
   public getCoordinatorVersion(): TsType.CoordinatorVersion {
-    const version = this.getBlz().version;
+    const version = this.getBlz().getVersionSnapshot();
 
     return {
       type: `BLZ v${version.product}`,
