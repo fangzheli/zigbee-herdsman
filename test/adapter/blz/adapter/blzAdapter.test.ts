@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { BLZAdapter } from "../../../../src/adapter/blz/adapter/blzAdapter";
 import { Driver } from "../../../../src/adapter/blz/driver/driver";
@@ -147,6 +149,13 @@ describe("BLZ Adapter", () => {
   });
 
   describe("Startup and initialization", () => {
+    it("keeps driver close handling behind adapter-owned listeners", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).toContain("private onDriverClose(): void");
+      expect(source).not.toContain("public onDriverClose(): void");
+    });
+
     it("should stop successfully", async () => {
       driverMock.stop.mockResolvedValue(undefined);
       await adapter.stop();

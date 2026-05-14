@@ -241,7 +241,7 @@ export class BLZAdapter extends Adapter {
     }
   }
 
-  public onDriverClose(): void {
+  private onDriverClose(): void {
     logger.debug("onDriverClose()", NS);
 
     if (!this.closing) {

@@ -563,6 +563,8 @@ Future BLZ refactors should follow these rules:
   pending.
 - Made the low-level BLZ transport and UART waiter factories private, keeping
   request waiter ownership inside their respective lifecycle cleanup paths.
+- Made the BLZ adapter's driver-close event handler private, so disconnected
+  emission stays owned by the adapter's attached driver listener.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot
