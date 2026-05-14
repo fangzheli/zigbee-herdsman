@@ -516,6 +516,16 @@ export class Blz extends EventEmitter {
 
   private onSerialClose(): void {
     logger.debug("onSerialClose()", NS);
+    const closeError = new Error("Connection closed");
+    this.connectGeneration += 1;
+    this.connectOperations.cancel(closeError);
+    this.connectResetOperations.cancel(closeError);
+    this.connectRetryDelay.cancel();
+    this.clearWatchdogTimer();
+    this.queue.clear(closeError);
+    this.waitress.clear();
+    this.detachSerialDriverListeners();
+
     if (!this.inResetingProcess) {
       this.emit("close");
     }

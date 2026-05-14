@@ -847,6 +847,9 @@ Future BLZ refactors should follow these rules:
 - Kept TCP open-phase error/close listeners attached until the ready-time reset
   succeeds, so socket failures during reset still reject and clean up the open
   attempt instead of being treated as runtime-only log events.
+- Cleaned low-level BLZ state on unexpected serial-driver close events:
+  watchdogs, connect operations, retry delays, command queues, command waiters,
+  and owned serial-driver listeners are released before emitting BLZ `close`.
 
 ## Next Steps
 
