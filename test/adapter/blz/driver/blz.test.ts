@@ -839,6 +839,19 @@ describe("BLZ Driver", () => {
       expect(observed).toBe("rejected:Connection reset");
     });
 
+    it("should not force reset after close interrupts the connection", async () => {
+      serialDriverMock.close.mockResolvedValue(undefined);
+      serialDriverMock.reset.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockImplementationOnce(() => {
+        void blz.close(false);
+        return true;
+      });
+
+      await expect(blz.forceReset()).rejects.toThrow("Connection closed");
+
+      expect(serialDriverMock.reset).not.toHaveBeenCalled();
+    });
+
     it("should handle send failures before command waiters start", async () => {
       const sendError = new Error("send failed");
       serialDriverMock.sendDATA.mockRejectedValue(sendError);

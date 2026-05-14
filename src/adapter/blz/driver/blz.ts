@@ -574,16 +574,20 @@ export class Blz extends EventEmitter {
    */
   public async forceReset(): Promise<void> {
     logger.debug("Forcing direct UART reset", NS);
+    const resetConnectGeneration = this.connectGeneration;
 
     if (!this.serialDriver.isInitialized()) {
       throw new Error("Connection not initialized");
     }
 
+    this.throwIfConnectionChanged(resetConnectGeneration);
     this.queue.clear(new Error("Connection reset"));
     this.waitress.clear();
+    this.throwIfConnectionChanged(resetConnectGeneration);
 
     try {
       await this.serialDriver.reset();
+      this.throwIfConnectionChanged(resetConnectGeneration);
       logger.debug("Direct UART reset sent successfully", NS);
     } catch (error) {
       logger.error(`Direct UART reset failed: ${error}`, NS);

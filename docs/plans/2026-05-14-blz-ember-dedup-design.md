@@ -835,6 +835,9 @@ Future BLZ refactors should follow these rules:
 - Cleared low-level BLZ command queues and command waiters before direct
   UART-level `forceReset()`, so reset recovery does not leave pre-reset command
   promises pending while the UART layer resets underneath them.
+- Guarded direct UART-level `forceReset()` with the BLZ connection generation,
+  preventing a close/reconnect boundary from being followed by a stale reset
+  against the old serial driver state.
 
 ## Next Steps
 
