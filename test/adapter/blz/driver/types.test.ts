@@ -377,6 +377,22 @@ describe('BLZ Types', () => {
                 expect(result.length).toBe(8);
             });
 
+            it('should serialize EUI64 without per-byte integer serialization churn', () => {
+                const eui = new BlzEUI64('0102030405060708');
+                const serializeSpy = vi.spyOn(uint8_t, 'serialize').mockImplementation(() => {
+                    throw new Error('uint8_t.serialize used');
+                });
+
+                try {
+                    expect(BlzEUI64.serialize(BlzEUI64, eui)).toEqual(
+                        Buffer.from([0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01]),
+                    );
+                    expect(serializeSpy).not.toHaveBeenCalled();
+                } finally {
+                    serializeSpy.mockRestore();
+                }
+            });
+
             it('should serialize from array', () => {
                 const result = BlzEUI64.serialize(BlzEUI64, [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
                 expect(result.length).toBe(8);

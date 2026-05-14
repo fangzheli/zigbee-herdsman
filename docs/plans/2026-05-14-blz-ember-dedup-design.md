@@ -561,6 +561,9 @@ Future BLZ refactors should follow these rules:
 - Fixed generic BLZ list serialization to use the declared item type and fixed
   length-prefixed lists to write the actual item count, keeping type
   serialization consistent without retaining unnecessary intermediate arrays.
+- Reworked `BlzEUI64.serialize()` to write the fixed eight-byte reversed value
+  directly into a preallocated buffer, avoiding per-byte integer serialization
+  and intermediate array churn.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.
