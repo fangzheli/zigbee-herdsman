@@ -273,6 +273,7 @@ export class Blz extends EventEmitter {
   private watchdogTimer?: NodeJS.Timeout;
   private failures = 0;
   private inResetingProcess = false;
+  private serialDriverEventBridgeAttached = false;
   public version: {
     product: number;
     major: string;
@@ -290,8 +291,7 @@ export class Blz extends EventEmitter {
     );
 
     this.serialDriver = new SerialDriver();
-    this.serialDriver.on("received", this.onFrameReceived.bind(this));
-    this.serialDriver.on("close", this.onSerialClose.bind(this));
+    this.attachSerialDriverEventBridge();
     this.version = {
       product: 1,
       major: "0",
@@ -304,6 +304,7 @@ export class Blz extends EventEmitter {
   public async connect(options: SerialPortOptions): Promise<void> {
     let lastError: Error | null = null;
     let connected = false;
+    this.attachSerialDriverEventBridge();
 
     const resetForReconnect = (): void => {
       throw new Error("Failure to connect");
@@ -382,6 +383,16 @@ export class Blz extends EventEmitter {
     }
   }
 
+  private attachSerialDriverEventBridge(): void {
+    if (this.serialDriverEventBridgeAttached) {
+      return;
+    }
+
+    this.serialDriver.on("received", this.onFrameReceived.bind(this));
+    this.serialDriver.on("close", this.onSerialClose.bind(this));
+    this.serialDriverEventBridgeAttached = true;
+  }
+
   public isInitialized(): boolean {
     return this.serialDriver?.isInitialized();
   }
@@ -412,6 +423,7 @@ export class Blz extends EventEmitter {
     this.queue.clear();
     this.waitress.clear();
     this.serialDriver.removeAllListeners();
+    this.serialDriverEventBridgeAttached = false;
     await this.serialDriver.close(emitClose);
   }
 

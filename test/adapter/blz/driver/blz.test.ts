@@ -144,6 +144,18 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledWith(true);
     });
 
+    it("should restore serial driver event bridge when reconnecting after close", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+
+      await blz.connect(serialPortOptions);
+      await blz.close(false);
+      await blz.connect(serialPortOptions);
+
+      expect(serialDriverMock.on.mock.calls.filter((call) => call[0] === "received")).toHaveLength(2);
+      expect(serialDriverMock.on.mock.calls.filter((call) => call[0] === "close")).toHaveLength(2);
+    });
+
     it("should clear the previous watchdog timer before reconnecting", async () => {
       const clearIntervalSpy = vi.spyOn(global, "clearInterval");
       serialDriverMock.connect.mockResolvedValue(undefined);

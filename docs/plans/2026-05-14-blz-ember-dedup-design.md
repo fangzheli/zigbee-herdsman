@@ -163,6 +163,9 @@ Future BLZ refactors should follow these rules:
 - Tightened `Blz.connect()` retry cleanup: each failed connection attempt now
   clears pending queues/waiters and closes the serial driver without removing
   the long-lived BLZ event bridge needed by later retries.
+- Centralized the BLZ-to-serial-driver event bridge and made it reattach after a
+  full `Blz.close()`, so reusing a `Blz` instance after close does not lose
+  `received` or `close` event handling.
 
 ## Next Steps
 
