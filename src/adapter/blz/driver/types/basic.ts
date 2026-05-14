@@ -167,6 +167,10 @@ export class LVBytes {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
+        if (data.length < 1) {
+            throw new RangeError(`Buffer too small. Expected at least 1 byte, received ${data.length}`);
+        }
+
         const l = data.readIntLE(0, 1);
         if (data.length < l + 1) {
             throw new RangeError(`Buffer too small. Expected at least ${l + 1} bytes, received ${data.length}`);

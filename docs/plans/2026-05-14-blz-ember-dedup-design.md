@@ -623,6 +623,9 @@ Future BLZ refactors should follow these rules:
 - Removed unused legacy high-level driver request parameters from unicast and
   multicast APS sends, keeping retry and timeout ownership in the existing
   request cancellation helpers.
+- Added the missing schema-level empty-buffer guard for BLZ length-prefixed
+  byte deserialization, so malformed payloads fail before any out-of-bounds
+  buffer read.
 
 ## Next Steps
 

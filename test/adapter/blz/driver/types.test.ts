@@ -226,6 +226,10 @@ describe('BLZ Types', () => {
             expect(() => LVBytes.deserialize(LVBytes, Buffer.from([0x02, 0xAB]))).toThrow(RangeError);
         });
 
+        it('should reject a missing length prefix when deserializing length-prefixed bytes', () => {
+            expect(() => LVBytes.deserialize(LVBytes, Buffer.alloc(0))).toThrow('Expected at least 1 byte');
+        });
+
         it('should handle empty bytes', () => {
             const result = LVBytes.serialize(LVBytes, []);
             expect(result).toEqual(Buffer.from([0x00]));
