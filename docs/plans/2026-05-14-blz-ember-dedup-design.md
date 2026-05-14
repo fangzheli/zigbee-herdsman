@@ -211,6 +211,9 @@ Future BLZ refactors should follow these rules:
 - Extended `Queue.clear()` to reject jobs that have not started yet, so BLZ
   reset/close cleanup does not leave queued command promises permanently
   pending after their queue entry is discarded.
+- Extended shared `Waitress.clear()` to reject pending waiters, so BLZ
+  adapter/driver/UART cleanup resolves callers instead of leaving external
+  request promises hanging after reset or stop.
 
 ## Next Steps
 

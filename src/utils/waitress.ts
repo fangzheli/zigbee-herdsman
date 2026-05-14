@@ -27,6 +27,7 @@ export class Waitress<TPayload, TMatcher> {
     public clear(): void {
         for (const [, waiter] of this.waiters) {
             clearTimeout(waiter.timer);
+            waiter.reject(new Error("Waitress cleared"));
         }
 
         this.waiters.clear();

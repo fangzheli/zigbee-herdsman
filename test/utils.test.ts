@@ -144,6 +144,27 @@ describe("Utils", () => {
         vi.useRealTimers();
     });
 
+    it("Test waitress clear rejects pending waiters", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000).start();
+        const result = waiter.promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        waitress.clear();
+
+        expect(
+            await Promise.race([
+                result,
+                new Promise((resolve) => setImmediate(() => resolve("pending"))),
+            ]),
+        ).toBe("rejected:Waitress cleared");
+    });
+
     it("Test queue", async () => {
         const queue = new Queue(4);
         const finished: number[] = [];

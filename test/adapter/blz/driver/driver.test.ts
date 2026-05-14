@@ -76,7 +76,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const waiter = driver.waitFor(0x1234, 0x8000, 1000);
-        waiter.start();
+        const waiterResult = waiter.start().promise.catch((error: Error) => error);
 
         (driver as unknown as {blz: {removeAllListeners: () => void; close: () => Promise<void>}}).blz = {
             removeAllListeners: vi.fn(),
@@ -86,6 +86,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await expect(driver.stop()).rejects.toThrow("close failed");
 
         expect(clearTimeoutSpy).toHaveBeenCalled();
+        await expect(waiterResult).resolves.toEqual(new Error("Waitress cleared"));
     });
 
     it("clears address cache when stopping", async () => {
