@@ -33,6 +33,7 @@ export class SerialDriver extends EventEmitter {
   private recvSeq = 0; // next frame number to receive
   private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
   private queue: Queue;
+  private operationGeneration = 0;
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
@@ -260,8 +261,7 @@ export class SerialDriver extends EventEmitter {
 
   async reset(): Promise<void> {
     this.parser.reset();
-    this.queue.clear();
-    this.waitress.clear();
+    this.cancelPendingOperations();
     this.sendSeq = 0;
     this.recvSeq = 0;
 
@@ -287,8 +287,7 @@ export class SerialDriver extends EventEmitter {
 
   public async close(emitClose: boolean): Promise<void> {
     logger.debug("Closing UART", NS);
-    this.queue.clear();
-    this.waitress.clear();
+    this.cancelPendingOperations();
     this.cleanupParser();
 
     const wasInitialized = this.initialized;
@@ -328,6 +327,12 @@ export class SerialDriver extends EventEmitter {
     this.parser.reset();
   }
 
+  private cancelPendingOperations(): void {
+    this.operationGeneration += 1;
+    this.queue.clear();
+    this.waitress.clear();
+  }
+
   private detachSerialPort(): void {
     if (!this.serialPort) {
       return;
@@ -357,8 +362,7 @@ export class SerialDriver extends EventEmitter {
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
     this.initialized = false;
-    this.queue.clear();
-    this.waitress.clear();
+    this.cancelPendingOperations();
     this.cleanupParser();
 
     if (this.serialPort) {
@@ -389,8 +393,13 @@ export class SerialDriver extends EventEmitter {
   ): Promise<void> {
     const seq = this.sendSeq;
     const ackSeq = this.recvSeq;
+    const generation = this.operationGeneration;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      if (this.operationGeneration !== generation || !this.initialized) {
+        throw new Error("Send cancelled by driver reset or close");
+      }
+
       const isRetransmission = attempt > 0;
       const waiter =
         frameId === FRAMES.reset.ID
@@ -418,6 +427,10 @@ export class SerialDriver extends EventEmitter {
           this.waitress.remove(waiter.ID);
         }
         logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
+
+        if (this.operationGeneration !== generation || !this.initialized) {
+          throw new Error("Send cancelled by driver reset or close");
+        }
 
         if (attempt === retries) {
           logger.error(`All retries failed for seq ${seq}.`, NS);

@@ -310,6 +310,9 @@ Future BLZ refactors should follow these rules:
 - Replaced BLZ adapter-to-driver event registration with stable bound handlers
   and explicit attach/detach guards, so successful adapter stop releases
   driver listeners without breaking restart or failed-stop close handling.
+- Added a UART operation generation guard so reset, close, or port-close cleanup
+  cancels active `sendDATA()` retry loops immediately instead of allowing stale
+  sends to retry after waiter cleanup.
 
 ## Next Steps
 

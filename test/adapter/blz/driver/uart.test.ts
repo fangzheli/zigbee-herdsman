@@ -525,7 +525,31 @@ describe("BLZ Serial Driver", () => {
       );
       await send.catch(() => {});
 
-      expect(observed).toBe("rejected:Failed to send data after 0 retries");
+      expect(observed).toBe("rejected:Send cancelled by driver reset or close");
+    });
+
+    it("should not retry pending sends after reset clears waiters", async () => {
+      vi.useFakeTimers();
+      try {
+        const data = Buffer.from([1, 2, 3]);
+        const frameId = 0x0000;
+        writerMock.sendData.mockReturnValue(undefined);
+
+        const send = driver.sendDATA(data, frameId, 1);
+        const sendResult = send.then(
+          () => "resolved",
+          (error: Error) => `rejected:${error.message}`,
+        );
+
+        await driver.reset();
+        await vi.advanceTimersByTimeAsync(3000);
+        const observed = await sendResult;
+
+        expect(observed).toBe("rejected:Send cancelled by driver reset or close");
+        expect(writerMock.sendData).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("should not retain waiters for reset frames that do not wait for response", async () => {
