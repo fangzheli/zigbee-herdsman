@@ -4,19 +4,21 @@ import * as basic from './basic';
 import {fixed_list} from './basic';
 
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
-    constructor(private _value: ArrayLike<number> | string) {
+    private readonly _value: Buffer;
+
+    constructor(value: ArrayLike<number> | string) {
         super();
-        if (typeof _value === 'string') {
-            if (_value.startsWith('0x')) _value = _value.slice(2);
-            if ((_value as string).length !== 16) {
+        if (typeof value === 'string') {
+            if (value.startsWith('0x')) value = value.slice(2);
+            if (value.length !== 16) {
                 throw new Error('Incorrect value passed');
             }
-            this._value = Buffer.from(_value, 'hex');
+            this._value = Buffer.from(value, 'hex');
         } else {
-            if (_value.length !== 8) {
+            if (value.length !== 8) {
                 throw new Error('Incorrect value passed');
             }
-            this._value = Buffer.from(_value);
+            this._value = Buffer.from(value);
         }
     }
 
@@ -46,12 +48,11 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     public get value(): any {
-        return Buffer.from(this._value as ArrayLike<number>);
+        return Buffer.from(this._value);
     }
 
     public toString(): string {
-        /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-        return Buffer.from(this._value as any).toString('hex');
+        return this._value.toString('hex');
     }
 }
 

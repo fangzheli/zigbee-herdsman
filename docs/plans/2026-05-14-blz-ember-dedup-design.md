@@ -696,6 +696,9 @@ Future BLZ refactors should follow these rules:
 - Stopped BLZ ZDO sends from mutating caller-owned payload buffers when writing
   the adapter TSN byte; the adapter now sends an internal copy with the BLZ
   sequence applied.
+- Tightened `BlzEUI64` internal storage to a private Buffer and made
+  `toString()` read that backing store directly, avoiding an extra Buffer copy
+  on address-cache and join/leave hot paths while keeping `value` defensive.
 
 ## Next Steps
 

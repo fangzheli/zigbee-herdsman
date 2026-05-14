@@ -458,6 +458,20 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should convert to string without copying the backing buffer', () => {
+                const eui = new BlzEUI64('0102030405060708');
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    expect(eui.toString()).toBe('0102030405060708');
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
+
             it('should throw for invalid string length', () => {
                 expect(() => new BlzEUI64('0102030405')).toThrow('Incorrect value passed');
             });
