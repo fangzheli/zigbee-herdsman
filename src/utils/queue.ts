@@ -37,9 +37,12 @@ export class Queue {
         try {
             return await func();
         } finally {
-            this.#jobs.splice(this.#jobs.indexOf(job), 1);
-            this.#running = Math.max(this.#running - 1, 0);
-            this.#executeNext();
+            const index = this.#jobs.indexOf(job);
+            if (index !== -1) {
+                this.#jobs.splice(index, 1);
+                this.#running = Math.max(this.#running - 1, 0);
+                this.#executeNext();
+            }
         }
     }
 

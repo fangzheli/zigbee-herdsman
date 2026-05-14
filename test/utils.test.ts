@@ -228,6 +228,51 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
+    it("Test queue clear does not let old running jobs remove new jobs", async () => {
+        const queue = new Queue(1);
+        const started: number[] = [];
+
+        let finishOldJob: (() => void) | undefined;
+        let finishNewJob: (() => void) | undefined;
+        const oldJobBlocker = new Promise<void>((resolve) => {
+            finishOldJob = resolve;
+        });
+        const newJobBlocker = new Promise<void>((resolve) => {
+            finishNewJob = resolve;
+        });
+
+        const oldJob = queue.execute(async () => {
+            started.push(1);
+            await oldJobBlocker;
+        });
+
+        queue.clear();
+
+        const newJob = queue.execute(async () => {
+            started.push(2);
+            await newJobBlocker;
+        });
+        const queuedJob = queue.execute(async () => {
+            started.push(3);
+        });
+
+        expect(started).toEqual([1, 2]);
+        expect(queue.count()).toBe(2);
+
+        finishOldJob?.();
+        await oldJob;
+
+        expect(started).toEqual([1, 2]);
+        expect(queue.count()).toBe(2);
+
+        finishNewJob?.();
+        await newJob;
+        await queuedJob;
+
+        expect(started).toEqual([1, 2, 3]);
+        expect(queue.count()).toBe(0);
+    });
+
     it("Test async mutex", async () => {
         vi.useFakeTimers();
 

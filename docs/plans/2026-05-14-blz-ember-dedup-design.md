@@ -205,6 +205,9 @@ Future BLZ refactors should follow these rules:
 - Made `SerialDriver.close()` detach and release a serial port even after an
   abnormal port close already marked it uninitialized, avoiding retained pipes,
   listeners, and closed port references during reset recovery.
+- Hardened the shared `Queue` used by BLZ reset/close paths: a running job that
+  was removed by `Queue.clear()` no longer removes or starts unrelated jobs when
+  its `finally` block later runs.
 
 ## Next Steps
 
