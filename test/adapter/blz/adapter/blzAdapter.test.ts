@@ -1665,6 +1665,34 @@ describe("BLZ Adapter", () => {
       expect(start).not.toHaveBeenCalled();
     });
 
+    it("should not mutate caller-owned ZDO payload buffers when assigning TSN", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
+      apsFrame.clusterId = Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST;
+      apsFrame.sourceEndpoint = 0;
+      apsFrame.destinationEndpoint = 0;
+      apsFrame.sequence = 4;
+      const payload = Buffer.from([0xaa, 0xbb, 0xcc]);
+
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockResolvedValue(true);
+
+      await adapter.sendZdo(
+        "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+        payload,
+        true,
+      );
+
+      expect(payload).toEqual(Buffer.from([0xaa, 0xbb, 0xcc]));
+      expect(driverMock.request).toHaveBeenCalledWith(
+        0x1234,
+        apsFrame,
+        Buffer.from([4, 0xbb, 0xcc]),
+      );
+    });
+
     it("should not finish active ZDO sends after stop interrupts the lower request", async () => {
       let releaseRequest: (() => void) | undefined;
       const lowerRequest = new Promise<boolean>((resolve) => {

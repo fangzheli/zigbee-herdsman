@@ -693,6 +693,9 @@ Future BLZ refactors should follow these rules:
 - Tightened BLZ byte unstuffing further so escape sequences must decode to one
   of the reserved delimiter bytes, preventing malformed escaped data from being
   silently rewritten into a different payload.
+- Stopped BLZ ZDO sends from mutating caller-owned payload buffers when writing
+  the adapter TSN byte; the adapter now sends an internal copy with the BLZ
+  sequence applied.
 
 ## Next Steps
 

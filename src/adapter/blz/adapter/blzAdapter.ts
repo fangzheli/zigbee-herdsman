@@ -452,7 +452,8 @@ export class BLZAdapter extends Adapter {
 
       const clusterName = Zdo.ClusterId[clusterId];
       const frame = this.driver.makeApsFrame(clusterId);
-      payload[0] = frame.sequence; // Sequence number is required for BLZ APS frame
+      const requestPayload = Buffer.from(payload);
+      requestPayload[0] = frame.sequence; // Sequence number is required for BLZ APS frame
       let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
       let responseClusterId: number | undefined;
 
@@ -474,7 +475,7 @@ export class BLZAdapter extends Adapter {
         networkAddress,
         clusterName,
         frame,
-        payload,
+        requestPayload,
         waiter,
         generation,
       );
