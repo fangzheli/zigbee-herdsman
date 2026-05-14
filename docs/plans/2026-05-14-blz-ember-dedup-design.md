@@ -134,10 +134,14 @@ Future BLZ refactors should follow these rules:
 - Extracted raw frame construction and delimiter wrapping into `framing.ts`.
   `Writer` no longer expands payload bytes into a temporary number array before
   CRC/stuffing, reducing allocation churn on outgoing frames.
+- Reduced BLZ frame stuffing, unstuffing, and delimiter wrapping allocation
+  churn by writing into pre-sized buffers instead of building large intermediary
+  number arrays.
+- Fixed TCP socket open cleanup when the socket reaches `ready` but reset
+  fails: the connect promise now rejects and parser/socket listeners, pipes, and
+  socket resources are cleaned up through the same failed-open path.
 
 ## Next Steps
 
-1. Continue reducing transport-layer allocation churn where tests can pin the
-   behavior.
-2. Review high-level driver request retries for duplicated error handling and
+1. Review high-level driver request retries for duplicated error handling and
    waiter cancellation guarantees.

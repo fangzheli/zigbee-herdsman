@@ -26,37 +26,79 @@ export function buildFrameBuffer(control: number, sequence: number, frameId: num
 }
 
 export function wrapFrameBuffer(frame: Buffer): Buffer {
-    return Buffer.from([consts.START, ...stuffFrameData(frame), consts.END]);
+    const stuffed = stuffFrameData(frame);
+    const wrapped = Buffer.allocUnsafe(stuffed.length + 2);
+
+    wrapped[0] = consts.START;
+    stuffed.copy(wrapped, 1);
+    wrapped[wrapped.length - 1] = consts.END;
+
+    return wrapped;
 }
 
 export function stuffFrameData(buffer: Buffer): Buffer {
-    const result: number[] = [];
+    const result = Buffer.allocUnsafe(getStuffedLength(buffer));
+    let offset = 0;
 
     for (const byte of buffer) {
-        if (consts.RESERVED.includes(byte)) {
-            result.push(consts.ESCAPE, byte ^ consts.STUFF);
+        if (isReservedByte(byte)) {
+            result[offset++] = consts.ESCAPE;
+            result[offset++] = byte ^ consts.STUFF;
         } else {
-            result.push(byte);
+            result[offset++] = byte;
         }
     }
 
-    return Buffer.from(result);
+    return result;
 }
 
 export function unstuffFrameData(buffer: Buffer): Buffer {
-    const result: number[] = [];
+    const result = Buffer.allocUnsafe(getUnstuffedLength(buffer));
+    let offset = 0;
     let escaped = false;
 
     for (const byte of buffer) {
         if (escaped) {
-            result.push(byte ^ consts.STUFF);
+            result[offset++] = byte ^ consts.STUFF;
             escaped = false;
         } else if (byte === consts.ESCAPE) {
             escaped = true;
         } else {
-            result.push(byte);
+            result[offset++] = byte;
         }
     }
 
-    return Buffer.from(result);
+    return result;
+}
+
+function getStuffedLength(buffer: Buffer): number {
+    let length = 0;
+
+    for (const byte of buffer) {
+        length += isReservedByte(byte) ? 2 : 1;
+    }
+
+    return length;
+}
+
+function getUnstuffedLength(buffer: Buffer): number {
+    let length = 0;
+    let escaped = false;
+
+    for (const byte of buffer) {
+        if (escaped) {
+            length++;
+            escaped = false;
+        } else if (byte === consts.ESCAPE) {
+            escaped = true;
+        } else {
+            length++;
+        }
+    }
+
+    return length;
+}
+
+function isReservedByte(byte: number): boolean {
+    return byte === consts.START || byte === consts.END || byte === consts.ESCAPE;
 }

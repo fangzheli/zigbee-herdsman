@@ -255,6 +255,35 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
+
+    it("should reject and clean listeners when TCP reset fails after socket ready", async () => {
+      writerMock.sendReset.mockImplementation(() => {
+        throw new Error("Reset failed");
+      });
+      const connect = driver.connect(tcpPortOptions);
+
+      const readyResult = socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
+      await readyResult?.catch?.(() => undefined);
+      const result = await Promise.race([
+        connect.then(
+          () => ({ status: "resolved" }),
+          (error: Error) => ({ status: "rejected", message: error.message }),
+        ),
+        new Promise((resolve) => setImmediate(() => resolve({ status: "pending" }))),
+      ]);
+
+      expect(result).toMatchObject({
+        status: "rejected",
+        message: expect.stringContaining("Reset error"),
+      });
+      expect(driver.isInitialized()).toBe(false);
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
   });
 
   describe("Frame handling", () => {

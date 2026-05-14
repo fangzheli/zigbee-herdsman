@@ -122,7 +122,12 @@ export class SerialDriver extends EventEmitter {
     this.parser.on("parsed", this.onParsed.bind(this));
 
     return await new Promise((resolve, reject): void => {
+      let settled = false;
       const openError = (err: Error): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         this.initialized = false;
         this.cleanupParser();
         this.detachSocketPort();
@@ -136,14 +141,24 @@ export class SerialDriver extends EventEmitter {
         logger.debug("Socket connected", NS);
       });
       this.socketPort!.on("ready", async (): Promise<void> => {
+        if (settled) {
+          return;
+        }
+
         logger.debug("Socket ready", NS);
         this.socketPort!.removeListener("error", openError);
         this.socketPort!.once("close", this.onPortClose.bind(this));
         this.socketPort!.on("error", this.onPortError.bind(this));
 
-        // reset
-        await this.reset();
+        try {
+          // reset
+          await this.reset();
+        } catch (error) {
+          openError(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
 
+        settled = true;
         this.initialized = true;
 
         resolve();

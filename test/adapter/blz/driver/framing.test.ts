@@ -1,4 +1,4 @@
-import {describe, expect, it} from "vitest";
+import {describe, expect, it, vi} from "vitest";
 
 import * as consts from "../../../../src/adapter/blz/driver/consts";
 import {
@@ -95,5 +95,30 @@ describe("BLZ frame construction helpers", () => {
         expect(wrapped[0]).toBe(consts.START);
         expect(wrapped[wrapped.length - 1]).toBe(consts.END);
         expect(unstuffFrameData(wrapped.subarray(1, -1))).toStrictEqual(frame);
+    });
+
+    it("does not construct large intermediary number arrays when wrapping frames", () => {
+        const originalFrom = Buffer.from.bind(Buffer);
+        const largeArrayLengths: number[] = [];
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+            if (Array.isArray(value) && value.length > 4) {
+                largeArrayLengths.push(value.length);
+            }
+
+            return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+        }) as typeof Buffer.from);
+
+        try {
+            const frame = Buffer.alloc(4096, consts.START);
+
+            const wrapped = wrapFrameBuffer(frame);
+
+            expect(wrapped[0]).toBe(consts.START);
+            expect(wrapped[wrapped.length - 1]).toBe(consts.END);
+            expect(unstuffFrameData(wrapped.subarray(1, -1))).toStrictEqual(frame);
+            expect(largeArrayLengths).toStrictEqual([]);
+        } finally {
+            fromSpy.mockRestore();
+        }
     });
 });
