@@ -481,6 +481,9 @@ Future BLZ refactors should follow these rules:
   driver command wrappers, so backup creation no longer reaches directly into
   the lower BLZ transport and those reads share the same stop-cancellation and
   status-check behavior as the other driver command helpers.
+- Hardened startup network validation so a stack-down result, non-success
+  network-parameter status, mismatched coordinator identity, or missing extended
+  PAN ID is treated as "needs initialization" without parsing absent fields.
 
 ## Next Steps
 

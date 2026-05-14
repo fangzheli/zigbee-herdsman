@@ -473,38 +473,68 @@ export class Driver extends EventEmitter {
     options: TsType.NetworkOptions,
   ): Promise<boolean> {
     const blz = this.getBlz();
-    let valid = true;
-    valid = valid && (await blz.networkInit());
-    logger.debug(`needToBeInitialized success stack up: ${valid}`, NS);
+    const stackUp = await blz.networkInit();
+    logger.debug(`needToBeInitialized success stack up: ${stackUp}`, NS);
+    if (!stackUp) {
+      return true;
+    }
+
     const netParams = await blz.execCommand("getNetworkParameters");
     logger.debug(
       `Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`,
       NS,
     );
-    valid = valid && netParams.status == BlzStatus.SUCCESS;
-    logger.debug(`needToBeInitialized success get parameters: ${valid}`, NS);
-    valid = valid && netParams.nodeType == BlzNodeType.COORDINATOR;
-    logger.debug(`needToBeInitialized is coordinator: ${valid}`, NS);
-    valid = valid && options.panID == netParams.panId;
-    logger.debug(`needToBeInitialized same PanID: ${valid}`, NS);
+    const gotParameters = netParams.status === BlzStatus.SUCCESS;
+    logger.debug(
+      `needToBeInitialized success get parameters: ${gotParameters}`,
+      NS,
+    );
+    if (!gotParameters) {
+      return true;
+    }
+
+    const isCoordinator = netParams.nodeType === BlzNodeType.COORDINATOR;
+    logger.debug(`needToBeInitialized is coordinator: ${isCoordinator}`, NS);
+    if (!isCoordinator) {
+      return true;
+    }
+
+    const samePanId = options.panID === netParams.panId;
+    logger.debug(`needToBeInitialized same PanID: ${samePanId}`, NS);
+    if (!samePanId) {
+      return true;
+    }
+
     // valid = valid && options.channelList.includes(netParams.channel);
     // // try to add support for change channel so if only channel is different, it can still work as resumed
     logger.debug(
       `needToBeInitialized valid channel (optional, can be false): ${options.channelList.includes(netParams.channel)}`,
       NS,
     );
+
+    if (netParams.extPanId === undefined) {
+      logger.debug("needToBeInitialized missing extended PanID", NS);
+      return true;
+    }
+
     // Convert bigint extPanId to 8-byte array in little-endian order
     const extPanIdArray = [];
-    let extPanId = netParams.extPanId;
+    let extPanId =
+      typeof netParams.extPanId === "bigint"
+        ? netParams.extPanId
+        : BigInt(netParams.extPanId);
     for (let i = 0; i < 8; i++) {
       extPanIdArray.push(Number(extPanId & 0xffn));
       extPanId >>= 8n;
     }
-    valid = valid && equals(options.extendedPanID, extPanIdArray);
+    const sameExtendedPanId = equals(options.extendedPanID, extPanIdArray);
     logger.debug(`options.extendedPanID: ${options.extendedPanID}`, NS);
     logger.debug(`current extendedPanID: ${extPanIdArray}`, NS);
-    logger.debug(`needToBeInitialized same extended PanID: ${valid}`, NS);
-    return !valid;
+    logger.debug(
+      `needToBeInitialized same extended PanID: ${sameExtendedPanId}`,
+      NS,
+    );
+    return !sameExtendedPanId;
   }
 
   private async formNetwork(restore: boolean): Promise<void> {

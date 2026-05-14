@@ -927,6 +927,50 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("forms a new network when initial network parameters return only an error status", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.GENERAL_ERROR,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            leaveNetwork: vi.fn().mockResolvedValue(BlzStatus.SUCCESS),
+            formNetwork: vi.fn().mockResolvedValue(BlzStatus.SUCCESS),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        vi.spyOn(driver.backupMan, "getStoredBackup").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = expect(startup).resolves.toBe("reset");
+        await vi.advanceTimersByTimeAsync(5000);
+
+        await startupResult;
+        expect(blzMock.formNetwork).toHaveBeenCalledTimes(1);
+    });
+
     it("cancels startup while final network parameters request is pending", async () => {
         vi.useFakeTimers();
         const blzMock = {
