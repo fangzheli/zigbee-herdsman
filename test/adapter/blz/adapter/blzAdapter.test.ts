@@ -391,6 +391,38 @@ describe("BLZ Adapter", () => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
+    it("should clear adapter state when the driver closes unexpectedly", async () => {
+      const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
+      const waiter = adapter.waitFor(
+        0x1234,
+        1,
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.SERVER_TO_CLIENT,
+        7,
+        Zcl.Clusters.genOnOff.ID,
+        Zcl.Foundation.defaultRsp.ID,
+        1000,
+      );
+      const waiterResult = waiter.promise.catch((error: Error) => error);
+      const callback = vi.fn();
+      adapter.on("disconnected", callback);
+
+      driverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        waiterResult,
+        Promise.resolve("pending"),
+      ]);
+
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      expect(observed).toEqual(new Error("Waitress cleared"));
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("should get coordinator version through the driver API", async () => {
       const versionMeta = { product: 7 };
       driverMock.getBlz.mockImplementation(() => {

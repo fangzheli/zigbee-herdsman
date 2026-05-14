@@ -663,6 +663,9 @@ Future BLZ refactors should follow these rules:
   pending request/startup/reset operations and waiters are cancelled, BLZ
   listeners are detached, cached network state is cleared, and the lower BLZ
   reference is released before emitting `close`.
+- Cleaned BLZ adapter state on unexpected high-level driver close events:
+  adapter delays, queued jobs, ZCL waiters, running operations, and driver
+  listeners are released before emitting `disconnected`.
 
 ## Next Steps
 

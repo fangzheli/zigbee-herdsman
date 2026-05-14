@@ -249,7 +249,17 @@ export class BLZAdapter extends Adapter {
   private onDriverClose(): void {
     logger.debug("onDriverClose()", NS);
 
-    if (!this.closing) {
+    const wasClosing = this.closing;
+    const closeError = new Error("Adapter disconnected");
+    this.closing = true;
+    this.stopGeneration += 1;
+    this.stopDelay.cancel();
+    this.queue.clear(closeError);
+    this.waitress.clear();
+    this.cancelRunningOperations(closeError);
+    this.detachDriverListeners();
+
+    if (!wasClosing) {
       this.emit("disconnected");
     }
   }
