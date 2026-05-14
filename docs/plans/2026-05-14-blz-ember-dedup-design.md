@@ -771,6 +771,9 @@ Future BLZ refactors should follow these rules:
 - Reworked new-network key setup to fill a fixed 16-byte buffer directly from
   configured key bytes, avoiding the generic `Buffer.from()` conversion before
   `setNetworkKeyInfo()`.
+- Reworked length-prefixed byte serialization to fill array-like inputs
+  directly into the prefixed output buffer, avoiding a temporary
+  `Buffer.from()` clone before the final copy.
 
 ## Next Steps
 

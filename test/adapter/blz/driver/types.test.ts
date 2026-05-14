@@ -248,6 +248,26 @@ describe('BLZ Types', () => {
             );
         });
 
+        it('should serialize array input without cloning it through Buffer.from', () => {
+            const value = [0xAB, 0xCD];
+            const expected = Buffer.of(0x02, 0xAB, 0xCD);
+            const originalFrom = Buffer.from;
+            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((input: unknown, ...args: unknown[]) => {
+                if (input === value) {
+                    throw new Error('array input clone used');
+                }
+
+                return (originalFrom as (...parameters: unknown[]) => Buffer)(input, ...args);
+            }) as typeof Buffer.from);
+
+            try {
+                expect(LVBytes.serialize(LVBytes, value)).toEqual(expected);
+                expect(fromSpy).not.toHaveBeenCalledWith(value);
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
         it('should deserialize length-prefixed bytes', () => {
             const [value, remaining] = LVBytes.deserialize(LVBytes, Buffer.from([0x02, 0xAB, 0xCD, 0xEF]));
             expect(value).toEqual(Buffer.from([0xAB, 0xCD]));

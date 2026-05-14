@@ -169,10 +169,17 @@ export class uint64_t extends uint_t {
 export class LVBytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
-        const result = Buffer.allocUnsafe(1 + bytes.length);
-        result.writeUInt8(bytes.length, 0);
-        bytes.copy(result, 1);
+        const result = Buffer.allocUnsafe(1 + value.length);
+        result.writeUInt8(value.length, 0);
+
+        if (Buffer.isBuffer(value)) {
+            value.copy(result, 1);
+        } else {
+            for (let i = 0; i < value.length; i++) {
+                result[i + 1] = value[i] & 0xff;
+            }
+        }
+
         return result;
     }
 
