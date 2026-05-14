@@ -2,10 +2,8 @@
 
 import {Bytes, fixed_list, int8s, list, LVBytes, LVList, serializeBufferSegments, uint_t, uint8_t, uint16_t, uint24_t, uint32_t, uint64_t, WordList} from "./basic";
 import {
-    Bool,
     BlzApsOption,
     BlzEUI64,
-    BlzNodeId,
     BlzNodeType,
     BlzOutgoingMessageType,
     BlzStatus,
@@ -15,11 +13,6 @@ import {
     BlzApsFrame,
     BlzNetworkParameters,
     BlzStruct,
-    BlzMultiAddress,
-    BlzNeighbors,
-    BlzNodeDescriptor,
-    BlzRoutingTable,
-    BlzSimpleDescriptor,
 } from "./struct";
 
 interface SchemaType {
@@ -59,9 +52,7 @@ export {
     Bytes,
 
     /* Named Types */
-    BlzNodeId,
     BlzEUI64,
-    Bool,
     BlzValueId,
     BlzStatus,
     BlzNodeType,
@@ -72,9 +63,4 @@ export {
     BlzStruct,
     BlzNetworkParameters,
     BlzApsFrame,
-    BlzNodeDescriptor,
-    BlzSimpleDescriptor,
-    BlzMultiAddress,
-    BlzNeighbors,
-    BlzRoutingTable,
 };

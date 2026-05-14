@@ -1,14 +1,23 @@
+import * as fs from 'node:fs';
+
 import {describe, expect, it} from 'vitest';
 import {
     FRAMES,
     FRAME_NAMES_BY_ID,
-    ZDOREQUESTS,
-    ZDORESPONSES,
-    ZDOREQUEST_NAME_BY_ID,
-    ZDORESPONSE_NAME_BY_ID,
 } from '../../../../src/adapter/blz/driver/commands';
 
 describe('BLZ Commands', () => {
+    describe('Architecture', () => {
+        it('should not keep legacy ZDO command tables in the BLZ serial command map', () => {
+            const source = fs.readFileSync('src/adapter/blz/driver/commands.ts', 'utf8');
+
+            expect(source).not.toContain('export const ZDOREQUESTS');
+            expect(source).not.toContain('export const ZDORESPONSES');
+            expect(source).not.toContain('export const ZDOREQUEST_NAME_BY_ID');
+            expect(source).not.toContain('export const ZDORESPONSE_NAME_BY_ID');
+        });
+    });
+
     describe('FRAMES', () => {
         describe('Control Frames', () => {
             it('should define ack frame', () => {
@@ -230,147 +239,6 @@ describe('BLZ Commands', () => {
             expect(FRAME_NAMES_BY_ID[0x0003]).toContain('reset');
             expect(FRAME_NAMES_BY_ID[0x0010]).toContain('getValue');
             expect(FRAME_NAMES_BY_ID[0x0080]).toContain('sendApsData');
-        });
-    });
-
-    describe('ZDOREQUESTS', () => {
-        it('should define nodeDescReq', () => {
-            expect(ZDOREQUESTS.nodeDescReq).toBeDefined();
-            expect(ZDOREQUESTS.nodeDescReq.ID).toBe(0x0002);
-        });
-
-        it('should define simpleDescReq', () => {
-            expect(ZDOREQUESTS.simpleDescReq).toBeDefined();
-            expect(ZDOREQUESTS.simpleDescReq.ID).toBe(0x0004);
-        });
-
-        it('should define activeEpReq', () => {
-            expect(ZDOREQUESTS.activeEpReq).toBeDefined();
-            expect(ZDOREQUESTS.activeEpReq.ID).toBe(0x0005);
-        });
-
-        it('should define bindReq', () => {
-            expect(ZDOREQUESTS.bindReq).toBeDefined();
-            expect(ZDOREQUESTS.bindReq.ID).toBe(0x0021);
-            expect(ZDOREQUESTS.bindReq.request!.sourceEui).toBeDefined();
-            expect(ZDOREQUESTS.bindReq.request!.clusterId).toBeDefined();
-        });
-
-        it('should define unBindReq', () => {
-            expect(ZDOREQUESTS.unBindReq).toBeDefined();
-            expect(ZDOREQUESTS.unBindReq.ID).toBe(0x0022);
-        });
-
-        it('should define mgmtLqiReq', () => {
-            expect(ZDOREQUESTS.mgmtLqiReq).toBeDefined();
-            expect(ZDOREQUESTS.mgmtLqiReq.ID).toBe(0x0031);
-        });
-
-        it('should define mgmtRtgReq', () => {
-            expect(ZDOREQUESTS.mgmtRtgReq).toBeDefined();
-            expect(ZDOREQUESTS.mgmtRtgReq.ID).toBe(0x0032);
-        });
-
-        it('should define mgmtLeaveReq', () => {
-            expect(ZDOREQUESTS.mgmtLeaveReq).toBeDefined();
-            expect(ZDOREQUESTS.mgmtLeaveReq.ID).toBe(0x0034);
-        });
-
-        it('should define mgmtPermitJoinReq', () => {
-            expect(ZDOREQUESTS.mgmtPermitJoinReq).toBeDefined();
-            expect(ZDOREQUESTS.mgmtPermitJoinReq.ID).toBe(0x0036);
-        });
-    });
-
-    describe('ZDORESPONSES', () => {
-        it('should define nodeDescRsp', () => {
-            expect(ZDORESPONSES.nodeDescRsp).toBeDefined();
-            expect(ZDORESPONSES.nodeDescRsp.ID).toBe(0x8002);
-        });
-
-        it('should define simpleDescRsp', () => {
-            expect(ZDORESPONSES.simpleDescRsp).toBeDefined();
-            expect(ZDORESPONSES.simpleDescRsp.ID).toBe(0x8004);
-        });
-
-        it('should define activeEpRsp', () => {
-            expect(ZDORESPONSES.activeEpRsp).toBeDefined();
-            expect(ZDORESPONSES.activeEpRsp.ID).toBe(0x8005);
-        });
-
-        it('should define bindRsp', () => {
-            expect(ZDORESPONSES.bindRsp).toBeDefined();
-            expect(ZDORESPONSES.bindRsp.ID).toBe(0x8021);
-        });
-
-        it('should define unBindRsp', () => {
-            expect(ZDORESPONSES.unBindRsp).toBeDefined();
-            expect(ZDORESPONSES.unBindRsp.ID).toBe(0x8022);
-        });
-
-        it('should define mgmtLqiRsp', () => {
-            expect(ZDORESPONSES.mgmtLqiRsp).toBeDefined();
-            expect(ZDORESPONSES.mgmtLqiRsp.ID).toBe(0x8031);
-        });
-
-        it('should define mgmtRtgRsp', () => {
-            expect(ZDORESPONSES.mgmtRtgRsp).toBeDefined();
-            expect(ZDORESPONSES.mgmtRtgRsp.ID).toBe(0x8032);
-        });
-
-        it('should define mgmtLeaveRsp', () => {
-            expect(ZDORESPONSES.mgmtLeaveRsp).toBeDefined();
-            expect(ZDORESPONSES.mgmtLeaveRsp.ID).toBe(0x8034);
-        });
-
-        it('should define mgmtPermitJoinRsp', () => {
-            expect(ZDORESPONSES.mgmtPermitJoinRsp).toBeDefined();
-            expect(ZDORESPONSES.mgmtPermitJoinRsp.ID).toBe(0x8036);
-        });
-    });
-
-    describe('ZDOREQUEST_NAME_BY_ID', () => {
-        it('should map all ZDO request IDs to names', () => {
-            for (const [name, frame] of Object.entries(ZDOREQUESTS)) {
-                expect(ZDOREQUEST_NAME_BY_ID[frame.ID]).toBe(name);
-            }
-        });
-    });
-
-    describe('ZDORESPONSE_NAME_BY_ID', () => {
-        it('should map all ZDO response IDs to names', () => {
-            for (const [name, frame] of Object.entries(ZDORESPONSES)) {
-                expect(ZDORESPONSE_NAME_BY_ID[frame.ID]).toBe(name);
-            }
-        });
-
-        it('should have response IDs in 0x8000+ range', () => {
-            for (const id of Object.keys(ZDORESPONSE_NAME_BY_ID)) {
-                expect(Number(id)).toBeGreaterThanOrEqual(0x8000);
-            }
-        });
-    });
-
-    describe('Request/Response ID relationships', () => {
-        it('should have matching request and response pairs', () => {
-            // Request ID + 0x8000 = Response ID
-            const pairs = [
-                ['nodeDescReq', 'nodeDescRsp'],
-                ['simpleDescReq', 'simpleDescRsp'],
-                ['activeEpReq', 'activeEpRsp'],
-                ['bindReq', 'bindRsp'],
-                ['unBindReq', 'unBindRsp'],
-                ['mgmtLqiReq', 'mgmtLqiRsp'],
-                ['mgmtRtgReq', 'mgmtRtgRsp'],
-                ['mgmtLeaveReq', 'mgmtLeaveRsp'],
-                ['mgmtPermitJoinReq', 'mgmtPermitJoinRsp'],
-            ];
-
-            for (const [reqName, rspName] of pairs) {
-                const reqId = ZDOREQUESTS[reqName].ID;
-                const rspId = ZDORESPONSES[rspName].ID;
-                expect(rspId).toBe(reqId + 0x8000);
-            }
         });
     });
 

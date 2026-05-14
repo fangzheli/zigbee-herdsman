@@ -3,9 +3,6 @@
 import * as basic from './basic';
 import {fixed_list} from './basic';
 
-const NS = 'zh:blz:named';
-
-export class BlzNodeId extends basic.uint16_t {}
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     constructor(private _value: ArrayLike<number> | string) {
         super();
@@ -56,10 +53,6 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
         return Buffer.from(this._value as any).toString('hex');
     }
-}
-export class Bool extends basic.uint8_t {
-    static false = 0x00; // An alias for zero, used for clarity.
-    static true = 0x01; // An alias for one, used for clarity.
 }
 
 export class BlzValueId extends basic.uint8_t {
@@ -139,82 +132,4 @@ export class BlzApsOption extends basic.uint16_t {
     static ZB_APS_TX_OPTIONS_ACK_TRANS = 0x04;
     static ZB_APS_TX_OPTIONS_FRAG_PERMIT = 0x08;
     static ZB_APS_TX_OPTIONS_EXT_NONCE = 0x10;
-}
-
-
-export class BlzZDOCmd extends basic.uint16_t {
-    // Device and Service Discovery Server Requests
-    static NWK_addr_req = 0x0000;
-    static IEEE_addr_req = 0x0001;
-    static Node_Desc_req = 0x0002;
-    static Power_Desc_req = 0x0003;
-    static Simple_Desc_req = 0x0004;
-    static Active_EP_req = 0x0005;
-    static Match_Desc_req = 0x0006;
-    static Complex_Desc_req = 0x0010;
-    static User_Desc_req = 0x0011;
-    static Discovery_Cache_req = 0x0012;
-    static Device_annce = 0x0013;
-    static User_Desc_set = 0x0014;
-    static System_Server_Discovery_req = 0x0015;
-    static Discovery_store_req = 0x0016;
-    static Node_Desc_store_req = 0x0017;
-    static Active_EP_store_req = 0x0019;
-    static Simple_Desc_store_req = 0x001a;
-    static Remove_node_cache_req = 0x001b;
-    static Find_node_cache_req = 0x001c;
-    static Extended_Simple_Desc_req = 0x001d;
-    static Extended_Active_EP_req = 0x001e;
-    static Parent_annce = 0x001f;
-    //  Bind Management Server Services Responses
-    static End_Device_Bind_req = 0x0020;
-    static Bind_req = 0x0021;
-    static Unbind_req = 0x0022;
-    // Network Management Server Services Requests
-    // ... TODO optional stuff ...
-    static Mgmt_Lqi_req = 0x0031;
-    static Mgmt_Rtg_req = 0x0032;
-    // ... TODO optional stuff ...
-    static Mgmt_Leave_req = 0x0034;
-    static Mgmt_Permit_Joining_req = 0x0036;
-    static Mgmt_NWK_Update_req = 0x0038;
-    // ... TODO optional stuff ...
-
-    // Responses
-    // Device and Service Discovery Server Responses
-    static NWK_addr_rsp = 0x8000;
-    static IEEE_addr_rsp = 0x8001;
-    static Node_Desc_rsp = 0x8002;
-    static Power_Desc_rsp = 0x8003;
-    static Simple_Desc_rsp = 0x8004;
-    static Active_EP_rsp = 0x8005;
-    static Match_Desc_rsp = 0x8006;
-    static Complex_Desc_rsp = 0x8010;
-    static User_Desc_rsp = 0x8011;
-    static Discovery_Cache_rsp = 0x8012;
-    static User_Desc_conf = 0x8014;
-    static System_Server_Discovery_rsp = 0x8015;
-    static Discovery_Store_rsp = 0x8016;
-    static Node_Desc_store_rsp = 0x8017;
-    static Power_Desc_store_rsp = 0x8018;
-    static Active_EP_store_rsp = 0x8019;
-    static Simple_Desc_store_rsp = 0x801a;
-    static Remove_node_cache_rsp = 0x801b;
-    static Find_node_cache_rsp = 0x801c;
-    static Extended_Simple_Desc_rsp = 0x801d;
-    static Extended_Active_EP_rsp = 0x801e;
-    static Parent_annce_rsp = 0x801f;
-    //  Bind Management Server Services Responses
-    static End_Device_Bind_rsp = 0x8020;
-    static Bind_rsp = 0x8021;
-    static Unbind_rsp = 0x8022;
-    // ... TODO optional stuff ...
-    // Network Management Server Services Responses
-    static Mgmt_Lqi_rsp = 0x8031;
-    static Mgmt_Rtg_rsp = 0x8032;
-    // ... TODO optional stuff ...
-    static Mgmt_Leave_rsp = 0x8034;
-    static Mgmt_Permit_Joining_rsp = 0x8036;
-    // ... TODO optional stuff ...
-    static Mgmt_NWK_Update_rsp = 0x8038;
 }

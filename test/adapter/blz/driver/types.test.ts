@@ -1,3 +1,5 @@
+import * as fs from 'node:fs';
+
 import {describe, expect, it, vi} from 'vitest';
 import {
     int8s,
@@ -20,17 +22,14 @@ import {
 } from '../../../../src/adapter/blz/driver/types/basic';
 import {serialize as serializeSchema} from '../../../../src/adapter/blz/driver/types';
 import {
-    BlzNodeId,
     BlzEUI64,
-    Bool,
     BlzValueId,
     BlzStatus,
     BlzNodeType,
     BlzOutgoingMessageType,
     BlzApsOption,
-    BlzZDOCmd,
 } from '../../../../src/adapter/blz/driver/types/named';
-import {BlzApsFrame, BlzMultiAddress} from '../../../../src/adapter/blz/driver/types/struct';
+import {BlzApsFrame} from '../../../../src/adapter/blz/driver/types/struct';
 
 function expectWithoutBufferConcat(action: () => Buffer, expected: Buffer): void {
     const concatSpy = vi.spyOn(Buffer, 'concat').mockImplementation(() => {
@@ -46,6 +45,28 @@ function expectWithoutBufferConcat(action: () => Buffer, expected: Buffer): void
 }
 
 describe('BLZ Types', () => {
+    describe('Architecture', () => {
+        it('should not keep legacy ZDO-only helper types in the BLZ type layer', () => {
+            const namedSource = fs.readFileSync('src/adapter/blz/driver/types/named.ts', 'utf8');
+            const structSource = fs.readFileSync('src/adapter/blz/driver/types/struct.ts', 'utf8');
+            const indexSource = fs.readFileSync('src/adapter/blz/driver/types/index.ts', 'utf8');
+
+            for (const source of [namedSource, structSource, indexSource]) {
+                expect(source).not.toContain('BlzZDOCmd');
+                expect(source).not.toContain('BlzMultiAddress');
+                expect(source).not.toContain('BlzNodeDescriptor');
+                expect(source).not.toContain('BlzSimpleDescriptor');
+                expect(source).not.toContain('BlzNeighbors');
+                expect(source).not.toContain('BlzRoutingTable');
+            }
+
+            expect(namedSource).not.toContain('export class BlzNodeId');
+            expect(namedSource).not.toContain('export class Bool');
+            expect(structSource).not.toContain('BlzNeighborTableEntry');
+            expect(structSource).not.toContain('BlzRouteTableEntry');
+        });
+    });
+
     describe('Basic Integer Types', () => {
         describe('uint8_t', () => {
             it('should serialize 8-bit unsigned integer', () => {
@@ -328,24 +349,6 @@ describe('BLZ Types', () => {
             );
         });
 
-        it('should serialize multi-address structs without Buffer.concat', () => {
-            expectWithoutBufferConcat(
-                () => BlzMultiAddress.serialize(BlzMultiAddress, {
-                    addrmode: 1,
-                    nwk: 0x1234,
-                }),
-                Buffer.from([0x01, 0x34, 0x12]),
-            );
-        });
-
-        it('should reject unsupported multi-address modes', () => {
-            expect(() =>
-                BlzMultiAddress.serialize(BlzMultiAddress, {
-                    addrmode: 2,
-                    nwk: 0x1234,
-                }),
-            ).toThrow('Unsupported BLZ multi-address mode: 2');
-        });
     });
 
     describe('int_t valueToName', () => {
@@ -361,13 +364,6 @@ describe('BLZ Types', () => {
     });
 
     describe('Named Types', () => {
-        describe('BlzNodeId', () => {
-            it('should be a uint16_t', () => {
-                const result = BlzNodeId.serialize(BlzNodeId, 0x1234);
-                expect(result.length).toBe(2);
-            });
-        });
-
         describe('BlzEUI64', () => {
             it('should create from hex string', () => {
                 const eui = new BlzEUI64('0102030405060708');
@@ -443,18 +439,6 @@ describe('BLZ Types', () => {
             });
         });
 
-        describe('Bool', () => {
-            it('should have true and false values', () => {
-                expect(Bool.true).toBe(1);
-                expect(Bool.false).toBe(0);
-            });
-
-            it('should serialize as uint8', () => {
-                const result = Bool.serialize(Bool, 1);
-                expect(result).toEqual(Buffer.from([0x01]));
-            });
-        });
-
         describe('BlzValueId', () => {
             it('should have defined value IDs', () => {
                 expect(BlzValueId.BLZ_VALUE_ID_BLZ_VERSION).toBe(0x00);
@@ -494,24 +478,5 @@ describe('BLZ Types', () => {
             });
         });
 
-        describe('BlzZDOCmd', () => {
-            it('should have ZDO request commands', () => {
-                expect(BlzZDOCmd.NWK_addr_req).toBe(0x0000);
-                expect(BlzZDOCmd.Node_Desc_req).toBe(0x0002);
-                expect(BlzZDOCmd.Bind_req).toBe(0x0021);
-            });
-
-            it('should have ZDO response commands', () => {
-                expect(BlzZDOCmd.NWK_addr_rsp).toBe(0x8000);
-                expect(BlzZDOCmd.Node_Desc_rsp).toBe(0x8002);
-                expect(BlzZDOCmd.Bind_rsp).toBe(0x8021);
-            });
-
-            it('should have response IDs = request IDs + 0x8000', () => {
-                expect(BlzZDOCmd.NWK_addr_rsp - BlzZDOCmd.NWK_addr_req).toBe(0x8000);
-                expect(BlzZDOCmd.Node_Desc_rsp - BlzZDOCmd.Node_Desc_req).toBe(0x8000);
-                expect(BlzZDOCmd.Bind_rsp - BlzZDOCmd.Bind_req).toBe(0x8000);
-            });
-        });
     });
 });

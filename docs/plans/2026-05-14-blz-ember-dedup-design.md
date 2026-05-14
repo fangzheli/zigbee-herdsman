@@ -570,6 +570,9 @@ Future BLZ refactors should follow these rules:
 - Removed unused BLZ transport ZDO frame-data classes and made
   `BlzMultiAddress` reject unsupported address modes instead of silently
   serializing them as group/NWK-style addresses.
+- Removed the remaining legacy BLZ ZDO command tables and ZDO-only helper
+  types after the adapter moved to shared ZDO payload construction over the BLZ
+  APS send path.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot
