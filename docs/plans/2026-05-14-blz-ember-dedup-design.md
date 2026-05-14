@@ -166,6 +166,9 @@ Future BLZ refactors should follow these rules:
 - Centralized the BLZ-to-serial-driver event bridge and made it reattach after a
   full `Blz.close()`, so reusing a `Blz` instance after close does not lose
   `received` or `close` event handling.
+- Extended `Driver.stop()` cleanup to clear address caches along with pending
+  waiters, avoiding stale device mappings after shutdown even if the lower close
+  path throws.
 
 ## Next Steps
 

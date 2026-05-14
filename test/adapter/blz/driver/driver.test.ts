@@ -88,6 +88,27 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(clearTimeoutSpy).toHaveBeenCalled();
     });
 
+    it("clears address cache when stopping", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.handleNodeJoined(0x3344, 0x1111);
+        driver.blz = {
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        } as unknown as Driver["blz"];
+
+        await driver.stop(false);
+
+        const execCommand = vi.fn().mockResolvedValue({
+            status: BlzStatus.SUCCESS,
+            eui64: Buffer.from("0000000000003344", "hex"),
+        });
+        driver.blz = {execCommand} as unknown as Driver["blz"];
+        const eui64 = await driver.networkIdToEUI64(0x3344);
+
+        expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
+        expect(eui64.toString()).toBe("0000000000003344");
+    });
+
     it("returns false when multicast APS send returns a non-success status", async () => {
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);
         const driver = makeDriverWithApsSender(sendApsData);

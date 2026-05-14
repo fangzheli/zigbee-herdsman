@@ -195,6 +195,7 @@ export class Driver extends EventEmitter {
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
       this.waitress.clear();
+      this.clearAddressCache();
     }
   }
 
