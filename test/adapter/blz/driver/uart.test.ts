@@ -379,21 +379,25 @@ describe("BLZ Serial Driver", () => {
     });
 
     it("should handle send failure with retries", async () => {
-      const data = Buffer.from([1, 2, 3]);
-      const frameId = 0x0000;
+      vi.useFakeTimers();
+      try {
+        const data = Buffer.from([1, 2, 3]);
+        const frameId = 0x0000;
 
-      // Mock failed send with proper timeout handling
-      writerMock.sendData.mockImplementation(() => {
-        return new Promise((resolve) => {
-          // Delay longer than the retry timeout to trigger failure
-          setTimeout(resolve, 100);
-        });
-      });
+        // Mock failed send with proper timeout handling
+        writerMock.sendData.mockReturnValue(undefined);
 
-      await expect(driver.sendDATA(data, frameId, 1)).rejects.toThrow(
-        "Failed to send data after 1 retries",
-      );
-      expect(writerMock.sendData).toHaveBeenCalledTimes(2); // Initial + 1 retry
+        const send = driver.sendDATA(data, frameId, 1);
+        const rejection = expect(send).rejects.toThrow(
+          "Failed to send data after 1 retries",
+        );
+
+        await vi.advanceTimersByTimeAsync(3000);
+        await rejection;
+        expect(writerMock.sendData).toHaveBeenCalledTimes(2); // Initial + 1 retry
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

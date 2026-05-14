@@ -181,6 +181,12 @@ Future BLZ refactors should follow these rules:
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.
+- Restored the adapter `closing` state when `BLZAdapter.stop()` fails, so a
+  later lower-driver close still emits `disconnected` instead of being
+  suppressed as if shutdown had completed.
+- Made the UART send-retry failure regression deterministic with fake timers,
+  removing the real three-second retry delay that could intermittently exceed
+  the Vitest timeout on loaded runs.
 
 ## Next Steps
 

@@ -156,7 +156,13 @@ export class BLZAdapter extends Adapter {
   public async stop(): Promise<void> {
     this.closing = true;
     this.waitress.clear();
-    await this.driver.stop();
+
+    try {
+      await this.driver.stop();
+    } catch (error) {
+      this.closing = false;
+      throw error;
+    }
   }
 
   public onDriverClose(): void {

@@ -139,6 +139,19 @@ describe("BLZ Adapter", () => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
+    it("should emit disconnected after a failed stop when the driver closes", async () => {
+      driverMock.stop.mockRejectedValue(new Error("stop failed"));
+
+      await expect(adapter.stop()).rejects.toThrow("stop failed");
+
+      const callback = vi.fn();
+      adapter.on("disconnected", callback);
+
+      driverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("should get coordinator version", async () => {
       const version = await adapter.getCoordinatorVersion();
       expect(version.type).toBe("BLZ v1");
