@@ -662,6 +662,32 @@ describe("BLZ Driver", () => {
       expect(result).toBe(false);
     });
 
+    it("should match string frame waiters without array matching churn", () => {
+      const includesSpy = vi.spyOn(Array.prototype, "includes").mockImplementation(() => {
+        throw new Error("Array.includes used");
+      });
+      let result = false;
+
+      try {
+        result = (
+          blz as unknown as {
+            waitressValidator: (
+              payload: {frameName: string},
+              matcher: {frameId: string},
+            ) => boolean;
+          }
+        ).waitressValidator(
+          {frameName: "getValue"},
+          {frameId: "getValue"},
+        );
+      } finally {
+        includesSpy.mockRestore();
+      }
+
+      expect(result).toBe(true);
+      expect(includesSpy).not.toHaveBeenCalled();
+    });
+
     it("should not resolve active reset commands after close interrupts lower send", async () => {
       let releaseSend: (() => void) | undefined;
       serialDriverMock.sendDATA.mockReturnValue(

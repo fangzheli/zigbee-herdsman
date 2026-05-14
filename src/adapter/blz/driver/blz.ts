@@ -785,11 +785,13 @@ export class Blz extends EventEmitter {
     payload: BLZFrame,
     matcher: BLZWaitressMatcher,
   ): boolean {
-    const frameNames =
-      typeof matcher.frameId == "string"
-        ? [matcher.frameId]
-        : FRAME_NAMES_BY_ID[matcher.frameId] ?? [];
-    return frameNames.includes(payload.frameName);
+    if (typeof matcher.frameId === "string") {
+      return payload.frameName === matcher.frameId;
+    }
+
+    return (FRAME_NAMES_BY_ID[matcher.frameId] ?? []).includes(
+      payload.frameName,
+    );
   }
 
   private async watchdogHandler(): Promise<void> {

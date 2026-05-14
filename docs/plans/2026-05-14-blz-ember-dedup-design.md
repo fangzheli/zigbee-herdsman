@@ -728,6 +728,9 @@ Future BLZ refactors should follow these rules:
 - Reworked cancellable operation and delay cancellation to notify their tracked
   pending callbacks by directly iterating the Set, avoiding per-cancel array
   snapshots on stop/reset/close paths while still clearing retained callbacks.
+- Tightened BLZ command waiter matching so string frame-name matchers use a
+  direct comparison instead of allocating a single-item array and running
+  `includes()` on every response-match attempt.
 
 ## Next Steps
 
