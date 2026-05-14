@@ -87,6 +87,21 @@ describe("BLZ frame construction helpers", () => {
         expect(() => verifyFrameCrc(frame)).not.toThrow();
     });
 
+    it("builds payload frames without Buffer.concat allocation churn", () => {
+        const concatSpy = vi.spyOn(Buffer, "concat");
+        try {
+            const payload = Buffer.alloc(4096, 0xaa);
+
+            const frame = buildFrameBuffer(0x00, 0x12, 0x1234, payload);
+
+            expect(frame.subarray(4, -2)).toStrictEqual(payload);
+            expect(() => verifyFrameCrc(frame)).not.toThrow();
+            expect(concatSpy).not.toHaveBeenCalled();
+        } finally {
+            concatSpy.mockRestore();
+        }
+    });
+
     it("wraps raw frame buffers with delimiters and byte stuffing", () => {
         const frame = buildFrameBuffer(0x00, 0x00, consts.START, Buffer.from([consts.END]));
 

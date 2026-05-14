@@ -533,6 +533,9 @@ Future BLZ refactors should follow these rules:
 - Fixed high-level driver waiter address matching so coordinator network
   address `0x0000` is matched as a real address instead of being treated as a
   wildcard.
+- Reduced outgoing raw-frame allocation churn further by making CRC append,
+  CRC verification, and raw frame construction write into preallocated buffers
+  instead of using `Buffer.concat()` for header/payload/CRC assembly.
 
 ## Next Steps
 

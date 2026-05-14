@@ -4,25 +4,34 @@ import crc16ccitt from "./utils/crc16ccitt";
 const BLZ_CRC_INITIAL_VALUE = 0xffff;
 
 export function appendFrameCrc(data: Buffer): Buffer {
-    const crc = crc16ccitt(data, BLZ_CRC_INITIAL_VALUE);
+    const result = Buffer.allocUnsafe(data.length + 2);
+    data.copy(result, 0);
+    writeFrameCrc(result, data.length);
 
-    return Buffer.concat([data, Buffer.from([crc >> 8, crc & 0xff])]);
+    return result;
 }
 
 export function verifyFrameCrc(frame: Buffer): void {
     const data = frame.subarray(0, -2);
-    const expected = appendFrameCrc(data).subarray(-2);
+    const expected = crc16ccitt(data, BLZ_CRC_INITIAL_VALUE);
     const actual = frame.subarray(-2);
 
-    if (!actual.equals(expected)) {
-        throw new Error(`CRC mismatch: expected ${expected.toString("hex")}, got ${actual.toString("hex")}`);
+    if (actual[0] !== expected >> 8 || actual[1] !== (expected & 0xff)) {
+        throw new Error(`CRC mismatch: expected ${crcToHex(expected)}, got ${actual.toString("hex")}`);
     }
 }
 
 export function buildFrameBuffer(control: number, sequence: number, frameId: number, payload?: Buffer): Buffer {
-    const header = Buffer.from([control, sequence, frameId & 0xff, (frameId >> 8) & 0xff]);
+    const payloadLength = payload?.length ?? 0;
+    const frame = Buffer.allocUnsafe(4 + payloadLength + 2);
 
-    return appendFrameCrc(payload ? Buffer.concat([header, payload]) : header);
+    frame[0] = control;
+    frame[1] = sequence;
+    frame.writeUInt16LE(frameId, 2);
+    payload?.copy(frame, 4);
+    writeFrameCrc(frame, 4 + payloadLength);
+
+    return frame;
 }
 
 export function wrapFrameBuffer(frame: Buffer): Buffer {
@@ -101,4 +110,14 @@ function getUnstuffedLength(buffer: Buffer): number {
 
 function isReservedByte(byte: number): boolean {
     return byte === consts.START || byte === consts.END || byte === consts.ESCAPE;
+}
+
+function writeFrameCrc(frame: Buffer, dataLength: number): void {
+    const crc = crc16ccitt(frame.subarray(0, dataLength), BLZ_CRC_INITIAL_VALUE);
+    frame[dataLength] = crc >> 8;
+    frame[dataLength + 1] = crc & 0xff;
+}
+
+function crcToHex(crc: number): string {
+    return `${(crc >> 8).toString(16).padStart(2, "0")}${(crc & 0xff).toString(16).padStart(2, "0")}`;
 }
