@@ -4,8 +4,8 @@ import {BLZAdapterBackup} from '../../../../src/adapter/blz/adapter/backup';
 import {Driver} from '../../../../src/adapter/blz/driver/driver';
 import * as BackupUtils from '../../../../src/utils/backup';
 
-vi.mock('fs', () => ({
-    default: {},
+vi.mock('fs', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('fs')>()),
     promises: {
         access: vi.fn(),
         readFile: vi.fn(),
@@ -150,6 +150,13 @@ describe('BLZ Adapter Backup', () => {
     });
 
     describe('Loading backup', () => {
+        it('should keep backup async errors on native throw paths', () => {
+            const source = fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8');
+
+            expect(source).not.toContain('return Promise.reject(');
+            expect(source).not.toContain('return Promise.resolve(');
+        });
+
         it('should load unified backup successfully', async () => {
             const mockBackupData = {
                 metadata: {
@@ -200,6 +207,13 @@ describe('BLZ Adapter Backup', () => {
             vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from(JSON.stringify(mockBackupData)));
 
             await expect(backup.getStoredBackup()).rejects.toThrow('Unsupported open coordinator backup version');
+        });
+
+        it('should reject invalid backup data before reading metadata', async () => {
+            vi.mocked(fs.promises.access).mockResolvedValue(undefined);
+            vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from('null'));
+
+            await expect(backup.getStoredBackup()).rejects.toThrow('Invalid backup data format');
         });
 
         it('should handle unknown backup format', async () => {

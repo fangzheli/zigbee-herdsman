@@ -646,6 +646,9 @@ Future BLZ refactors should follow these rules:
 - Made the UART TCP socket `ready` EventEmitter handler synchronous by moving
   reset/open completion work into an internal async helper, keeping open errors
   on the existing cleanup path without returning a Promise to EventEmitter.
+- Validated parsed backup data before reading backup metadata and replaced
+  legacy `Promise.resolve/reject` returns in the async backup loader with native
+  `return` and `throw` paths.
 
 ## Next Steps
 

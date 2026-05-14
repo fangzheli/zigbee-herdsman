@@ -83,7 +83,7 @@ export class BLZAdapterBackup {
     try {
       await fs.promises.access(this.defaultPath);
     } catch {
-      return Promise.resolve(undefined);
+      return undefined;
     }
     interface BackupData extends Models.UnifiedBackupStorage {
       metadata: {
@@ -98,36 +98,36 @@ export class BLZAdapterBackup {
       };
     }
 
-    let data: BackupData;
+    let data: unknown;
     try {
       const fileContent = await fs.promises.readFile(this.defaultPath);
-      data = JSON.parse(fileContent.toString()) as BackupData;
+      data = JSON.parse(fileContent.toString());
     } catch (error) {
-      return Promise.reject(
-        new Error(
-          `Coordinator backup is corrupted (${(error as Error).stack})`,
-        ),
+      throw new Error(
+        `Coordinator backup is corrupted (${(error as Error).stack})`,
       );
     }
+
+    if (typeof data !== "object" || data === null) {
+      throw new Error("Invalid backup data format");
+    }
+
+    const backupData = data as BackupData;
     if (
-      data.metadata?.format === "zigpy/open-coordinator-backup" &&
-      data.metadata?.version
+      backupData.metadata?.format === "zigpy/open-coordinator-backup" &&
+      backupData.metadata?.version
     ) {
-      if (data.metadata?.version !== 1) {
+      if (backupData.metadata?.version !== 1) {
         throw new Error(
-          `Unsupported open coordinator backup version (version=${data.metadata?.version})`,
+          `Unsupported open coordinator backup version (version=${backupData.metadata?.version})`,
         );
       }
       // no blz data needed for now
       // if (!data.metadata.internal?.blzVersion) {
       //     throw new Error(`This open coordinator backup format not for BLZ adapter`);
       // }
-      // Validate data structure before conversion
-      if (typeof data !== "object" || data === null) {
-        return Promise.reject(new Error("Invalid backup data format"));
-      }
-      return Promise.resolve(BackupUtils.fromUnifiedBackup(data));
+      return BackupUtils.fromUnifiedBackup(backupData);
     }
-    return Promise.reject(new Error("Unknown backup format"));
+    throw new Error("Unknown backup format");
   }
 }
