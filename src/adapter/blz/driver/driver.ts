@@ -89,10 +89,10 @@ export class Driver extends EventEmitter {
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
   private cancelPendingResetForce?: (error: Error) => void;
-  private cancelPendingStartupOperation?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestOperations = new CancellableOperation();
+  private readonly startupOperations = new CancellableOperation();
   private readonly requestRetryDelay = new CancellableDelay();
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
@@ -273,7 +273,7 @@ export class Driver extends EventEmitter {
       this.resetDelay.cancel();
       this.startupDelay.cancel();
       this.cancelPendingResetForce?.(new Error("Driver stopped"));
-      this.cancelPendingStartupOperation?.(new Error("Driver stopped"));
+      this.startupOperations.cancel(new Error("Driver stopped"));
     }
 
     try {
@@ -935,30 +935,11 @@ export class Driver extends EventEmitter {
     operation: () => Promise<T>,
     startupStopGeneration: number,
   ): Promise<T> {
-    this.throwIfStartupCancelled(startupStopGeneration);
-
-    let rejectStartupOperation: ((error: Error) => void) | undefined;
-    const startupOperationCancelled = new Promise<never>((_, reject): void => {
-      rejectStartupOperation = reject;
-      this.cancelPendingStartupOperation = reject;
-    });
-
-    try {
-      const result = await Promise.race([
-        operation(),
-        startupOperationCancelled,
-      ]);
-      this.throwIfStartupCancelled(startupStopGeneration);
-
-      return result;
-    } finally {
-      if (
-        rejectStartupOperation &&
-        this.cancelPendingStartupOperation === rejectStartupOperation
-      ) {
-        this.cancelPendingStartupOperation = undefined;
-      }
-    }
+    return await this.startupOperations.run(
+      operation,
+      () => this.stopGeneration === startupStopGeneration,
+      () => new Error("Driver stopped"),
+    );
   }
 
   public async mrequest(

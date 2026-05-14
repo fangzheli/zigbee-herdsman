@@ -439,6 +439,9 @@ Future BLZ refactors should follow these rules:
   `CancellableOperation` helper and reused it from the adapter and high-level
   driver, so operation rejecters are always cleared and late caller handlers do
   not produce unhandled rejections.
+- Reused `CancellableOperation` for high-level driver startup operations,
+  replacing the single ad-hoc startup reject hook while preserving the existing
+  stop-on-startup cancellation behavior.
 
 ## Next Steps
 
