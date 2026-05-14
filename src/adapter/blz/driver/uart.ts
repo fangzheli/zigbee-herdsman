@@ -349,7 +349,7 @@ export class SerialDriver extends EventEmitter {
   async reset(): Promise<void> {
     this.parser.reset();
     this.throwIfClosing();
-    this.cancelPendingOperations();
+    this.cancelPendingOperations(new Error("Connection reset"));
     this.sendSeq = 0;
     this.recvSeq = 0;
 
@@ -403,8 +403,9 @@ export class SerialDriver extends EventEmitter {
 
   private async performClose(): Promise<void> {
     logger.debug("Closing UART", NS);
-    this.connectOperations.cancel(new Error("Connection closed"));
-    this.cancelPendingOperations();
+    const closeError = new Error("Connection closed");
+    this.connectOperations.cancel(closeError);
+    this.cancelPendingOperations(closeError);
     this.cleanupParser();
 
     const wasInitialized = this.initialized;
@@ -444,11 +445,11 @@ export class SerialDriver extends EventEmitter {
     this.parser.reset();
   }
 
-  private cancelPendingOperations(): void {
+  private cancelPendingOperations(error: Error): void {
     this.operationGeneration += 1;
     this.sendRetryDelay.cancel();
-    this.queue.clear();
-    this.waitress.clear();
+    this.queue.clear(error);
+    this.waitress.clear(error);
   }
 
   private detachSerialPort(): void {
@@ -480,7 +481,10 @@ export class SerialDriver extends EventEmitter {
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
     this.initialized = false;
-    this.cancelPendingOperations();
+    const closeError = new Error(
+      err != null && err !== false ? "Connection reset" : "Connection closed",
+    );
+    this.cancelPendingOperations(closeError);
     this.cleanupParser();
 
     if (this.serialPort) {

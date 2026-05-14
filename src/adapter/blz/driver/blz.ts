@@ -317,9 +317,10 @@ export class Blz extends EventEmitter {
     this.attachSerialDriverEventBridge();
 
     if (this.serialDriver.isInitialized()) {
+      const reconnectError = new Error("Connection closed");
       this.clearWatchdogTimer();
-      this.queue.clear();
-      this.waitress.clear();
+      this.queue.clear(reconnectError);
+      this.waitress.clear(reconnectError);
       await this.runConnectOperation(
         () => this.serialDriver.close(false),
         connectGeneration,
@@ -429,9 +430,10 @@ export class Blz extends EventEmitter {
   private async cleanupFailedConnectAttempt(
     connectGeneration: number,
   ): Promise<void> {
+    const connectFailureError = new Error("Failure to connect");
     this.clearWatchdogTimer();
-    this.queue.clear();
-    this.waitress.clear();
+    this.queue.clear(connectFailureError);
+    this.waitress.clear(connectFailureError);
 
     try {
       await this.runConnectOperation(
@@ -531,7 +533,7 @@ export class Blz extends EventEmitter {
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
     this.queue.clear(error);
-    this.waitress.clear();
+    this.waitress.clear(error);
     this.detachSerialDriverListeners();
   }
 
@@ -571,8 +573,9 @@ export class Blz extends EventEmitter {
     );
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
-    this.queue.clear(new Error("Connection closed"));
-    this.waitress.clear();
+    const closeError = new Error("Connection closed");
+    this.queue.clear(closeError);
+    this.waitress.clear(closeError);
     this.detachSerialDriverListeners();
     try {
       await this.serialDriver.close(emitClose);
@@ -595,8 +598,9 @@ export class Blz extends EventEmitter {
     }
 
     this.throwIfConnectionChanged(resetConnectGeneration);
-    this.queue.clear(new Error("Connection reset"));
-    this.waitress.clear();
+    const resetError = new Error("Connection reset");
+    this.queue.clear(resetError);
+    this.waitress.clear(resetError);
     this.throwIfConnectionChanged(resetConnectGeneration);
 
     try {

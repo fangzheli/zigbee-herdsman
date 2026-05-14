@@ -888,6 +888,10 @@ Future BLZ refactors should follow these rules:
   driver, releasing `connect`/`ready`/open `error`/open `close` handlers as soon
   as ready-time reset succeeds while retaining only runtime `close`/`error`
   handlers until transport close.
+- Extended shared `Waitress.clear()` to accept an explicit rejection reason and
+  wired BLZ adapter, high-level driver, low-level BLZ, and UART cleanup paths to
+  preserve stop/close/reset causes instead of reporting generic
+  `Waitress cleared`.
 
 ## Next Steps
 

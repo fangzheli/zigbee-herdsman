@@ -26,10 +26,10 @@ export class Waitress<TPayload, TMatcher> {
         this.currentID = 0;
     }
 
-    public clear(): void {
+    public clear(error = new Error("Waitress cleared")): void {
         for (const [, waiter] of this.waiters) {
             clearTimeout(waiter.timer);
-            this.rejectWaiter(waiter, new Error("Waitress cleared"));
+            this.rejectWaiter(waiter, error);
         }
 
         this.waiters.clear();

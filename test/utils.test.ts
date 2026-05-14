@@ -166,6 +166,27 @@ describe("Utils", () => {
         ).toBe("rejected:Waitress cleared");
     });
 
+    it("Test waitress clear preserves custom rejection reasons", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000).start();
+        const result = waiter.promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        waitress.clear(new Error("Driver stopped"));
+
+        expect(
+            await Promise.race([
+                result,
+                new Promise((resolve) => setImmediate(() => resolve("pending"))),
+            ]),
+        ).toBe("rejected:Driver stopped");
+    });
+
     it("Test waitress remove rejects removed waiters", async () => {
         const validator = (payload: string, matcher: number): boolean => {
             return payload.length === matcher;

@@ -308,7 +308,7 @@ export class Driver extends EventEmitter {
     this.requestGeneration += 1;
     this.cancelRequestOperations(resetError);
     this.requestRetryDelay.cancel();
-    this.waitress.clear();
+    this.waitress.clear(resetError);
     this.cancelStartupOperations(resetError);
 
     try {
@@ -388,7 +388,7 @@ export class Driver extends EventEmitter {
       this.detachBlzListeners(this.blz);
       this.blz = undefined;
     }
-    this.waitress.clear();
+    this.waitress.clear(closeError);
     this.clearCoordinatorAndNetworkState();
     this.emit("close");
   }
@@ -434,6 +434,8 @@ export class Driver extends EventEmitter {
   }
 
   private async performStop(emitClose: boolean): Promise<void> {
+    const stopError = new Error("Driver stopped");
+
     try {
       if (this.blz) {
         const blz = this.blz;
@@ -448,7 +450,7 @@ export class Driver extends EventEmitter {
       }
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
-      this.waitress.clear();
+      this.waitress.clear(stopError);
       this.clearCoordinatorAndNetworkState();
       if (this.emitCloseWhenStopCompletes) {
         this.emit("close");

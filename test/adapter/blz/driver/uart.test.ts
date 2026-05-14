@@ -728,6 +728,19 @@ describe("BLZ Serial Driver", () => {
       await driver.connect(serialPortOptions);
     });
 
+    const waitForDataAck = (): {
+      start: () => { promise: Promise<unknown>; ID: number };
+      ID: number;
+    } =>
+      (
+        driver as unknown as {
+          waitFor: (
+            frameId: number,
+            timeout?: number,
+          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+        }
+      ).waitFor(0x0000, 1000);
+
     it("should send data successfully", async () => {
       const data = Buffer.from([1, 2, 3]);
       const frameId = 0x0000;
@@ -752,6 +765,39 @@ describe("BLZ Serial Driver", () => {
         false,
         false,
       );
+    });
+
+    it("should clear UART waiters with the reset reason when resetting", async () => {
+      const waiter = waitForDataAck();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.reset();
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection reset");
+    });
+
+    it("should clear UART waiters with the close reason when closing", async () => {
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+      const waiter = waitForDataAck();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.close(false);
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection closed");
     });
 
     it("should handle send failure with retries", async () => {

@@ -455,7 +455,7 @@ describe("BLZ Adapter", () => {
       ]);
 
       expect(clearTimeoutSpy).toHaveBeenCalled();
-      expect(observed).toEqual(new Error("Waitress cleared"));
+      expect(observed).toEqual(new Error("Adapter disconnected"));
       expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));

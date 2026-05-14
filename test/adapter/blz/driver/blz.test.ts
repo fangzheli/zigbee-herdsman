@@ -872,12 +872,94 @@ describe("BLZ Driver", () => {
       await blz.connect(serialPortOptions);
     });
 
+    const waitForCommandResponse = (): {
+      start: () => { promise: Promise<unknown>; ID: number };
+      ID: number;
+    } =>
+      (
+        blz as unknown as {
+          waitFor: (
+            frameId: string,
+            timeout?: number,
+          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+        }
+      ).waitFor("getValue", 1000);
+
     it("should handle close events", () => {
       const callback = vi.fn();
       blz.on("close", callback);
 
       serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
       expect(callback).toHaveBeenCalled();
+    });
+
+    it("should clear BLZ waiters with the close reason on serial driver close", async () => {
+      const waiter = waitForCommandResponse();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection closed");
+    });
+
+    it("should clear BLZ waiters with the reset reason on serial driver reset", async () => {
+      const waiter = waitForCommandResponse();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      const resetHandler = serialDriverMock.on.mock.calls
+        .filter((call) => call[0] === "reset")
+        .at(-1)?.[1];
+
+      expect(resetHandler).toBeDefined();
+      resetHandler();
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection reset");
+    });
+
+    it("should clear BLZ waiters with the close reason when closing", async () => {
+      const waiter = waitForCommandResponse();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await blz.close(false);
+      const observed = await Promise.race([
+        waiterResult,
+        Promise.resolve("pending"),
+      ]);
+
+      expect(observed).toBe("rejected:Connection closed");
+    });
+
+    it("should clear BLZ waiters with the reset reason when forcing reset", async () => {
+      serialDriverMock.reset.mockResolvedValue(undefined);
+      const waiter = waitForCommandResponse();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await blz.forceReset();
+      const observed = await Promise.race([
+        waiterResult,
+        Promise.resolve("pending"),
+      ]);
+
+      expect(observed).toBe("rejected:Connection reset");
     });
 
     it("should clear BLZ state when the serial driver closes unexpectedly", async () => {

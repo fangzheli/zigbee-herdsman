@@ -256,7 +256,7 @@ export class BLZAdapter extends Adapter {
     this.stopGeneration += 1;
     const stopError = new Error("Adapter stopped");
     this.queue.clear(stopError);
-    this.waitress.clear();
+    this.waitress.clear(stopError);
     this.cancelRunningOperations(stopError);
     this.stopDelay.cancel();
 
@@ -277,7 +277,7 @@ export class BLZAdapter extends Adapter {
     this.closing = true;
     this.stopGeneration += 1;
     this.queue.clear(closeError);
-    this.waitress.clear();
+    this.waitress.clear(closeError);
     this.cancelRunningOperations(closeError);
     this.stopDelay.cancel();
     this.detachDriverListeners();

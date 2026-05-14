@@ -267,7 +267,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await expect(driver.stop()).rejects.toThrow("close failed");
 
         expect(clearTimeoutSpy).toHaveBeenCalled();
-        await expect(waiterResult).resolves.toEqual(new Error("Waitress cleared"));
+        await expect(waiterResult).resolves.toEqual(new Error("Driver stopped"));
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
@@ -293,12 +293,34 @@ describe("BLZ high-level driver lifecycle", () => {
         ]);
 
         expect(clearTimeoutSpy).toHaveBeenCalled();
-        expect(observed).toEqual(new Error("Waitress cleared"));
+        expect(observed).toEqual(new Error("Driver closed"));
         expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
         expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
         expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
         expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears pending waiters with the reset reason when reset starts", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiterResult = waiter.start().promise.catch((error: Error) => error);
+
+        setDriverBlz(driver, {
+            off: vi.fn(),
+            setResetingProcess: vi.fn(),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            close: vi.fn().mockResolvedValue(undefined),
+        });
+
+        const reset = driver.reset();
+        const observed = await Promise.race([
+            waiterResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
+        void reset.catch(() => {});
+
+        expect(observed).toEqual(new Error("Driver reset"));
     });
 
     it("handles waiter cancellation before waiters start", () => {
