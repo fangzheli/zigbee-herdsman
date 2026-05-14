@@ -43,6 +43,8 @@ export class BLZAdapter extends Adapter {
   private interpanLock: boolean;
   private queue: Queue;
   private closing: boolean;
+  private stopGeneration: number;
+  private readonly stopWaiters = new Set<() => void>();
 
   public constructor(
     networkOptions: NetworkOptions,
@@ -60,6 +62,7 @@ export class BLZAdapter extends Adapter {
     );
     this.interpanLock = false;
     this.closing = false;
+    this.stopGeneration = 0;
 
     const concurrent = adapterOptions?.concurrent ?? 8;
     logger.debug(`Adapter concurrent: ${concurrent}`, NS);
@@ -149,6 +152,8 @@ export class BLZAdapter extends Adapter {
 
   public async stop(): Promise<void> {
     this.closing = true;
+    this.stopGeneration += 1;
+    this.cancelStopWaiters();
     this.queue.clear();
     this.waitress.clear();
 
@@ -166,6 +171,42 @@ export class BLZAdapter extends Adapter {
     if (!this.closing) {
       this.emit("disconnected");
     }
+  }
+
+  private cancelStopWaiters(): void {
+    const waiters = [...this.stopWaiters];
+    this.stopWaiters.clear();
+
+    for (const cancel of waiters) {
+      cancel();
+    }
+  }
+
+  private throwIfStopped(generation: number): void {
+    if (this.closing || generation !== this.stopGeneration) {
+      throw new Error("Adapter stopped");
+    }
+  }
+
+  private async waitWhileRunning(
+    milliseconds: number,
+    generation: number,
+  ): Promise<void> {
+    this.throwIfStopped(generation);
+
+    let cancel!: () => void;
+    await new Promise<void>((resolve, reject): void => {
+      const timer = setTimeout(resolve, milliseconds);
+      cancel = (): void => {
+        clearTimeout(timer);
+        reject(new Error("Adapter stopped"));
+      };
+      this.stopWaiters.add(cancel);
+    }).finally(() => {
+      this.stopWaiters.delete(cancel);
+    });
+
+    this.throwIfStopped(generation);
   }
 
   public async getCoordinatorIEEE(): Promise<string> {
@@ -464,13 +505,17 @@ export class BLZAdapter extends Adapter {
     newChannel: number,
     nwkUpdateId: number,
   ): Promise<void> {
+    const generation = this.stopGeneration;
     logger.info(
       `[BLZ] Starting channel change to channel ${newChannel} with NWKUpdateID ${nwkUpdateId}`,
       NS,
     );
 
+    this.throwIfStopped(generation);
+
     // 1. Validate NWKUpdateID
     const currentParams = await this.getNetworkParameters();
+    this.throwIfStopped(generation);
     if (nwkUpdateId <= currentParams.nwkUpdateID) {
       throw new Error(
         `Invalid NWKUpdateID ${nwkUpdateId} - must be greater than current ${currentParams.nwkUpdateID}`,
@@ -493,22 +538,25 @@ export class BLZAdapter extends Adapter {
 
     // 2. Get current network state
     const networkKeyInfo = await this.driver.getNetworkKeyInfo();
+    this.throwIfStopped(generation);
     const tcLinkKeyInfo = await this.driver.getGlobalTcLinkKey();
+    this.throwIfStopped(generation);
 
     // 3. Wait for broadcast to propagate (minimum 15 seconds per Zigbee spec)
     logger.info(`[BLZ] Waiting for broadcast to propagate (15s)...`, NS);
-    await wait(15000);
+    await this.waitWhileRunning(15000, generation);
 
     // 4. Leave current network
     logger.info(`[BLZ] Leaving current network...`, NS);
     const blz = this.driver.getBlz();
     const leaveStatus = await blz.leaveNetwork();
+    this.throwIfStopped(generation);
     if (leaveStatus !== BlzStatus.SUCCESS) {
       throw new Error(
         `[BLZ] Failed to leave network with status=${leaveStatus}`,
       );
     }
-    await wait(4000);
+    await this.waitWhileRunning(4000, generation);
 
     // 5. Update network security info with new NWKUpdateID
     logger.info(`[BLZ] Updating network security info...`, NS);
@@ -517,10 +565,12 @@ export class BLZAdapter extends Adapter {
       networkKeyInfo.outgoingFrameCounter,
       networkKeyInfo.nwkKeySeqNum,
     );
+    this.throwIfStopped(generation);
     await this.driver.setGlobalTcLinkKey(
       tcLinkKeyInfo.linkKey,
       tcLinkKeyInfo.outgoingFrameCounter,
     );
+    this.throwIfStopped(generation);
 
     // 6. Reform network on new channel
     logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
@@ -530,6 +580,7 @@ export class BLZAdapter extends Adapter {
       currentParams.panID,
       newChannel,
     );
+    this.throwIfStopped(generation);
 
     if (formStatus !== BlzStatus.SUCCESS) {
       throw new Error(`[BLZ] Failed to form network on channel ${newChannel}`);
@@ -541,7 +592,7 @@ export class BLZAdapter extends Adapter {
 
     // 8. Wait for network stabilization
     logger.info(`[BLZ] Waiting for network to stabilize (5s)...`, NS);
-    await wait(5000);
+    await this.waitWhileRunning(5000, generation);
 
     logger.info(`[BLZ] Channel change completed successfully`, NS);
   }

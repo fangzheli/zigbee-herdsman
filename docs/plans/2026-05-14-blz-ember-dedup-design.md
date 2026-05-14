@@ -295,6 +295,9 @@ Future BLZ refactors should follow these rules:
 - Routed synthetic `LEAVE_REQUEST` device-leave handling through
   `Driver.handleNodeLeft()` so BLZ clears cached NWK/EUI mappings before the
   adapter emits `deviceLeave`.
+- Added adapter-level stop generation and cancellable waits for BLZ channel
+  change, so `stop()` rejects an in-flight channel-change delay and prevents
+  follow-on leave/reform operations after shutdown begins.
 
 ## Next Steps
 
