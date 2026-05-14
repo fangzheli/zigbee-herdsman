@@ -239,6 +239,10 @@ Future BLZ refactors should follow these rules:
 - Defused BLZ command waiter cancellation when lower `sendDATA()` rejects before
   the command waiter is started, avoiding the same unhandled internal rejection
   at the command queue layer.
+- Enforced declared BLZ byte-field lengths during frame parsing, so
+  `value`/`payload`/`message` fields are sliced to their schema length and
+  malformed truncated or trailing byte data is rejected before reaching upper
+  layers.
 - Defused BLZ adapter ZCL response waiter cancellation when APS send fails before
   the response waiter is started, preventing `Waitress.remove()` from surfacing
   an unhandled internal rejection.

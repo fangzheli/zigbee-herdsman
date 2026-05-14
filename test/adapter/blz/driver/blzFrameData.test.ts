@@ -47,4 +47,16 @@ describe("BLZFrameData", () => {
         expect(source).not.toContain("buffers.push");
         expect(source).toContain("serializeMappedBufferSegments(fields");
     });
+
+    it("rejects declared byte fields with truncated payload data", () => {
+        expect(() =>
+            new BLZFrameData("getValue", false, Buffer.from([0x00, 0x03, 0xaa, 0xbb])),
+        ).toThrow("Byte field value expected 3 bytes, received 2");
+    });
+
+    it("rejects trailing bytes after a declared byte field", () => {
+        expect(() =>
+            new BLZFrameData("getValue", false, Buffer.from([0x00, 0x02, 0xaa, 0xbb, 0xcc])),
+        ).toThrow("Unexpected trailing data after getValue frame: 1 bytes");
+    });
 });

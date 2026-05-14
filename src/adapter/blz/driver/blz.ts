@@ -34,6 +34,11 @@ const MTOR_DELIVERY_FAIL_THRESHOLD = 3;
 const MAX_WATCHDOG_FAILURES = 2;
 const WATCHDOG_WAKE_PERIOD = 30; // in sec
 const BLZ_DEFAULT_RADIUS = 0;
+const BYTE_FIELD_LENGTHS: Record<string, string> = {
+  value: "valueLength",
+  payload: "payloadLen",
+  message: "messageLength",
+};
 
 /**
  * Type-specific for BLZ Frames.
@@ -108,7 +113,29 @@ export class BLZFrameData {
     if (Buffer.isBuffer(params)) {
       let data = params;
       for (const prop of Object.getOwnPropertyNames(frameDesc)) {
-        [this[prop], data] = frameDesc[prop].deserialize(frameDesc[prop], data);
+        const fieldType = frameDesc[prop];
+        const byteLength = getDeclaredByteFieldLength(prop, this);
+        if (fieldType === Bytes && byteLength !== undefined) {
+          if (data.length < byteLength) {
+            throw new RangeError(
+              `Byte field ${prop} expected ${byteLength} bytes, received ${data.length}`,
+            );
+          }
+
+          [this[prop]] = fieldType.deserialize(
+            fieldType,
+            data.subarray(0, byteLength),
+          );
+          data = data.subarray(byteLength);
+        } else {
+          [this[prop], data] = fieldType.deserialize(fieldType, data);
+        }
+      }
+
+      if (data.length > 0) {
+        throw new RangeError(
+          `Unexpected trailing data after ${key} frame: ${data.length} bytes`,
+        );
       }
     } else {
       for (const prop of Object.getOwnPropertyNames(frameDesc)) {
@@ -154,6 +181,19 @@ function serializeFrameFields(
   return serializeMappedBufferSegments(fields, (prop) =>
     frameDesc[prop].serialize(frameDesc[prop], values[prop]),
   );
+}
+
+function getDeclaredByteFieldLength(
+  fieldName: string,
+  values: Record<string, unknown>,
+): number | undefined {
+  const lengthField = BYTE_FIELD_LENGTHS[fieldName];
+  if (lengthField === undefined) {
+    return undefined;
+  }
+
+  const value = values[lengthField];
+  return typeof value === "number" ? value : undefined;
 }
 
 export class Blz extends EventEmitter {
