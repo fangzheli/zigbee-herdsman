@@ -511,24 +511,28 @@ export class Blz extends EventEmitter {
   private onSerialReset(): void {
     logger.debug("onSerialReset()", NS);
     this.inResetingProcess = true;
+    this.cleanupSerialState(new Error("Connection reset"));
     this.emit("reset");
   }
 
   private onSerialClose(): void {
     logger.debug("onSerialClose()", NS);
-    const closeError = new Error("Connection closed");
-    this.connectGeneration += 1;
-    this.connectOperations.cancel(closeError);
-    this.connectResetOperations.cancel(closeError);
-    this.connectRetryDelay.cancel();
-    this.clearWatchdogTimer();
-    this.queue.clear(closeError);
-    this.waitress.clear();
-    this.detachSerialDriverListeners();
+    this.cleanupSerialState(new Error("Connection closed"));
 
     if (!this.inResetingProcess) {
       this.emit("close");
     }
+  }
+
+  private cleanupSerialState(error: Error): void {
+    this.connectGeneration += 1;
+    this.connectOperations.cancel(error);
+    this.connectResetOperations.cancel(error);
+    this.connectRetryDelay.cancel();
+    this.clearWatchdogTimer();
+    this.queue.clear(error);
+    this.waitress.clear();
+    this.detachSerialDriverListeners();
   }
 
   public setResetingProcess(value: boolean): void {

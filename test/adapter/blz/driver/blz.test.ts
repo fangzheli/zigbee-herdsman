@@ -909,6 +909,42 @@ describe("BLZ Driver", () => {
       ).toBe(0);
     });
 
+    it("should clear BLZ state when the serial driver requests reset recovery", async () => {
+      const clearIntervalSpy = vi.spyOn(global, "clearInterval");
+      const reset = vi.fn();
+      serialDriverMock.sendDATA.mockReturnValue(new Promise<void>(() => {}));
+      blz.on("reset", reset);
+      const command = blz.execCommand("getValue", {
+        valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+      });
+      const commandResult = command.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const resetHandler = serialDriverMock.on.mock.calls
+        .filter((call) => call[0] === "reset")
+        .at(-1)?.[1];
+      expect(resetHandler).toBeDefined();
+      resetHandler();
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+      const observed = await Promise.race([
+        commandResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void command.catch(() => {});
+
+      expect(observed).toBe("rejected:Connection reset");
+      expect(clearIntervalSpy).toHaveBeenCalled();
+      expect(reset).toHaveBeenCalledTimes(1);
+      expect(
+        (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+      ).toBe(0);
+    });
+
     it("should ignore malformed received buffers that are too short for a BLZ frame", () => {
       const frame = vi.fn();
       const error = vi.spyOn(logger, "error").mockImplementation(() => {});

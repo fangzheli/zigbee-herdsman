@@ -850,6 +850,9 @@ Future BLZ refactors should follow these rules:
 - Cleaned low-level BLZ state on unexpected serial-driver close events:
   watchdogs, connect operations, retry delays, command queues, command waiters,
   and owned serial-driver listeners are released before emitting BLZ `close`.
+- Reused the same low-level BLZ serial-state cleanup for UART reset recovery
+  events, so pending BLZ commands and watchdogs are cancelled before the reset
+  event is handed to the high-level driver.
 
 ## Next Steps
 
