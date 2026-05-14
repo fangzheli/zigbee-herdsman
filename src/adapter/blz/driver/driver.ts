@@ -949,7 +949,7 @@ export class Driver extends EventEmitter {
   ): BlzEUI64 {
     const eui64 =
       ieee instanceof BlzEUI64
-        ? ieee
+        ? new BlzEUI64(ieee)
         : new BlzEUI64(
             typeof ieee === "number" || typeof ieee === "bigint"
               ? ieee.toString(16).padStart(16, "0")
@@ -970,11 +970,12 @@ export class Driver extends EventEmitter {
     this.eui64ToNodeId.set(normalized, nwk);
     this.nodeIdToEui64.set(nwk, eui64);
 
-    return eui64;
+    return new BlzEUI64(eui64);
   }
 
   private getCachedEui64(nwk: number): BlzEUI64 | undefined {
-    return this.nodeIdToEui64.get(nwk);
+    const eui64 = this.nodeIdToEui64.get(nwk);
+    return eui64 ? new BlzEUI64(eui64) : undefined;
   }
 
   private clearAddressCache(): void {

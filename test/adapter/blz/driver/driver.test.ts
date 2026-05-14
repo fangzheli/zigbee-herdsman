@@ -377,6 +377,22 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(eui64.toString()).toBe("0000000000003344");
     });
 
+    it("does not expose mutable cached EUI64 objects", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const source = new BlzEUI64("0000000000003344");
+
+        driver.setNode(0x3344, source);
+        (source as unknown as {_value: Buffer})._value[7] = 0xff;
+
+        const firstLookup = await driver.networkIdToEUI64(0x3344);
+        expect(firstLookup.toString()).toBe("0000000000003344");
+
+        (firstLookup as unknown as {_value: Buffer})._value[7] = 0xee;
+
+        const secondLookup = await driver.networkIdToEUI64(0x3344);
+        expect(secondLookup.toString()).toBe("0000000000003344");
+    });
+
     it("clears cached coordinator and network snapshot when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         seedNetworkSnapshot(driver);

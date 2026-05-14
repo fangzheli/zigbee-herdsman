@@ -881,6 +881,9 @@ Future BLZ refactors should follow these rules:
 - Extracted BLZ IEEE address normalization/formatting into a shared helper used
   by both adapter event formatting and driver waiter/cache matching, so future
   `0x` prefix behavior changes have one implementation.
+- Made high-level driver address-cache reads and writes copy `BlzEUI64`
+  objects at the cache boundary, preventing caller-owned or returned address
+  objects from mutating cached node mappings.
 - Changed expected adapter shutdown to call `Driver.stop(false)`, keeping normal
   stop cleanup on the explicit stop path instead of routing it through the
   driver's close-event/disconnect handler.
