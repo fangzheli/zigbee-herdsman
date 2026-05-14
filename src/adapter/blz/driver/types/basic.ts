@@ -2,6 +2,10 @@
 const EMPTY_BUFFER = Buffer.alloc(0);
 
 export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize: (item: T, index: number) => Buffer): Buffer {
+    if (items.length === 0) {
+        return EMPTY_BUFFER;
+    }
+
     const segments: Buffer[] = new Array(items.length);
     let length = 0;
 

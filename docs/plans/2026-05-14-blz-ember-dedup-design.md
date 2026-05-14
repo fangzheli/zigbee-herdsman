@@ -759,6 +759,9 @@ Future BLZ refactors should follow these rules:
 - Reworked length-prefixed and fixed-length list deserialization to preallocate
   their known-size result arrays and fill by index, leaving only truly
   unbounded `List.deserialize()` on dynamic growth.
+- Reused the shared empty buffer for empty mapped-buffer serialization results,
+  avoiding zero-length segment and output-buffer allocations for empty schemas
+  or empty typed lists.
 
 ## Next Steps
 

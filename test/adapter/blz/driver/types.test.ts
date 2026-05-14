@@ -463,6 +463,21 @@ describe('BLZ Types', () => {
     });
 
     describe('Structured serialization', () => {
+        it('should serialize empty schemas without allocating a new empty buffer', () => {
+            const allocUnsafeSpy = vi.spyOn(Buffer, 'allocUnsafe').mockImplementation(() => {
+                throw new Error('Buffer.allocUnsafe used');
+            });
+
+            try {
+                const result = serializeSchema([], []);
+
+                expect(result.length).toBe(0);
+                expect(allocUnsafeSpy).not.toHaveBeenCalled();
+            } finally {
+                allocUnsafeSpy.mockRestore();
+            }
+        });
+
         it('should deserialize schemas without dynamic result array growth', () => {
             const result = deserializeSchema(Buffer.from([0x34, 0x12, 0x56]), [uint16_t, uint8_t]);
             const source = fs.readFileSync('src/adapter/blz/driver/types/index.ts', 'utf8');
