@@ -403,8 +403,10 @@ export class Driver extends EventEmitter {
       // TODO: make sure the stack is running
       logger.info("The Zigbee network is formed", NS);
 
-      const netParams = await blz.execCommand("getNetworkParameters");
-      this.throwIfStartupCancelled(startupStopGeneration);
+      const netParams = await this.runStartupOperation(
+        () => blz.execCommand("getNetworkParameters"),
+        startupStopGeneration,
+      );
       logger.info(
         `Command (getNetworkParameters) returned: ${netParams.status}`,
         NS,
@@ -435,11 +437,14 @@ export class Driver extends EventEmitter {
       );
 
       const ieee = (
-        await blz.execCommand("getValue", {
-          valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
-        })
+        await this.runStartupOperation(
+          () =>
+            blz.execCommand("getValue", {
+              valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
+            }),
+          startupStopGeneration,
+        )
       ).value;
-      this.throwIfStartupCancelled(startupStopGeneration);
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);

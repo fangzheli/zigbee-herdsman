@@ -396,6 +396,9 @@ Future BLZ refactors should follow these rules:
 - Extended `runStartupOperation()` to the startup network validation step, so
   `Driver.stop()` also rejects startup while `needsToBeInitialised()` is
   waiting on lower BLZ commands.
+- Extended `runStartupOperation()` to the final startup network-parameter and
+  coordinator IEEE queries, so `Driver.stop()` cannot leave startup pending
+  while those last BLZ commands are in flight.
 
 ## Next Steps
 

@@ -13,7 +13,7 @@ vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
 
 import type {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
-import {BlzEUI64, BlzOutgoingMessageType, BlzStatus} from "../../../../src/adapter/blz/driver/types";
+import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
 
@@ -613,6 +613,116 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(observed).toBe("rejected:Driver stopped");
         expect(blzMock.close).toHaveBeenCalledWith(false);
         expect(addEndpoint).toHaveBeenCalledTimes(1);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
+    it("cancels startup while final network parameters request is pending", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockReturnValueOnce(new Promise(() => {})),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(3000);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            startupResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void startup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect(blzMock.execCommand).toHaveBeenCalledTimes(2);
+        expect(blzMock.execCommand).toHaveBeenLastCalledWith("getNetworkParameters");
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
+    it("cancels startup while coordinator IEEE request is pending", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockReturnValueOnce(new Promise(() => {})),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(3000);
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            startupResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void startup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect(blzMock.execCommand).toHaveBeenCalledTimes(3);
+        expect(blzMock.execCommand).toHaveBeenLastCalledWith("getValue", {
+            valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
+        });
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
