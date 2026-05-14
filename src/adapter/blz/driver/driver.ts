@@ -735,6 +735,11 @@ export class Driver extends EventEmitter {
   }
 
   private removeCachedNode(nwk: number, ieeeAddr: string): void {
+    const cachedEui64 = this.nodeIdToEui64.get(nwk);
+    if (cachedEui64) {
+      this.eui64ToNodeId.delete(this.normalizeIeee(cachedEui64.toString()));
+    }
+
     this.nodeIdToEui64.delete(nwk);
     this.eui64ToNodeId.delete(this.normalizeIeee(ieeeAddr));
   }

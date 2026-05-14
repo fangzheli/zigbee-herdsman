@@ -462,6 +462,9 @@ Future BLZ refactors should follow these rules:
 - Normalized `bigint` EUI64 values from BLZ `deviceJoinCallback` frames before
   address-cache insertion, so real uint64 join callbacks do not throw or skip
   cache cleanup/update paths.
+- Removed stale EUI64-to-node cache entries by cached node ID during leave
+  handling, so a leave event with a different IEEE cannot leave old send
+  mappings retained.
 
 ## Next Steps
 

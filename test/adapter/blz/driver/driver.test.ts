@@ -1165,6 +1165,35 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("removes cached EUI64 mappings by node ID when leave uses a different IEEE", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const execCommand = vi.fn().mockResolvedValue({nodeId: 0x5566});
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        const apsFrame = makeApsFrame();
+        const data = Buffer.from([0x0d, 0x0e]);
+
+        driver.handleNodeJoined(0x3344, 0x1111);
+        driver.handleNodeLeft(0x3344, "0x0000000000002222");
+
+        await expect(driver.request(new BlzEUI64("0000000000001111"), apsFrame, data)).resolves.toBe(true);
+
+        expect(execCommand).toHaveBeenCalledWith("getNodeIdByEui64", {eui64: expect.any(BlzEUI64)});
+        expect(sendApsData).toHaveBeenCalledWith(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
+            0x5566,
+            apsFrame.profileId,
+            apsFrame.clusterId,
+            apsFrame.sourceEndpoint,
+            apsFrame.destinationEndpoint,
+            0,
+            5,
+            0x80,
+            data.length,
+            data,
+        );
+    });
+
     it("updates reverse address cache after resolving a request destination by EUI64", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x7788});
