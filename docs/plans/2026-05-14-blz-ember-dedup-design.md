@@ -765,6 +765,9 @@ Future BLZ refactors should follow these rules:
 - Reworked network formation extended-PAN-ID conversion to read little-endian
   array-like bytes directly into a bigint, avoiding temporary `Buffer.from()`
   clones for configured or backup PAN IDs.
+- Reworked restore compatibility checks to compare configured extended-PAN-ID
+  and network-key bytes directly, avoiding temporary `Buffer.from()` clones
+  while preserving the existing little-endian PAN-ID comparison.
 
 ## Next Steps
 

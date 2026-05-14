@@ -15,7 +15,6 @@ import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
-import { uint64_t } from "./types";
 import {
   BlzApsOption,
   BlzNodeType,
@@ -73,6 +72,32 @@ function uint64FromLittleEndianBytes(value: ArrayLike<number>): bigint {
   }
 
   return result;
+}
+
+function bytesToHex(value: ArrayLike<number>): string {
+  let result = "";
+  for (let i = 0; i < value.length; i++) {
+    result += (value[i] & 0xff).toString(16).padStart(2, "0");
+  }
+
+  return result;
+}
+
+function bytesEqual(
+  left: ArrayLike<number>,
+  right: ArrayLike<number>,
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let i = 0; i < left.length; i++) {
+    if ((left[i] & 0xff) !== (right[i] & 0xff)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export interface BlzIncomingMessage {
@@ -1522,20 +1547,20 @@ export class Driver extends EventEmitter {
     valid = valid && options.channelList.includes(backup.logicalChannel);
     logger.debug(`needsToBeRestore valid channel: ${valid}`, NS);
     // Ensure both extendedPanIDs are compared with same endianness
-    const currentExtendedPanID = Buffer.from(options.extendedPanID!);
+    const currentExtendedPanID = options.extendedPanID!;
     const backupExtendedPanID = backup.networkOptions.extendedPanId;
     logger.debug(
-      `Configured extendedPanID (raw): ${currentExtendedPanID.toString("hex")}`,
+      `Configured extendedPanID (raw): ${bytesToHex(currentExtendedPanID)}`,
       NS,
     );
     logger.debug(
-      `Backup extendedPanID (raw): ${backupExtendedPanID.toString("hex")}`,
+      `Backup extendedPanID (raw): ${bytesToHex(backupExtendedPanID)}`,
       NS,
     );
 
-    // Convert both to uint64_t for consistent comparison
-    const [currentPanID] = uint64_t.deserialize(uint64_t, currentExtendedPanID);
-    const [backupPanID] = uint64_t.deserialize(uint64_t, backupExtendedPanID);
+    // Convert both to uint64 for consistent comparison
+    const currentPanID = uint64FromLittleEndianBytes(currentExtendedPanID);
+    const backupPanID = uint64FromLittleEndianBytes(backupExtendedPanID);
     logger.debug(
       `Configured extendedPanID (uint64): ${currentPanID.toString(16)}`,
       NS,
@@ -1546,17 +1571,17 @@ export class Driver extends EventEmitter {
     );
     valid = valid && currentPanID === backupPanID;
     logger.debug(`needsToBeRestore same extendedPanID: ${valid}`, NS);
-    const currentNetworkKey = Buffer.from(options.networkKey!);
+    const currentNetworkKey = options.networkKey!;
     const backupNetworkKey = backup.networkOptions.networkKey;
     logger.debug(
-      `Configured networkKey (raw): ${currentNetworkKey.toString("hex")}`,
+      `Configured networkKey (raw): ${bytesToHex(currentNetworkKey)}`,
       NS,
     );
     logger.debug(
-      `Backup networkKey (raw): ${backupNetworkKey.toString("hex")}`,
+      `Backup networkKey (raw): ${bytesToHex(backupNetworkKey)}`,
       NS,
     );
-    valid = valid && currentNetworkKey.equals(backupNetworkKey);
+    valid = valid && bytesEqual(currentNetworkKey, backupNetworkKey);
     logger.debug(`needsToBeRestore same network key: ${valid}`, NS);
     return valid;
   }

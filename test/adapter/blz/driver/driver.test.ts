@@ -2022,4 +2022,36 @@ describe("BLZ high-level driver lifecycle", () => {
             fromSpy.mockRestore();
         }
     });
+
+    it("checks restore compatibility without cloning configured network bytes", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
+            networkOptions: {
+                panId: networkOptions.panID,
+                extendedPanId: Buffer.from(networkOptions.extendedPanID!),
+                networkKey: Buffer.from(networkOptions.networkKey!),
+            },
+            logicalChannel: 11,
+        } as any);
+        const originalFrom = Buffer.from;
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+            if (value === networkOptions.extendedPanID || value === networkOptions.networkKey) {
+                throw new Error("configured network bytes clone used");
+            }
+
+            return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+        }) as typeof Buffer.from);
+
+        try {
+            const result = await (
+                driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}
+            ).needsToBeRestore(networkOptions);
+
+            expect(result).toBe(true);
+            expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.extendedPanID);
+            expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.networkKey);
+        } finally {
+            fromSpy.mockRestore();
+        }
+    });
 });
