@@ -101,6 +101,21 @@ function bytesEqual(
   return true;
 }
 
+function normalizeIeeeAddress(ieee: string): string {
+  return ieee.replace(/^0x/i, "").toLowerCase();
+}
+
+function addressesMatch(
+  left: number | string,
+  right: number | string,
+): boolean {
+  if (typeof left === "string" && typeof right === "string") {
+    return normalizeIeeeAddress(left) === normalizeIeeeAddress(right);
+  }
+
+  return left === right;
+}
+
 export interface BlzIncomingMessage {
   messageType: number;
   apsFrame: BlzApsFrame;
@@ -931,7 +946,7 @@ export class Driver extends EventEmitter {
 
   /** Normalize IEEE address to consistent format (no 0x prefix, lowercase). */
   private normalizeIeee(ieee: string): string {
-    return ieee.replace(/^0x/i, "").toLowerCase();
+    return normalizeIeeeAddress(ieee);
   }
 
   private cacheNodeIeee(
@@ -1408,7 +1423,7 @@ export class Driver extends EventEmitter {
       NS,
     );
     return (
-      payload.address === matcher.address &&
+      addressesMatch(payload.address, matcher.address) &&
       (!payload.frame || payload.frame.clusterId === matcher.clusterId)
     );
   }

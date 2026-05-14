@@ -125,6 +125,18 @@ describe("BLZ high-level driver lifecycle", () => {
         } as BLZFrameData;
     }
 
+    function makeNetworkAddressResponseMessage(eui64: string, nwk: number): Buffer {
+        const normalized = eui64.replace(/^0x/i, "");
+        const eui64Bytes = Buffer.from(normalized, "hex").reverse();
+        return Buffer.from([
+            0x01,
+            0x00,
+            ...eui64Bytes,
+            nwk & 0xff,
+            (nwk >> 8) & 0xff,
+        ]);
+    }
+
     function seedNetworkSnapshot(driver: Driver): void {
         const networkParams = new BlzNetworkParameters();
         networkParams.panId = 0x1234;
@@ -294,6 +306,31 @@ describe("BLZ high-level driver lifecycle", () => {
         const waiter = driver.waitFor(0x1234, 0x8000, 1000);
 
         waiter.cancel();
+    });
+
+    it("matches network address response waiters with normalized EUI64 strings", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const waiter = driver.waitFor("0X1122334455667788", Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE, 1000);
+        const result = waiter.start().promise.then(
+            (response) => response.zdoResponse,
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingZdoResponseFrame(
+                0x3344,
+                makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344),
+            ),
+        );
+
+        await expect(result).resolves.toEqual([
+            Zdo.Status.SUCCESS,
+            expect.objectContaining({
+                eui64: "0x1122334455667788",
+                nwkAddress: 0x3344,
+            }),
+        ]);
     });
 
     it("clears address cache when stopping", async () => {

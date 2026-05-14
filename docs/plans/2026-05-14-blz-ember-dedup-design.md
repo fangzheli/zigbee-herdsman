@@ -868,6 +868,9 @@ Future BLZ refactors should follow these rules:
 - Preserved adapter-level running-operation cancellation reasons across
   cancellable settle delays, so an unexpected driver close during adapter start
   rejects as `Adapter disconnected` instead of being reported as a normal stop.
+- Normalized string IEEE addresses when matching high-level driver waiters, so
+  `NETWORK_ADDRESS_RESPONSE` waiters resolve across `0x`/case differences
+  instead of being retained until timeout.
 
 ## Next Steps
 
