@@ -160,6 +160,9 @@ Future BLZ refactors should follow these rules:
 - Made `Driver.startup()` close any existing `Blz` instance before replacing it,
   preventing repeated startup from orphaning listeners, waiters, watchdogs, or
   lower transport resources.
+- Tightened `Blz.connect()` retry cleanup: each failed connection attempt now
+  clears pending queues/waiters and closes the serial driver without removing
+  the long-lived BLZ event bridge needed by later retries.
 
 ## Next Steps
 

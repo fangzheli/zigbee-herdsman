@@ -154,6 +154,19 @@ describe("BLZ Driver", () => {
 
       expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
     });
+
+    it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValueOnce(false).mockReturnValueOnce(true);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const connect = blz.connect(serialPortOptions);
+      await vi.advanceTimersByTimeAsync(SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY);
+      await connect;
+
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("Value operations", () => {

@@ -331,6 +331,7 @@ export class Blz extends EventEmitter {
           `Connection attempt ${i} failed: ${lastError.message}`,
           NS,
         );
+        await this.cleanupFailedConnectAttempt();
 
         if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
           const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
@@ -368,6 +369,17 @@ export class Blz extends EventEmitter {
     }
 
     logger.debug("Connection established successfully", NS);
+  }
+
+  private async cleanupFailedConnectAttempt(): Promise<void> {
+    this.queue.clear();
+    this.waitress.clear();
+
+    try {
+      await this.serialDriver.close(false);
+    } catch (error) {
+      logger.debug(`Failed to close serial driver after connect failure: ${error}`, NS);
+    }
   }
 
   public isInitialized(): boolean {
