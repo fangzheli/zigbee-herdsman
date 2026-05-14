@@ -813,6 +813,8 @@ Future BLZ refactors should follow these rules:
 - Enforced counted BLZ `WordList` boundaries for `addEndpoint` frame parsing,
   so input and output cluster lists are split by their declared counts instead
   of the first list consuming all remaining request bytes.
+- Corrected UART DATA control-flag propagation: initial sends no longer set
+  the retransmission bit, and retry sends no longer set the debug bit.
 
 ## Next Steps
 

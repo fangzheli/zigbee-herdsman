@@ -512,8 +512,8 @@ export class SerialDriver extends EventEmitter {
           seq,
           ackSeq,
           frameId,
-          true,
           isRetransmission,
+          false,
         );
         this.sendSeq = (seq + 1) & 0x0f;
 

@@ -682,7 +682,7 @@ describe("BLZ Serial Driver", () => {
         expect.any(Number),
         expect.any(Number),
         frameId,
-        true,
+        false,
         false,
       );
     });
@@ -704,6 +704,24 @@ describe("BLZ Serial Driver", () => {
         await vi.advanceTimersByTimeAsync(3000);
         await rejection;
         expect(writerMock.sendData).toHaveBeenCalledTimes(2); // Initial + 1 retry
+        expect(writerMock.sendData).toHaveBeenNthCalledWith(
+          1,
+          data,
+          expect.any(Number),
+          expect.any(Number),
+          frameId,
+          false,
+          false,
+        );
+        expect(writerMock.sendData).toHaveBeenNthCalledWith(
+          2,
+          data,
+          expect.any(Number),
+          expect.any(Number),
+          frameId,
+          true,
+          false,
+        );
       } finally {
         vi.useRealTimers();
       }
