@@ -666,6 +666,55 @@ describe("BLZ Adapter", () => {
         clusterID: Zcl.Clusters.genOnOff.ID,
       });
     });
+
+    it("should process ZCL messages on custom profiles", async () => {
+      const waiter = adapter.waitFor(
+        0x1234,
+        1,
+        Zcl.FrameType.SPECIFIC,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        7,
+        Zcl.Clusters.genOnOff.ID,
+        Zcl.Clusters.genOnOff.commands.toggle.ID,
+        100,
+      );
+
+      const defaultResponse = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.SERVER_TO_CLIENT,
+        true,
+        undefined,
+        7,
+        "defaultRsp",
+        Zcl.Clusters.genOnOff.ID,
+        {
+          cmdId: Zcl.Clusters.genOnOff.commands.toggle.ID,
+          statusCode: Zcl.Status.SUCCESS,
+        },
+        {},
+      );
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = 0x0105;
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      apsFrame.sourceEndpoint = 1;
+      apsFrame.destinationEndpoint = 1;
+      const result = waiter.promise.catch((error: Error) => error);
+
+      await driverMock.on.mock.calls.find(
+        (call) => call[0] === "incomingMessage",
+      )?.[1]({
+        apsFrame,
+        message: defaultResponse.toBuffer(),
+        sender: 0x1234,
+        lqi: 255,
+      });
+
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await result).toMatchObject({
+        address: 0x1234,
+        clusterID: Zcl.Clusters.genOnOff.ID,
+      });
+    });
   });
 
   afterEach(() => {

@@ -85,10 +85,11 @@ export class BLZAdapter extends Adapter {
           this.emit("zdoResponse", frame.apsFrame.clusterId, frame.zdoResponse);
         }
       }
-    } else if (
-      frame.apsFrame.profileId === ZSpec.HA_PROFILE_ID ||
-      frame.apsFrame.profileId === 0xffff
-    ) {
+    } else if (frame.apsFrame.profileId === ZSpec.TOUCHLINK_PROFILE_ID) {
+      // Touchlink is not supported by BLZ
+    } else if (frame.apsFrame.profileId === ZSpec.GP_PROFILE_ID) {
+      // Green Power is not supported by BLZ
+    } else {
       const payload: ZclPayload = {
         clusterID: frame.apsFrame.clusterId,
         header: Zcl.Header.fromBuffer(frame.message),
@@ -105,13 +106,6 @@ export class BLZAdapter extends Adapter {
         this.waitress.resolve(payload as ZclWaitressPayload);
       }
       this.emit("zclPayload", payload);
-    } else if (
-      frame.apsFrame.profileId === ZSpec.TOUCHLINK_PROFILE_ID &&
-      frame.senderEui64
-    ) {
-      // Touchlink is not supported by BLZ
-    } else if (frame.apsFrame.profileId === ZSpec.GP_PROFILE_ID) {
-      // Green Power is not supported by BLZ
     }
   }
 

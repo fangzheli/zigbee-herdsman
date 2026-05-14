@@ -259,6 +259,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ ZCL APS frame construction for endpoint, group, and broadcast
   sends in one helper so profile/source/destination/group field propagation
   stays consistent across send paths.
+- Broadened BLZ ZCL receive handling to process any non-ZDO, non-Touchlink,
+  non-Green-Power profile as ZCL, so custom-profile ZCL responses are not
+  dropped after custom-profile sends.
 
 ## Next Steps
 
