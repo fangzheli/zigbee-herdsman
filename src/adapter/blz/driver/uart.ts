@@ -276,26 +276,29 @@ export class SerialDriver extends EventEmitter {
     this.waitress.clear();
     this.cleanupParser();
 
-    if (this.initialized) {
-      this.initialized = false;
+    const wasInitialized = this.initialized;
+    this.initialized = false;
 
-      if (this.serialPort) {
-        try {
-          this.detachSerialPort();
+    if (this.serialPort) {
+      try {
+        this.detachSerialPort();
+        if (wasInitialized && this.serialPort.isOpen) {
           await this.serialPort.asyncFlushAndClose();
-          this.serialPort = undefined;
-        } catch (error) {
-          if (emitClose) {
-            this.emit("close");
-          }
-
-          throw error;
+        } else {
+          this.serialPort.destroy();
         }
-      } else if (this.socketPort) {
-        this.detachSocketPort();
-        this.socketPort.destroy();
-        this.socketPort = undefined;
+        this.serialPort = undefined;
+      } catch (error) {
+        if (emitClose) {
+          this.emit("close");
+        }
+
+        throw error;
       }
+    } else if (this.socketPort) {
+      this.detachSocketPort();
+      this.socketPort.destroy();
+      this.socketPort = undefined;
     }
 
     if (emitClose) {

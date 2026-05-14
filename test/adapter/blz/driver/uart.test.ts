@@ -433,6 +433,22 @@ describe("BLZ Serial Driver", () => {
       expect(driver.isInitialized()).toBe(false);
     });
 
+    it("should release serial resources after an error close", async () => {
+      serialPortMock.once.mock.calls.find((call) => call[0] === "close")?.[1](
+        new Error("Close error"),
+      );
+
+      await driver.close(false);
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(serialPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should handle normal port close", () => {
       const callback = vi.fn();
       driver.on("close", callback);

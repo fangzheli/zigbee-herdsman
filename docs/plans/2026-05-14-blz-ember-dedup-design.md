@@ -202,6 +202,9 @@ Future BLZ refactors should follow these rules:
 - Cleared the old watchdog, queue, and BLZ waiters before reconnect pre-close,
   so a failure while closing the existing serial driver cannot leave stale
   timers or pending request state alive.
+- Made `SerialDriver.close()` detach and release a serial port even after an
+  abnormal port close already marked it uninitialized, avoiding retained pipes,
+  listeners, and closed port references during reset recovery.
 
 ## Next Steps
 
