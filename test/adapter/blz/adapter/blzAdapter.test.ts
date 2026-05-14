@@ -349,6 +349,32 @@ describe("BLZ Adapter", () => {
       expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
     }, 60000);
 
+    it("should cancel coordinator permit join when stopping", async () => {
+      driverMock.blz.isInitialized.mockReturnValue(true);
+      driverMock.permitJoining.mockReturnValue(new Promise(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const permitJoin = adapter.permitJoin(60);
+      const permitJoinResult = permitJoin.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        permitJoinResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void permitJoin.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
+      expect(driverMock.brequest).not.toHaveBeenCalled();
+    });
+
     it("should get network parameters", async () => {
       const params = await adapter.getNetworkParameters();
       expect(params).toEqual({

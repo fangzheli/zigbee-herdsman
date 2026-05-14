@@ -295,6 +295,7 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
+    const generation = this.stopGeneration;
     const clusterId = Zdo.ClusterId.PERMIT_JOINING_REQUEST;
 
     if (networkAddress) {
@@ -322,7 +323,10 @@ export class BLZAdapter extends Adapter {
         throw new Zdo.StatusError(result[0]);
       }
     } else {
-      const result = await this.driver.permitJoining(seconds);
+      const result = await this.runOperationWhileRunning(
+        () => this.driver.permitJoining(seconds),
+        generation,
+      );
       if (result.status !== BlzStatus.SUCCESS) {
         throw new Error(
           `[ZDO] Failed coordinator permit joining request with status=${result.status}.`,

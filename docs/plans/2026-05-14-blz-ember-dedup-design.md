@@ -420,6 +420,9 @@ Future BLZ refactors should follow these rules:
   to channel-change lower calls, so `BLZAdapter.stop()` rejects channel change
   while it is still reading keys, leaving, updating security, or reforming the
   network.
+- Reused adapter operation cancellation for coordinator permit-join requests,
+  so `BLZAdapter.stop()` rejects `permitJoin()` while the lower coordinator
+  request is still pending.
 
 ## Next Steps
 
