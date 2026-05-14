@@ -394,14 +394,19 @@ export class Driver extends EventEmitter {
 
         if (restore) {
           logger.info("Restore network from backup", NS);
-          await this.formNetwork(true);
+          await this.runStartupOperation(
+            () => this.formNetwork(true),
+            startupStopGeneration,
+          );
           result = "restored";
         } else {
           logger.info("Form a new network", NS);
-          await this.formNetwork(false);
+          await this.runStartupOperation(
+            () => this.formNetwork(false),
+            startupStopGeneration,
+          );
           result = "reset";
         }
-        this.throwIfStartupCancelled(startupStopGeneration);
       }
       await this.waitForStartupDelay(1000, startupStopGeneration);
       // TODO: make sure the stack is running
