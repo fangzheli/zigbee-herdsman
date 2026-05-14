@@ -2,17 +2,12 @@
 
 import * as basic from './basic';
 import * as named from './named';
+import {serializeBufferSegments} from './basic';
 
 export class BlzStruct {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, obj: any): Buffer {
-        return Buffer.concat(
-            /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-            cls._fields.map((field: any[]) => {
-                const value = obj[field[0]];
-                return field[1].serialize(field[1], value);
-            }),
-        );
+        return serializeFields(cls._fields, obj);
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -188,15 +183,19 @@ export class BlzMultiAddress extends BlzStruct {
         const addrmode = obj['addrmode'];
 
         const fields = addrmode == 3 ? cls.fields3 : cls.fields1;
-        return Buffer.concat(
-            /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-            fields.map((field: any[]) => {
-                const value = obj[field[0]];
-                // console.assert(field[1]);
-                return field[1].serialize(field[1], value);
-            }),
-        );
+        return serializeFields(fields, obj);
     }
+}
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+function serializeFields(fields: any[][], obj: any): Buffer {
+    return serializeBufferSegments(
+        /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
+        fields.map((field: any[]) => {
+            const value = obj[field[0]];
+            return field[1].serialize(field[1], value);
+        }),
+    );
 }
 
 export class BlzNeighbor extends BlzStruct {

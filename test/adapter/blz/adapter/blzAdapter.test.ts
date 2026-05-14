@@ -31,9 +31,12 @@ describe("BLZ Adapter", () => {
     off: ReturnType<typeof vi.fn>;
     getBlz: ReturnType<typeof vi.fn>;
     isInitialized: ReturnType<typeof vi.fn>;
+    getCoordinatorVersion: ReturnType<typeof vi.fn>;
     getCoordinatorIeee: ReturnType<typeof vi.fn>;
     getNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
     updateNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
+    leaveNetwork: ReturnType<typeof vi.fn>;
+    formNetworkWithParameters: ReturnType<typeof vi.fn>;
     ieee: { toString: () => string };
     networkParams: {
       panId: number;
@@ -91,9 +94,12 @@ describe("BLZ Adapter", () => {
       off: vi.fn(),
       getBlz: vi.fn(),
       isInitialized: vi.fn(),
+      getCoordinatorVersion: vi.fn(),
       getCoordinatorIeee: vi.fn(),
       getNetworkParametersSnapshot: vi.fn(),
       updateNetworkParametersSnapshot: vi.fn(),
+      leaveNetwork: vi.fn(),
+      formNetworkWithParameters: vi.fn(),
       ieee: { toString: () => "0102030405060708" },
       networkParams: {
         panId: 0x1234,
@@ -119,12 +125,21 @@ describe("BLZ Adapter", () => {
     };
     driverMock.getBlz.mockReturnValue(driverMock.blz);
     driverMock.isInitialized.mockImplementation(() => driverMock.blz.isInitialized());
+    driverMock.getCoordinatorVersion.mockImplementation(() => ({
+      type: `BLZ v${driverMock.blz.version.product}`,
+      meta: driverMock.blz.version,
+    }));
     driverMock.getCoordinatorIeee.mockImplementation(() => driverMock.ieee);
     driverMock.getNetworkParametersSnapshot.mockImplementation(() => driverMock.networkParams);
     driverMock.updateNetworkParametersSnapshot.mockImplementation((channel: number, nwkUpdateId: number) => {
       driverMock.networkParams.Channel = channel;
       driverMock.networkParams.nwkUpdateId = nwkUpdateId;
     });
+    driverMock.leaveNetwork.mockImplementation(() => driverMock.blz.leaveNetwork());
+    driverMock.formNetworkWithParameters.mockImplementation(
+      (extendedPanId: bigint, panId: number, channel: number) =>
+        driverMock.blz.formNetwork(extendedPanId, panId, channel),
+    );
 
     vi.mocked(Driver).mockImplementation(() => driverMock as any);
     adapter = new BLZAdapter(
@@ -357,9 +372,23 @@ describe("BLZ Adapter", () => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    it("should get coordinator version", async () => {
+    it("should get coordinator version through the driver API", async () => {
+      const versionMeta = { product: 7 };
+      driverMock.getBlz.mockImplementation(() => {
+        throw new Error("transport leaked");
+      });
+      driverMock.getCoordinatorVersion.mockReturnValue({
+        type: "BLZ v7",
+        meta: versionMeta,
+      });
+
       const version = await adapter.getCoordinatorVersion();
-      expect(version.type).toBe("BLZ v1");
+
+      expect(version).toEqual({
+        type: "BLZ v7",
+        meta: versionMeta,
+      });
+      expect(driverMock.getCoordinatorVersion).toHaveBeenCalledTimes(1);
     });
 
     it("should get coordinator IEEE", async () => {
@@ -843,10 +872,13 @@ describe("BLZ Adapter", () => {
         linkKey: Buffer.alloc(16),
         outgoingFrameCounter: 0,
       });
-      driverMock.blz.leaveNetwork.mockResolvedValue(BlzStatus.SUCCESS);
-      driverMock.blz.formNetwork.mockResolvedValue(BlzStatus.SUCCESS);
+      driverMock.leaveNetwork.mockResolvedValue(BlzStatus.SUCCESS);
+      driverMock.formNetworkWithParameters.mockResolvedValue(BlzStatus.SUCCESS);
       driverMock.setNetworkKeyInfo.mockResolvedValue(BlzStatus.SUCCESS);
       driverMock.setGlobalTcLinkKey.mockResolvedValue(BlzStatus.SUCCESS);
+      driverMock.getBlz.mockImplementation(() => {
+        throw new Error("transport leaked");
+      });
 
       const payload = Zdo.Buffalo.buildRequest(
         true,
@@ -876,7 +908,7 @@ describe("BLZ Adapter", () => {
         }),
         Buffer.from("0900800000fe01ffff", "hex"),
       );
-      expect(driverMock.blz.formNetwork).toHaveBeenCalledWith(
+      expect(driverMock.formNetworkWithParameters).toHaveBeenCalledWith(
         BigInt("0xb3c6675b7437d674"),
         0x2ea0,
         15,
@@ -941,8 +973,8 @@ describe("BLZ Adapter", () => {
       ]);
 
       expect(observed).toBe("rejected:Adapter stopped");
-      expect(driverMock.blz.leaveNetwork).not.toHaveBeenCalled();
-      expect(driverMock.blz.formNetwork).not.toHaveBeenCalled();
+      expect(driverMock.leaveNetwork).not.toHaveBeenCalled();
+      expect(driverMock.formNetworkWithParameters).not.toHaveBeenCalled();
       await change.catch(() => {});
     });
 
@@ -998,7 +1030,7 @@ describe("BLZ Adapter", () => {
       expect(observed).toBe("rejected:Adapter stopped");
       expect(driverMock.getNetworkKeyInfo).toHaveBeenCalled();
       expect(driverMock.getGlobalTcLinkKey).not.toHaveBeenCalled();
-      expect(driverMock.blz.leaveNetwork).not.toHaveBeenCalled();
+      expect(driverMock.leaveNetwork).not.toHaveBeenCalled();
       await change.catch(() => {});
     });
 
@@ -1313,7 +1345,10 @@ describe("BLZ Adapter", () => {
     });
 
     it("should create backup", async () => {
-      driverMock.blz.isInitialized.mockReturnValue(true);
+      driverMock.isInitialized.mockReturnValue(true);
+      driverMock.getBlz.mockImplementation(() => {
+        throw new Error("transport leaked");
+      });
       driverMock.backupMan.createBackup.mockResolvedValue({});
 
       await adapter.backup();

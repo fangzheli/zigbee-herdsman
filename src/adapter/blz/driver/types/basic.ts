@@ -1,4 +1,19 @@
 /* istanbul ignore file */
+export function serializeBufferSegments(segments: Buffer[]): Buffer {
+    let length = 0;
+    for (const segment of segments) {
+        length += segment.length;
+    }
+
+    const result = Buffer.allocUnsafe(length);
+    let offset = 0;
+    for (const segment of segments) {
+        offset += segment.copy(result, offset);
+    }
+
+    return result;
+}
+
 export class int_t {
     static _signed = true;
 
@@ -143,12 +158,11 @@ export class uint64_t extends uint_t {
 export class LVBytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        if (Buffer.isBuffer(value)) {
-            const ret = Buffer.alloc(1);
-            ret.writeUInt8(value.length, 0);
-            return Buffer.concat([ret, value]);
-        }
-        return Buffer.from([value.length].concat(value));
+        const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
+        const result = Buffer.allocUnsafe(1 + bytes.length);
+        result.writeUInt8(bytes.length, 0);
+        bytes.copy(result, 1);
+        return result;
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -222,8 +236,11 @@ export function LVList(itemtype: any): List {
 export class WordList extends List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        const data = value.map((i) => Buffer.from(uint16_t.serialize(uint16_t, i)));
-        return Buffer.concat(data);
+        const result = Buffer.allocUnsafe(value.length * 2);
+        for (let i = 0; i < value.length; i++) {
+            result.writeUInt16LE(value[i], i * 2);
+        }
+        return result;
     }
 }
 

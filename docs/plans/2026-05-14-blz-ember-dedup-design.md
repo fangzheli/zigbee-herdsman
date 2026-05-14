@@ -539,15 +539,19 @@ Future BLZ refactors should follow these rules:
 - Added a high-level `Driver.isInitialized()` API and moved BLZ adapter permit
   join checks off the public `driver.blz` transport field, reducing adapter
   coupling to driver internals.
+- Moved coordinator version reads, backup initialization checks, channel-change
+  leave, and channel-change re-form calls behind high-level `Driver` APIs, so
+  the BLZ adapter and backup collector no longer reach directly into the lower
+  BLZ transport.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.
 - Added a shared preallocating BLZ frame-field serializer for command and ZDO
   frame data classes, replacing per-frame `Buffer.concat(result)` in the BLZ
   command serialization hot path.
-- Avoided `Buffer.concat()` in the parser's common single-chunk path; fragmented
-  tails still concatenate only when there is previous partial frame data to
-  merge.
+- Avoided `Buffer.concat()` in both common and fragmented parser paths, and
+  replaced the remaining BLZ type/schema/struct serialization concatenations
+  with preallocated buffer copies.
 
 ## Next Steps
 

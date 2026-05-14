@@ -22,6 +22,7 @@ describe('BLZ Adapter Backup', () => {
             execCommand: ReturnType<typeof vi.fn>;
         };
         getBlz: ReturnType<typeof vi.fn>;
+        getCoordinatorVersion: ReturnType<typeof vi.fn>;
         getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
         getNetworkKeyInfo: ReturnType<typeof vi.fn>;
         getCurrentNetworkParameters: ReturnType<typeof vi.fn>;
@@ -38,12 +39,17 @@ describe('BLZ Adapter Backup', () => {
                 execCommand: vi.fn(),
             },
             getBlz: vi.fn(),
+            getCoordinatorVersion: vi.fn(),
             getGlobalTcLinkKey: vi.fn(),
             getNetworkKeyInfo: vi.fn(),
             getCurrentNetworkParameters: vi.fn(),
             getMacAddress: vi.fn(),
         };
         driverMock.getBlz.mockReturnValue(driverMock.blz);
+        driverMock.getCoordinatorVersion.mockReturnValue({
+            type: 'BLZ v1',
+            meta: driverMock.blz.version,
+        });
 
         vi.mocked(Driver).mockImplementation(() => driverMock as any);
         backup = new BLZAdapterBackup(driverMock as any, backupPath);
@@ -55,6 +61,9 @@ describe('BLZ Adapter Backup', () => {
             driverMock.blz.execCommand.mockRejectedValue(
                 new Error('backup should use driver command wrappers'),
             );
+            driverMock.getBlz.mockImplementation(() => {
+                throw new Error('transport leaked');
+            });
             driverMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
                 extPanId: BigInt('0x0102030405060708'),

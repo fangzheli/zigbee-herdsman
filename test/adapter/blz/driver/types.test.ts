@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {
     int8s,
     int16s,
@@ -15,6 +15,7 @@ import {
     WordList,
     int_t,
 } from '../../../../src/adapter/blz/driver/types/basic';
+import {serialize as serializeSchema} from '../../../../src/adapter/blz/driver/types';
 import {
     BlzNodeId,
     BlzEUI64,
@@ -26,6 +27,20 @@ import {
     BlzApsOption,
     BlzZDOCmd,
 } from '../../../../src/adapter/blz/driver/types/named';
+import {BlzApsFrame, BlzMultiAddress} from '../../../../src/adapter/blz/driver/types/struct';
+
+function expectWithoutBufferConcat(action: () => Buffer, expected: Buffer): void {
+    const concatSpy = vi.spyOn(Buffer, 'concat').mockImplementation(() => {
+        throw new Error('Buffer.concat used');
+    });
+
+    try {
+        expect(action()).toEqual(expected);
+        expect(concatSpy).not.toHaveBeenCalled();
+    } finally {
+        concatSpy.mockRestore();
+    }
+}
 
 describe('BLZ Types', () => {
     describe('Basic Integer Types', () => {
@@ -170,6 +185,13 @@ describe('BLZ Types', () => {
             expect(result).toEqual(Buffer.from([0x02, 0xAB, 0xCD]));
         });
 
+        it('should serialize Buffer without Buffer.concat', () => {
+            expectWithoutBufferConcat(
+                () => LVBytes.serialize(LVBytes, Buffer.from([0xAB, 0xCD])),
+                Buffer.from([0x02, 0xAB, 0xCD]),
+            );
+        });
+
         it('should deserialize length-prefixed bytes', () => {
             const [value, remaining] = LVBytes.deserialize(LVBytes, Buffer.from([0x02, 0xAB, 0xCD, 0xEF]));
             expect(value).toEqual(Buffer.from([0xAB, 0xCD]));
@@ -224,6 +246,48 @@ describe('BLZ Types', () => {
         it('should serialize list of uint16', () => {
             const result = WordList.serialize(WordList, [0x1234, 0x5678]);
             expect(result).toEqual(Buffer.from([0x34, 0x12, 0x78, 0x56]));
+        });
+
+        it('should serialize without Buffer.concat', () => {
+            expectWithoutBufferConcat(
+                () => WordList.serialize(WordList, [0x1234, 0x5678]),
+                Buffer.from([0x34, 0x12, 0x78, 0x56]),
+            );
+        });
+    });
+
+    describe('Structured serialization', () => {
+        it('should serialize schemas without Buffer.concat', () => {
+            expectWithoutBufferConcat(
+                () => serializeSchema([0x1234, 0x56], [uint16_t, uint8_t]),
+                Buffer.from([0x34, 0x12, 0x56]),
+            );
+        });
+
+        it('should serialize structs without Buffer.concat', () => {
+            const frame = new BlzApsFrame();
+            frame.profileId = 0x0104;
+            frame.clusterId = 0x0006;
+            frame.sourceEndpoint = 1;
+            frame.destinationEndpoint = 2;
+            frame.options = BlzApsOption.ZB_APS_TX_OPTIONS_NONE;
+            frame.groupId = 0x1234;
+            frame.sequence = 0x77;
+
+            expectWithoutBufferConcat(
+                () => BlzApsFrame.serialize(BlzApsFrame, frame),
+                Buffer.from([0x04, 0x01, 0x06, 0x00, 0x01, 0x02, 0x00, 0x00, 0x34, 0x12, 0x77]),
+            );
+        });
+
+        it('should serialize multi-address structs without Buffer.concat', () => {
+            expectWithoutBufferConcat(
+                () => BlzMultiAddress.serialize(BlzMultiAddress, {
+                    addrmode: 1,
+                    nwk: 0x1234,
+                }),
+                Buffer.from([0x01, 0x34, 0x12]),
+            );
         });
     });
 

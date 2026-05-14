@@ -139,6 +139,28 @@ describe('BLZ Parser', () => {
 
             expect(parsedFrame.frameId).toBe(0x0010);
         });
+
+        it('should parse fragmented frames without Buffer.concat allocation churn', async () => {
+            const frame = createCompleteFrame(0x00, 0x01, 0x0010);
+            const mid = Math.floor(frame.length / 2);
+            const part1 = frame.subarray(0, mid);
+            const part2 = frame.subarray(mid);
+            const concatSpy = vi.spyOn(Buffer, 'concat').mockImplementation(() => {
+                throw new Error('Buffer.concat used');
+            });
+
+            try {
+                const parsePromise = getParsedFrame(parser);
+                parser._transform(part1, 'binary', () => {});
+                parser._transform(part2, 'binary', () => {});
+                const parsedFrame = await parsePromise;
+
+                expect(parsedFrame.frameId).toBe(0x0010);
+                expect(concatSpy).not.toHaveBeenCalled();
+            } finally {
+                concatSpy.mockRestore();
+            }
+        });
     });
 
     describe('Byte unstuffing', () => {

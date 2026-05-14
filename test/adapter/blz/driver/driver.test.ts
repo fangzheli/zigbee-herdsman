@@ -81,6 +81,39 @@ describe("BLZ high-level driver lifecycle", () => {
         (driver as unknown as {ieee: BlzEUI64}).ieee = new BlzEUI64("0102030405060708");
     }
 
+    it("reports coordinator version from the active BLZ transport", () => {
+        const version = {product: 7, major: "1", minor: "2", patch: "3"};
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {version} as unknown as Driver["blz"];
+
+        expect(driver.getCoordinatorVersion()).toEqual({
+            type: "BLZ v7",
+            meta: version,
+        });
+    });
+
+    it("routes leave network through the driver command operation path", async () => {
+        const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {leaveNetwork} as unknown as Driver["blz"];
+
+        await expect(driver.leaveNetwork()).resolves.toBe(BlzStatus.SUCCESS);
+
+        expect(leaveNetwork).toHaveBeenCalledTimes(1);
+    });
+
+    it("routes explicit form network through the driver command operation path", async () => {
+        const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {formNetwork} as unknown as Driver["blz"];
+
+        await expect(
+            driver.formNetworkWithParameters(0x0102030405060708n, 0x1234, 15),
+        ).resolves.toBe(BlzStatus.SUCCESS);
+
+        expect(formNetwork).toHaveBeenCalledWith(0x0102030405060708n, 0x1234, 15);
+    });
+
     it("clears pending waiters even when BLZ close rejects", async () => {
         vi.useFakeTimers();
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");

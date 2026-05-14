@@ -24,7 +24,7 @@ export class BLZAdapterBackup {
   ): Promise<Models.Backup> {
     logger.debug("creating backup", NS);
     assertActive();
-    const version: number = this.driver.getBlz().version.product;
+    const version = Number(this.driver.getCoordinatorVersion().meta.product);
     const linkResult = await this.driver.getGlobalTcLinkKey();
     assertActive();
     const netParams = await this.driver.getCurrentNetworkParameters();

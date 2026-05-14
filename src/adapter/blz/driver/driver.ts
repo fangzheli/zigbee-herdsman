@@ -129,6 +129,15 @@ export class Driver extends EventEmitter {
     return this.blz?.isInitialized() ?? false;
   }
 
+  public getCoordinatorVersion(): TsType.CoordinatorVersion {
+    const version = this.getBlz().version;
+
+    return {
+      type: `BLZ v${version.product}`,
+      meta: version,
+    };
+  }
+
   public getNetworkParametersSnapshot(): BlzNetworkParameters {
     if (!this.networkParams) {
       throw new Error("BLZ network parameters are not available");
@@ -1203,6 +1212,20 @@ export class Driver extends EventEmitter {
       blz.execCommand("permitJoining", {
         duration: seconds,
       }),
+    );
+  }
+
+  public async leaveNetwork(): Promise<BlzStatus> {
+    return await this.runBlzCommandOperation((blz) => blz.leaveNetwork());
+  }
+
+  public async formNetworkWithParameters(
+    extendedPanId: bigint,
+    panId: number,
+    channel: number,
+  ): Promise<BlzStatus> {
+    return await this.runBlzCommandOperation((blz) =>
+      blz.formNetwork(extendedPanId, panId, channel),
     );
   }
 

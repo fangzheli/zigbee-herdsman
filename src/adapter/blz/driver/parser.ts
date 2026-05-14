@@ -22,7 +22,7 @@ export class Parser extends stream.Transform {
 
     // Append the new chunk to the tail for processing
     this.tail.push(chunk);
-    let buffer = this.tail.length === 1 ? this.tail[0] : Buffer.concat(this.tail);
+    let buffer = this.tail.length === 1 ? this.tail[0] : joinBuffers(this.tail);
 
     let startPlace = buffer.indexOf(consts.START);
     let endPlace = buffer.indexOf(consts.END, startPlace + 1);
@@ -74,4 +74,19 @@ export class Parser extends stream.Transform {
     // Clear tail
     this.tail.length = 0;
   }
+}
+
+function joinBuffers(buffers: Buffer[]): Buffer {
+  let length = 0;
+  for (const buffer of buffers) {
+    length += buffer.length;
+  }
+
+  const result = Buffer.allocUnsafe(length);
+  let offset = 0;
+  for (const buffer of buffers) {
+    offset += buffer.copy(result, offset);
+  }
+
+  return result;
 }

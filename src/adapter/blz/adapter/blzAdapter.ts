@@ -363,12 +363,7 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getCoordinatorVersion(): Promise<CoordinatorVersion> {
-    const blz = this.driver.getBlz();
-
-    return {
-      type: `BLZ v${blz.version.product}`,
-      meta: blz.version,
-    };
+    return this.driver.getCoordinatorVersion();
   }
 
   public async addInstallCode(ieeeAddress: string, key: Buffer): Promise<void> {
@@ -648,9 +643,8 @@ export class BLZAdapter extends Adapter {
 
     // 4. Leave current network
     logger.info(`[BLZ] Leaving current network...`, NS);
-    const blz = this.driver.getBlz();
     const leaveStatus = await this.runOperationWhileRunning(
-      () => blz.leaveNetwork(),
+      () => this.driver.leaveNetwork(),
       generation,
     );
     if (leaveStatus !== BlzStatus.SUCCESS) {
@@ -684,7 +678,12 @@ export class BLZAdapter extends Adapter {
     logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
     const extPanId = BigInt(currentParams.extendedPanID);
     const formStatus = await this.runOperationWhileRunning(
-      () => blz.formNetwork(extPanId, currentParams.panID, newChannel),
+      () =>
+        this.driver.formNetworkWithParameters(
+          extPanId,
+          currentParams.panID,
+          newChannel,
+        ),
       generation,
     );
 
@@ -949,10 +948,9 @@ export class BLZAdapter extends Adapter {
   public async backup(): Promise<Models.Backup> {
     const generation = this.stopGeneration;
     this.throwIfStopped(generation);
-    const blz = this.driver.getBlz();
 
     assert(
-      blz.isInitialized(),
+      this.driver.isInitialized(),
       "Cannot make backup when blz is not initialized",
     );
     return await this.runOperationWhileRunning(
