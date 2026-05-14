@@ -258,6 +258,25 @@ describe("BLZ Driver", () => {
 
       expect(reset).not.toHaveBeenCalled();
     });
+
+    it("should reset watchdog failures after a successful reconnect", async () => {
+      const reset = vi.fn();
+      const watchdog = (
+        blz as unknown as {watchdogHandler: () => Promise<void>}
+      ).watchdogHandler.bind(blz);
+      vi.spyOn(blz, "getVersion").mockRejectedValue(new Error("heartbeat miss"));
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+
+      blz.on("reset", reset);
+
+      await watchdog();
+      await watchdog();
+      await blz.connect(serialPortOptions);
+      await watchdog();
+
+      expect(reset).not.toHaveBeenCalled();
+    });
   });
 
   describe("Value operations", () => {

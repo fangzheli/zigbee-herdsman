@@ -360,6 +360,7 @@ export class Blz extends EventEmitter {
     }
 
     this.inResetingProcess = false;
+    this.failures = 0;
     // Remove any previous listener to prevent stacking on reconnect
     this.serialDriver.removeAllListeners("reset");
     this.serialDriver.on("reset", this.onSerialReset.bind(this));

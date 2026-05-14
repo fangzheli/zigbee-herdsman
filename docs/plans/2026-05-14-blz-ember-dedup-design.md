@@ -271,6 +271,9 @@ Future BLZ refactors should follow these rules:
 - Removed the dead `dataRequestAttempt` parameter from BLZ endpoint ZCL sends
   and changed the debug log to report only the active response retry attempt and
   queue depth.
+- Reset the BLZ watchdog failure counter after a successful reconnect, so stale
+  heartbeat misses from a previous connection cannot immediately trigger a reset
+  on the new connection.
 
 ## Next Steps
 
