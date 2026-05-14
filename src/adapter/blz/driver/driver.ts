@@ -214,7 +214,11 @@ export class Driver extends EventEmitter {
 
     const snapshot = Object.assign(new BlzNetworkParameters(), this.networkParams);
     if (Buffer.isBuffer(this.networkParams.extendedPanId)) {
-      snapshot.extendedPanId = Buffer.from(this.networkParams.extendedPanId);
+      snapshot.extendedPanId = fixedBufferFromBytes(
+        this.networkParams.extendedPanId,
+        8,
+        "Network extended PAN ID",
+      );
     }
 
     return snapshot;

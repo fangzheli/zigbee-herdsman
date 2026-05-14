@@ -342,13 +342,31 @@ describe("BLZ high-level driver lifecycle", () => {
         snapshot.nwkUpdateId = 10;
         snapshot.extendedPanId[0] = 0xff;
 
-        const freshSnapshot = driver.getNetworkParametersSnapshot();
+        const sourceExtendedPanId = (
+            driver as unknown as {networkParams: BlzNetworkParameters}
+        ).networkParams.extendedPanId;
+        const originalFrom = Buffer.from;
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+            if (value === sourceExtendedPanId) {
+                throw new Error("snapshot extended PAN ID clone used");
+            }
 
-        expect(freshSnapshot).not.toBe(snapshot);
-        expect(freshSnapshot.Channel).toBe(11);
-        expect(freshSnapshot.nwkUpdateId).toBe(0);
-        expect(freshSnapshot.channels).toBe(2 ** 11);
-        expect(freshSnapshot.extendedPanId).toEqual(Buffer.from("0102030405060708", "hex"));
+            return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+        }) as typeof Buffer.from);
+
+        try {
+            const freshSnapshot = driver.getNetworkParametersSnapshot();
+
+            expect(freshSnapshot).not.toBe(snapshot);
+            expect(freshSnapshot.Channel).toBe(11);
+            expect(freshSnapshot.nwkUpdateId).toBe(0);
+            expect(freshSnapshot.channels).toBe(2 ** 11);
+            expect(freshSnapshot.extendedPanId).toEqual(Buffer.of(1, 2, 3, 4, 5, 6, 7, 8));
+            expect(freshSnapshot.extendedPanId).not.toBe(sourceExtendedPanId);
+            expect(fromSpy).not.toHaveBeenCalledWith(sourceExtendedPanId);
+        } finally {
+            fromSpy.mockRestore();
+        }
     });
 
     it("keeps cached channel mask aligned when network parameters are updated", () => {

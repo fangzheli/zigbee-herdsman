@@ -780,6 +780,9 @@ Future BLZ refactors should follow these rules:
 - Reworked ordinary ZDO payload TSN injection to copy caller-owned buffers with
   one `allocUnsafe()` plus `copy()`, preserving the immutability boundary
   without `Buffer.from(payload)` cloning.
+- Reworked network-parameter snapshot extended-PAN-ID copying to use the
+  driver fixed-byte helper, preserving the defensive snapshot boundary without
+  `Buffer.from()` cloning.
 
 ## Next Steps
 
