@@ -656,6 +656,9 @@ Future BLZ refactors should follow these rules:
   a clean non-match instead of throwing from the waiter validator.
 - Removed the UART serial-port constructor `@ts-ignore` by preserving literal
   serial option types with `as const`.
+- Aligned high-level `Driver.stop(true)` with the lower BLZ/UART close
+  semantics: explicit close requests now emit one driver `close` event, even
+  when they join an in-flight silent stop.
 
 ## Next Steps
 

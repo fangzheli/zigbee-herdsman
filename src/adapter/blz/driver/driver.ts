@@ -88,6 +88,7 @@ export class Driver extends EventEmitter {
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
   private stopPromise?: Promise<void>;
+  private emitCloseWhenStopCompletes = false;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestOperations = new CancellableOperation();
@@ -305,6 +306,10 @@ export class Driver extends EventEmitter {
     emitClose: boolean = true,
     internalReset: boolean = false,
   ): Promise<void> {
+    if (emitClose) {
+      this.emitCloseWhenStopCompletes = true;
+    }
+
     this.prepareStop(internalReset);
 
     if (this.stopPromise) {
@@ -315,6 +320,7 @@ export class Driver extends EventEmitter {
     const stopPromise = this.performStop(emitClose).finally(() => {
       if (this.stopPromise === stopPromise) {
         this.stopPromise = undefined;
+        this.emitCloseWhenStopCompletes = false;
       }
     });
     this.stopPromise = stopPromise;
@@ -353,6 +359,9 @@ export class Driver extends EventEmitter {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
       this.waitress.clear();
       this.clearCoordinatorAndNetworkState();
+      if (this.emitCloseWhenStopCompletes) {
+        this.emit("close");
+      }
     }
   }
 

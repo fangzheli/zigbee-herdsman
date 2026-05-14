@@ -407,6 +407,23 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("emits close when explicitly stopped with emitClose", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const callback = vi.fn();
+        const blzMock = {
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        setDriverBlz(driver, blzMock);
+        driver.on("close", callback);
+
+        await driver.stop(true);
+
+        expect(callback).toHaveBeenCalledTimes(1);
+        expect(blzMock.close).toHaveBeenCalledWith(true);
+    });
+
     it("coalesces concurrent stop calls against the same BLZ instance", async () => {
         let releaseClose: (() => void) | undefined;
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
@@ -431,6 +448,35 @@ describe("BLZ high-level driver lifecycle", () => {
         releaseClose?.();
         await Promise.all([firstStop, secondStop]);
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
+    it("emits close when a concurrent explicit stop joins an in-flight silent stop", async () => {
+        let releaseClose: (() => void) | undefined;
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const callback = vi.fn();
+        const blzMock = {
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockReturnValue(
+                new Promise<void>((resolve) => {
+                    releaseClose = resolve;
+                }),
+            ),
+        };
+        setDriverBlz(driver, blzMock);
+        driver.on("close", callback);
+
+        const firstStop = driver.stop(false);
+        await Promise.resolve();
+        const secondStop = driver.stop(true);
+        await Promise.resolve();
+
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+
+        releaseClose?.();
+        await Promise.all([firstStop, secondStop]);
+
+        expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it("detaches owned BLZ listeners without broad listener cleanup when stopping", async () => {
