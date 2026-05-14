@@ -399,6 +399,31 @@ describe("BLZ Serial Driver", () => {
         vi.useRealTimers();
       }
     });
+
+    it("should reject pending send waiters when resetting", async () => {
+      const data = Buffer.from([1, 2, 3]);
+      const frameId = 0x0000;
+      writerMock.sendData.mockReturnValue(undefined);
+
+      const send = driver.sendDATA(data, frameId, 0);
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await driver.reset();
+      const observed = await Promise.race([
+        sendResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](
+        createFrame(frameId, 0x01, 0x00),
+      );
+      await send.catch(() => {});
+
+      expect(observed).toBe("rejected:Failed to send data after 0 retries");
+    });
   });
 
   describe("Error handling", () => {

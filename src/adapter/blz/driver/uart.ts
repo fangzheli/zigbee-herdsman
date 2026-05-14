@@ -247,6 +247,7 @@ export class SerialDriver extends EventEmitter {
   async reset(): Promise<void> {
     this.parser.reset();
     this.queue.clear();
+    this.waitress.clear();
     this.sendSeq = 0;
     this.recvSeq = 0;
 

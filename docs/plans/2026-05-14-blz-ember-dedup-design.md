@@ -225,6 +225,9 @@ Future BLZ refactors should follow these rules:
 - Cleared the BLZ adapter-level command queue during `BLZAdapter.stop()`, so
   commands that have not started yet are rejected instead of staying pending or
   running after shutdown.
+- Cleared UART-level waiters during `SerialDriver.reset()`, so an in-flight
+  `sendDATA()` does not remain pending across a reset until its normal timeout
+  and retry path fires.
 
 ## Next Steps
 
