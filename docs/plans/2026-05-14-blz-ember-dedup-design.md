@@ -322,6 +322,9 @@ Future BLZ refactors should follow these rules:
 - Reused the adapter cancellable wait path for group and broadcast ZCL settle
   delays, so `BLZAdapter.stop()` rejects active settle waits instead of leaving
   queue work pending until the fixed delay expires.
+- Added cancellable UART send retry waits, so close/reset/port-close cleanup
+  interrupts a `sendDATA()` retry sleep instead of leaving the send promise
+  pending until the one-second retry delay expires.
 
 ## Next Steps
 
