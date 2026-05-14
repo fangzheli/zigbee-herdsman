@@ -199,6 +199,9 @@ Future BLZ refactors should follow these rules:
 - Closed an already-initialized serial driver before a successful `Blz.connect()`
   reconnect attempt, preventing reconnects from orphaning the previous serial
   port while replacing watchdog state.
+- Cleared the old watchdog, queue, and BLZ waiters before reconnect pre-close,
+  so a failure while closing the existing serial driver cannot leave stale
+  timers or pending request state alive.
 
 ## Next Steps
 

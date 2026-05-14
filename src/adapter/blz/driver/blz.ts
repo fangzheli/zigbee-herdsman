@@ -307,6 +307,9 @@ export class Blz extends EventEmitter {
     this.attachSerialDriverEventBridge();
 
     if (this.serialDriver.isInitialized()) {
+      this.clearWatchdogTimer();
+      this.queue.clear();
+      this.waitress.clear();
       await this.serialDriver.close(false);
     }
 

@@ -183,6 +183,21 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledTimes(1);
     });
 
+    it("should clear the previous watchdog timer when closing the existing serial driver fails", async () => {
+      const clearIntervalSpy = vi.spyOn(global, "clearInterval");
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true);
+      serialDriverMock.close.mockRejectedValue(new Error("close failed"));
+
+      await blz.connect(serialPortOptions);
+
+      await expect(blz.connect(serialPortOptions)).rejects.toThrow("close failed");
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+    });
+
     it("should clear the previous watchdog timer when reconnect attempts fail", async () => {
       const clearIntervalSpy = vi.spyOn(global, "clearInterval");
       serialDriverMock.connect.mockResolvedValueOnce(undefined);
