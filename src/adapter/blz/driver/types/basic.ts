@@ -25,6 +25,23 @@ export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize:
     return result;
 }
 
+function copyBytes(value: ArrayLike<number>, target: Buffer, offset = 0): void {
+    if (Buffer.isBuffer(value)) {
+        value.copy(target, offset);
+        return;
+    }
+
+    for (let i = 0; i < value.length; i++) {
+        target[offset + i] = value[i] & 0xff;
+    }
+}
+
+function bufferFromBytes(value: ArrayLike<number>): Buffer {
+    const result = Buffer.allocUnsafe(value.length);
+    copyBytes(value, result);
+    return result;
+}
+
 export class int_t {
     static _signed = true;
 
@@ -171,14 +188,7 @@ export class LVBytes {
     static serialize(cls: any, value: any[]): Buffer {
         const result = Buffer.allocUnsafe(1 + value.length);
         result.writeUInt8(value.length, 0);
-
-        if (Buffer.isBuffer(value)) {
-            value.copy(result, 1);
-        } else {
-            for (let i = 0; i < value.length; i++) {
-                result[i + 1] = value[i] & 0xff;
-            }
-        }
+        copyBytes(value, result, 1);
 
         return result;
     }
@@ -318,7 +328,7 @@ export function fixed_list(
 export class Bytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        return Buffer.isBuffer(value) ? value : Buffer.from(value);
+        return Buffer.isBuffer(value) ? value : bufferFromBytes(value);
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/

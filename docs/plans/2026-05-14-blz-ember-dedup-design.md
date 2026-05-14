@@ -774,6 +774,9 @@ Future BLZ refactors should follow these rules:
 - Reworked length-prefixed byte serialization to fill array-like inputs
   directly into the prefixed output buffer, avoiding a temporary
   `Buffer.from()` clone before the final copy.
+- Reworked raw byte serialization to allocate and fill array-like inputs
+  directly through the same local byte-copy helper, keeping Buffer inputs as
+  pass-through segments for the enclosing frame serializer.
 
 ## Next Steps
 
