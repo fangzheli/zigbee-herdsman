@@ -88,11 +88,11 @@ export class Driver extends EventEmitter {
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
-  private cancelPendingResetForce?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestOperations = new CancellableOperation();
   private readonly startupOperations = new CancellableOperation();
+  private readonly resetForceOperations = new CancellableOperation();
   private readonly requestRetryDelay = new CancellableDelay();
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
@@ -186,25 +186,11 @@ export class Driver extends EventEmitter {
       if (resettingBlz) {
         resettingBlz.setResetingProcess(true);
         resetStateMarked = true;
-        let rejectResetForce: ((error: Error) => void) | undefined;
-        const resetForceCancelled = new Promise<never>((_, reject): void => {
-          rejectResetForce = reject;
-          this.cancelPendingResetForce = reject;
-        });
-
-        try {
-          await Promise.race([
-            resettingBlz.forceReset(),
-            resetForceCancelled,
-          ]);
-        } finally {
-          if (
-            rejectResetForce &&
-            this.cancelPendingResetForce === rejectResetForce
-          ) {
-            this.cancelPendingResetForce = undefined;
-          }
-        }
+        await this.resetForceOperations.run(
+          () => resettingBlz.forceReset(),
+          () => this.stopGeneration === resetStopGeneration,
+          () => new Error("Driver stopped"),
+        );
       }
 
       if (await this.waitForResetDelay(2000, resetStopGeneration)) {
@@ -272,7 +258,7 @@ export class Driver extends EventEmitter {
       this.stopGeneration += 1;
       this.resetDelay.cancel();
       this.startupDelay.cancel();
-      this.cancelPendingResetForce?.(new Error("Driver stopped"));
+      this.resetForceOperations.cancel(new Error("Driver stopped"));
       this.startupOperations.cancel(new Error("Driver stopped"));
     }
 

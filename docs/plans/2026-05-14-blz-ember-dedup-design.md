@@ -445,6 +445,9 @@ Future BLZ refactors should follow these rules:
 - Reused `CancellableOperation` for BLZ transport connect operations,
   replacing the ad-hoc connect close hook while preserving connect retry,
   reconnect pre-close, and reset-during-connect behavior.
+- Reused `CancellableOperation` for high-level driver reset-force operations,
+  replacing the ad-hoc reset-force reject hook while preserving stop-cancelled
+  reset behavior.
 
 ## Next Steps
 
