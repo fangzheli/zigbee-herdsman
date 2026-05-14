@@ -171,21 +171,23 @@ export class Driver extends EventEmitter {
 
   private async performReset(): Promise<void> {
     const resetStopGeneration = this.stopGeneration;
+    const resettingBlz = this.blz;
+    let resetStateMarked = false;
     logger.debug(`Reset connection.`, NS);
 
     try {
       // logger.debug(`Ready to reset in 10 seconds`, NS);
       // await wait(10000);
-      if (this.blz) {
-        this.blz.setResetingProcess(true);
-        await this.blz.forceReset();
+      if (resettingBlz) {
+        resettingBlz.setResetingProcess(true);
+        resetStateMarked = true;
+        await resettingBlz.forceReset();
       }
 
-      if (!(await this.waitForResetDelay(2000, resetStopGeneration))) {
-        return;
+      if (await this.waitForResetDelay(2000, resetStopGeneration)) {
+        // don't emit 'close' on stop since we don't want this to bubble back up as 'disconnected' to the controller.
+        await this.stop(false, true);
       }
-      // don't emit 'close' on stop since we don't want this to bubble back up as 'disconnected' to the controller.
-      await this.stop(false, true);
     } catch (err) {
       logger.debug(`Stop error ${err}`, NS);
     }
@@ -204,6 +206,9 @@ export class Driver extends EventEmitter {
       // Clear reset state after successful startup
       if (this.blz) {
         this.blz.setResetingProcess(false);
+        if (this.blz === resettingBlz) {
+          resetStateMarked = false;
+        }
       }
     } catch (err) {
       logger.debug(`Reset error ${err}`, NS);
@@ -214,6 +219,10 @@ export class Driver extends EventEmitter {
         await this.stop();
       } catch (stopErr) {
         logger.debug(`Failed to stop after failed reset ${stopErr}`, NS);
+      }
+    } finally {
+      if (resetStateMarked) {
+        resettingBlz?.setResetingProcess(false);
       }
     }
   }

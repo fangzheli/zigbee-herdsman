@@ -224,6 +224,28 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(startup).not.toHaveBeenCalled();
     });
 
+    it("clears BLZ reset state when stop interrupts an in-flight reset", async () => {
+        vi.useFakeTimers();
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            setResetingProcess: vi.fn(),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        driver.blz = blzMock as unknown as Driver["blz"];
+
+        const reset = driver.reset();
+        await vi.advanceTimersByTimeAsync(1000);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        await reset;
+
+        expect(blzMock.setResetingProcess).toHaveBeenCalledWith(true);
+        expect(blzMock.setResetingProcess).toHaveBeenCalledWith(false);
+    });
+
     it("returns false when multicast APS send returns a non-success status", async () => {
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);
         const driver = makeDriverWithApsSender(sendApsData);

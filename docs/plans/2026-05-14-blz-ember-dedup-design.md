@@ -345,6 +345,9 @@ Future BLZ refactors should follow these rules:
 - Added the same adapter stop-generation guard to ZDO sends, preventing an
   in-flight lower request from resolving after `BLZAdapter.stop()` and running
   follow-up work such as synthetic leave cache cleanup/events.
+- Restored the BLZ transport reset-state flag when a high-level driver reset is
+  cancelled by external stop, so the old transport object does not remain marked
+  as resetting after the reset flow exits early.
 
 ## Next Steps
 
