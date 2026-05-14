@@ -213,4 +213,30 @@ describe("BLZ high-level driver lifecycle", () => {
             data,
         );
     });
+
+    it("updates reverse address cache after resolving a request destination by EUI64", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const execCommand = vi.fn().mockResolvedValue({nodeId: 0x7788});
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const incomingMessage = vi.fn();
+        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        driver.on("incomingMessage", incomingMessage);
+        const apsFrame = makeApsFrame();
+        const data = Buffer.from([0x0a, 0x0b]);
+
+        await expect(driver.request(new BlzEUI64("0000000000007788"), apsFrame, data)).resolves.toBe(true);
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingApsFrame(0x7788),
+        );
+
+        expect(incomingMessage).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                sender: 0x7788,
+                senderEui64: expect.objectContaining({
+                    value: Buffer.from("0000000000007788", "hex"),
+                }),
+            }),
+        );
+    });
 });

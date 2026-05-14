@@ -153,6 +153,8 @@ Future BLZ refactors should follow these rules:
   one shared cache path; leave removes both directions so incoming APS messages
   can carry `senderEui64` without stale entries. Re-caching a node ID with a new
   EUI64 also removes the old EUI64 mapping to avoid stale sends and cache growth.
+  Request-time EUI64-to-node resolution now uses the same cache helper so
+  subsequent incoming APS messages can include `senderEui64`.
 
 ## Next Steps
 

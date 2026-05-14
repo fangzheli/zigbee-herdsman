@@ -618,7 +618,7 @@ export class Driver extends EventEmitter {
               await this.blz.execCommand("getNodeIdByEui64", { eui64: eui64 })
             ).nodeId;
             if (nodeId && nodeId !== 0xffff) {
-              this.eui64ToNodeId.set(this.normalizeIeee(strEui64), nodeId);
+              this.cacheNodeIeee(nodeId, eui64);
             } else {
               throw new Error("Unknown EUI64:" + strEui64);
             }
