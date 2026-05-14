@@ -708,6 +708,8 @@ Future BLZ refactors should follow these rules:
 - Reworked `BlzEUI64.deserialize()` to write reversed bytes directly into the
   result buffer, avoiding the intermediate fixed-list array-to-Buffer copy on
   inbound EUI64 parsing.
+- Reused a shared empty buffer for raw `Bytes.deserialize()` remainders,
+  avoiding per-call empty-buffer allocation on terminal raw byte fields.
 
 ## Next Steps
 

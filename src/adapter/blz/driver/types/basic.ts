@@ -1,4 +1,6 @@
 /* istanbul ignore file */
+const EMPTY_BUFFER = Buffer.alloc(0);
+
 export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize: (item: T, index: number) => Buffer): Buffer {
     const segments: Buffer[] = new Array(items.length);
     let length = 0;
@@ -310,7 +312,7 @@ export class Bytes {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
-        return [data, Buffer.alloc(0)];
+        return [data, EMPTY_BUFFER];
     }
 }
 

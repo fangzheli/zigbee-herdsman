@@ -264,6 +264,23 @@ describe('BLZ Types', () => {
             expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03]));
             expect(remaining).toEqual(Buffer.alloc(0));
         });
+
+        it('should deserialize terminal bytes without allocating a new empty remainder', () => {
+            const data = Buffer.from([0x01, 0x02, 0x03]);
+            const allocSpy = vi.spyOn(Buffer, 'alloc').mockImplementation(() => {
+                throw new Error('Buffer.alloc used');
+            });
+
+            try {
+                const [value, remaining] = Bytes.deserialize(Bytes, data);
+
+                expect(value).toBe(data);
+                expect(remaining.length).toBe(0);
+                expect(allocSpy).not.toHaveBeenCalled();
+            } finally {
+                allocSpy.mockRestore();
+            }
+        });
     });
 
     describe('Fixed16Bytes', () => {
