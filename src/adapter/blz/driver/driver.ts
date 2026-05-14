@@ -2,6 +2,7 @@
 
 import { EventEmitter } from "events";
 import equals from "fast-deep-equal/es6";
+import type * as Models from "../../../models";
 import { Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
@@ -100,7 +101,7 @@ export class Driver extends EventEmitter {
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
   private readonly handleFrameHandler = this.handleFrame.bind(this);
   private serialOpt: TsType.SerialPortOptions;
-  public backupMan: BLZAdapterBackup;
+  private readonly backupMan: BLZAdapterBackup;
 
   constructor(
     serialOpt: TsType.SerialPortOptions,
@@ -127,6 +128,12 @@ export class Driver extends EventEmitter {
 
   public isInitialized(): boolean {
     return this.blz?.isInitialized() ?? false;
+  }
+
+  public async createBackup(
+    assertActive: () => void = () => {},
+  ): Promise<Models.Backup> {
+    return await this.backupMan.createBackup(assertActive);
   }
 
   public getCoordinatorVersion(): TsType.CoordinatorVersion {

@@ -31,6 +31,7 @@ describe("BLZ Adapter", () => {
     off: ReturnType<typeof vi.fn>;
     getBlz: ReturnType<typeof vi.fn>;
     isInitialized: ReturnType<typeof vi.fn>;
+    createBackup: ReturnType<typeof vi.fn>;
     getCoordinatorVersion: ReturnType<typeof vi.fn>;
     getCoordinatorIeee: ReturnType<typeof vi.fn>;
     getNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
@@ -49,9 +50,6 @@ describe("BLZ Adapter", () => {
       leaveNetwork: ReturnType<typeof vi.fn>;
       formNetwork: ReturnType<typeof vi.fn>;
       version: { product: number };
-    };
-    backupMan: {
-      createBackup: ReturnType<typeof vi.fn>;
     };
     setNode: ReturnType<typeof vi.fn>;
     getNetworkKeyInfo: ReturnType<typeof vi.fn>;
@@ -94,6 +92,7 @@ describe("BLZ Adapter", () => {
       off: vi.fn(),
       getBlz: vi.fn(),
       isInitialized: vi.fn(),
+      createBackup: vi.fn(),
       getCoordinatorVersion: vi.fn(),
       getCoordinatorIeee: vi.fn(),
       getNetworkParametersSnapshot: vi.fn(),
@@ -112,9 +111,6 @@ describe("BLZ Adapter", () => {
         leaveNetwork: vi.fn(),
         formNetwork: vi.fn(),
         version: { product: 1 },
-      },
-      backupMan: {
-        createBackup: vi.fn(),
       },
       setNode: vi.fn(),
       getNetworkKeyInfo: vi.fn(),
@@ -1349,15 +1345,15 @@ describe("BLZ Adapter", () => {
       driverMock.getBlz.mockImplementation(() => {
         throw new Error("transport leaked");
       });
-      driverMock.backupMan.createBackup.mockResolvedValue({});
+      driverMock.createBackup.mockResolvedValue({});
 
       await adapter.backup();
-      expect(driverMock.backupMan.createBackup).toHaveBeenCalled();
+      expect(driverMock.createBackup).toHaveBeenCalled();
     });
 
     it("should cancel backup when stopping", async () => {
       driverMock.blz.isInitialized.mockReturnValue(true);
-      driverMock.backupMan.createBackup.mockReturnValue(new Promise(() => {}));
+      driverMock.createBackup.mockReturnValue(new Promise(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
 
       const backup = adapter.backup();
@@ -1377,7 +1373,7 @@ describe("BLZ Adapter", () => {
       void backup.catch(() => {});
 
       expect(observed).toBe("rejected:Adapter stopped");
-      expect(driverMock.backupMan.createBackup).toHaveBeenCalled();
+      expect(driverMock.createBackup).toHaveBeenCalled();
     });
 
     it("should pass a stop guard that prevents backup continuation after stop", async () => {
@@ -1385,7 +1381,7 @@ describe("BLZ Adapter", () => {
       driverMock.stop.mockResolvedValue(undefined);
       let finishBackupStep: (() => void) | undefined;
       const continuedAfterStop = vi.fn();
-      driverMock.backupMan.createBackup.mockImplementation(
+      driverMock.createBackup.mockImplementation(
         async (assertActive?: () => void) => {
           await new Promise<void>((resolve) => {
             finishBackupStep = resolve;

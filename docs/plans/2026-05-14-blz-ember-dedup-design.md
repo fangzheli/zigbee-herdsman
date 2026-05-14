@@ -543,6 +543,9 @@ Future BLZ refactors should follow these rules:
   leave, and channel-change re-form calls behind high-level `Driver` APIs, so
   the BLZ adapter and backup collector no longer reach directly into the lower
   BLZ transport.
+- Moved backup creation behind `Driver.createBackup()` and made the driver's
+  backup manager private, so `BLZAdapter` no longer reaches into a driver-owned
+  helper object during stop-cancellable backup collection.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.

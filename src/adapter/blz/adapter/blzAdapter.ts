@@ -955,7 +955,7 @@ export class BLZAdapter extends Adapter {
     );
     return await this.runOperationWhileRunning(
       () =>
-        this.driver.backupMan.createBackup(() =>
+        this.driver.createBackup(() =>
           this.throwIfStopped(generation),
         ),
       generation,
