@@ -219,7 +219,7 @@ describe("BLZ Adapter", () => {
       await expect(firstSend).rejects.toThrow("Adapter stopped");
       await secondSend.catch(() => {});
 
-      expect(observed).toBe("rejected:Queue cleared");
+      expect(observed).toBe("rejected:Adapter stopped");
     });
 
     it("should emit disconnected after restart when the driver closes", async () => {

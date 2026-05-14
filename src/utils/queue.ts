@@ -3,6 +3,7 @@ interface Job {
     running: boolean;
     start?: () => void;
     rejectStart?: (error: Error) => void;
+    rejectRun?: (error: Error) => void;
 }
 
 export class Queue {
@@ -16,6 +17,9 @@ export class Queue {
 
     public async execute<T>(func: () => Promise<T>, key?: string | number): Promise<T> {
         const job: Job = {key, running: false};
+        const clearPromise = new Promise<never>((_, reject): void => {
+            job.rejectRun = reject;
+        });
         this.#jobs.push(job);
 
         // Minor optimization/workaround: various tests like the idea that a job that is immediately runnable is run without an event loop spin.
@@ -38,9 +42,13 @@ export class Queue {
             this.#running += 1;
         }
 
+        const work = (async (): Promise<T> => await func())();
+        work.catch(() => {});
+
         try {
-            return await func();
+            return await Promise.race([work, clearPromise]);
         } finally {
+            job.rejectRun = undefined;
             const index = this.#jobs.indexOf(job);
             if (index !== -1) {
                 this.#jobs.splice(index, 1);
@@ -75,10 +83,12 @@ export class Queue {
         return undefined;
     }
 
-    public clear(): void {
+    public clear(error = new Error("Queue cleared")): void {
         for (const job of this.#jobs) {
             if (!job.running) {
-                job.rejectStart?.(new Error("Queue cleared"));
+                job.rejectStart?.(error);
+            } else {
+                job.rejectRun?.(error);
             }
         }
 

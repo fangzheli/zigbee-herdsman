@@ -360,6 +360,13 @@ Future BLZ refactors should follow these rules:
 - Added BLZ command connection-generation checks, so active command queue work
   cannot resolve successfully after `Blz.close()` or reconnect changes the
   underlying serial connection.
+- Replaced the BLZ adapter's hand-rolled stop-waiter timer set with the shared
+  BLZ `CancellableDelay` helper, keeping stop cancellation behavior consistent
+  with UART, transport, and high-level driver waits.
+- Extended shared `Queue.clear()` to reject active jobs as well as queued jobs.
+  BLZ adapter stop and BLZ transport close now pass domain-specific cancellation
+  errors so callers do not stay pending behind lower-layer operations after
+  lifecycle teardown begins.
 
 ## Next Steps
 

@@ -504,7 +504,7 @@ export class Blz extends EventEmitter {
     this.connectGeneration += 1;
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
-    this.queue.clear();
+    this.queue.clear(new Error("Connection closed"));
     this.waitress.clear();
     this.detachSerialDriverListeners();
     await this.serialDriver.close(emitClose);

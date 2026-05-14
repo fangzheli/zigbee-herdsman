@@ -334,7 +334,7 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
-    it("Test queue clear does not let old running jobs remove new jobs", async () => {
+    it("Test queue clear rejects active jobs and does not let old work remove new jobs", async () => {
         const queue = new Queue(1);
         const started: number[] = [];
 
@@ -351,8 +351,16 @@ describe("Utils", () => {
             started.push(1);
             await oldJobBlocker;
         });
+        const oldJobResult = oldJob.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
 
         queue.clear();
+        const observed = await Promise.race([
+            oldJobResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
 
         const newJob = queue.execute(async () => {
             started.push(2);
@@ -364,9 +372,10 @@ describe("Utils", () => {
 
         expect(started).toEqual([1, 2]);
         expect(queue.count()).toBe(2);
+        expect(observed).toBe("rejected:Queue cleared");
 
         finishOldJob?.();
-        await oldJob;
+        await Promise.resolve();
 
         expect(started).toEqual([1, 2]);
         expect(queue.count()).toBe(2);
@@ -392,6 +401,10 @@ describe("Utils", () => {
             started.push(1);
             await runningJobBlocker;
         });
+        const runningResult = runningJob.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
         const queuedJob = queue.execute(async () => {
             started.push(2);
         });
@@ -406,13 +419,18 @@ describe("Utils", () => {
             queuedResult,
             new Promise((resolve) => setImmediate(() => resolve("pending"))),
         ]);
+        const activeResult = await Promise.race([
+            runningResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
 
         expect(result).toBe("rejected:Queue cleared");
+        expect(activeResult).toBe("rejected:Queue cleared");
         expect(started).toEqual([1]);
         expect(queue.count()).toBe(0);
 
         finishRunningJob?.();
-        await runningJob;
+        await Promise.resolve();
     });
 
     it("Test async mutex", async () => {

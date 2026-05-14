@@ -22,6 +22,7 @@ import {
   SerialPortOptions,
   StartResult,
 } from "../../tstype";
+import { CancellableDelay } from "../driver/cancellableDelay";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzStatus } from "../driver/types";
 import type { BlzApsFrame } from "../driver/types/struct";
@@ -44,7 +45,7 @@ export class BLZAdapter extends Adapter {
   private queue: Queue;
   private closing: boolean;
   private stopGeneration: number;
-  private readonly stopWaiters = new Set<() => void>();
+  private readonly stopDelay = new CancellableDelay();
   private driverListenersAttached = false;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
@@ -181,8 +182,8 @@ export class BLZAdapter extends Adapter {
   public async stop(): Promise<void> {
     this.closing = true;
     this.stopGeneration += 1;
-    this.cancelStopWaiters();
-    this.queue.clear();
+    this.stopDelay.cancel();
+    this.queue.clear(new Error("Adapter stopped"));
     this.waitress.clear();
 
     try {
@@ -202,15 +203,6 @@ export class BLZAdapter extends Adapter {
     }
   }
 
-  private cancelStopWaiters(): void {
-    const waiters = [...this.stopWaiters];
-    this.stopWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
-  }
-
   private throwIfStopped(generation: number): void {
     if (this.closing || generation !== this.stopGeneration) {
       throw new Error("Adapter stopped");
@@ -223,17 +215,14 @@ export class BLZAdapter extends Adapter {
   ): Promise<void> {
     this.throwIfStopped(generation);
 
-    let cancel!: () => void;
-    await new Promise<void>((resolve, reject): void => {
-      const timer = setTimeout(resolve, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        reject(new Error("Adapter stopped"));
-      };
-      this.stopWaiters.add(cancel);
-    }).finally(() => {
-      this.stopWaiters.delete(cancel);
-    });
+    const completed = await this.stopDelay.wait(
+      milliseconds,
+      () => !this.closing && generation === this.stopGeneration,
+    );
+
+    if (!completed) {
+      throw new Error("Adapter stopped");
+    }
 
     this.throwIfStopped(generation);
   }
