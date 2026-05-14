@@ -517,12 +517,12 @@ export class Blz extends EventEmitter {
     return await this.queue.execute<BLZFrameData>(
       async (): Promise<BLZFrameData> => {
         const data = this.makeFrame(name, params);
-        const waiter = this.waitFor(name);
+        const waiter = name === "reset" ? undefined : this.waitFor(name);
         try {
           await this.serialDriver.sendDATA(data, FRAMES[name].ID);
 
           // Don't wait for response if this is a reset command
-          if (name !== "reset") {
+          if (waiter) {
             const response = await waiter.start().promise;
             return response.payload;
           } else {
@@ -530,7 +530,9 @@ export class Blz extends EventEmitter {
             return new BLZFrameData("reset", false, {});
           }
         } catch {
-          this.waitress.remove(waiter.ID);
+          if (waiter) {
+            this.waitress.remove(waiter.ID);
+          }
           throw new Error(`Failure send ${name}:` + JSON.stringify(data));
         }
       },

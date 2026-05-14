@@ -230,6 +230,9 @@ Future BLZ refactors should follow these rules:
   and retry path fires.
 - Avoided creating UART waiters for reset frames that intentionally do not wait
   for a response, preventing unstarted waiters with no timer from accumulating.
+- Avoided creating BLZ command waiters for `execCommand("reset")`, matching the
+  reset command's no-response behavior and preventing high-level unstarted
+  waiters from accumulating.
 
 ## Next Steps
 

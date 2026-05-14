@@ -294,6 +294,16 @@ describe("BLZ Driver", () => {
       const result = await blz.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION);
       expect(result).toEqual(mockValue);
     }, 10000); // Increase timeout for this test
+
+    it("should not retain waiters for reset commands that do not wait for response", async () => {
+      serialDriverMock.sendDATA.mockResolvedValue(undefined);
+
+      await blz.execCommand("reset");
+
+      expect(
+        (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+      ).toBe(0);
+    });
   });
 
   describe("Event handling", () => {
