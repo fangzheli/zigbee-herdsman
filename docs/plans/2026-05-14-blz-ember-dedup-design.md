@@ -393,6 +393,9 @@ Future BLZ refactors should follow these rules:
 - Extended `runStartupOperation()` to the startup version probe, so
   `Driver.stop()` does not leave startup pending while `Blz.getVersion()` is
   in flight.
+- Extended `runStartupOperation()` to the startup network validation step, so
+  `Driver.stop()` also rejects startup while `needsToBeInitialised()` is
+  waiting on lower BLZ commands.
 
 ## Next Steps
 

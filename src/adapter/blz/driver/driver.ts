@@ -365,7 +365,12 @@ export class Driver extends EventEmitter {
         startupStopGeneration,
       );
 
-      if (await this.needsToBeInitialised(this.nwkOpt)) {
+      if (
+        await this.runStartupOperation(
+          () => this.needsToBeInitialised(this.nwkOpt),
+          startupStopGeneration,
+        )
+      ) {
         logger.info("The network setup need to be initialized", NS);
         await this.waitForStartupDelay(1000, startupStopGeneration);
         const restore = await this.needsToBeRestore(this.nwkOpt);
