@@ -1612,6 +1612,28 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("matches driver waiters for coordinator address 0 only against address 0", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const waiter = driver.waitFor(0x0000, 0x0006, 1000);
+        const result = waiter.start().promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingApsFrame(0x1234),
+        );
+        await Promise.resolve();
+        const observed = await Promise.race([
+            result,
+            Promise.resolve("pending"),
+        ]);
+        waiter.cancel();
+
+        expect(observed).toBe("pending");
+    });
+
     it("clears address cache when forming a new network", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);

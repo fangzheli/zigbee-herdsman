@@ -530,6 +530,9 @@ Future BLZ refactors should follow these rules:
 - Extended endpoint ZCL response-waiter cleanup to synchronous pre-send
   failures such as node-cache/EUI64 conversion errors, preventing unstarted
   adapter waiters from remaining in memory until shutdown.
+- Fixed high-level driver waiter address matching so coordinator network
+  address `0x0000` is matched as a real address instead of being treated as a
+  wildcard.
 
 ## Next Steps
 

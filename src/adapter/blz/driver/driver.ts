@@ -1250,7 +1250,7 @@ export class Driver extends EventEmitter {
       NS,
     );
     return (
-      (!matcher.address || payload.address === matcher.address) &&
+      payload.address === matcher.address &&
       (!payload.frame || payload.frame.clusterId === matcher.clusterId)
     );
   }
