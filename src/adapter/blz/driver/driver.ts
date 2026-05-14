@@ -117,6 +117,39 @@ function fixedBufferFromBytes(
   return result;
 }
 
+function hexNibble(value: number, name: string): number {
+  if (value >= 0x30 && value <= 0x39) {
+    return value - 0x30;
+  }
+  if (value >= 0x41 && value <= 0x46) {
+    return value - 0x41 + 10;
+  }
+  if (value >= 0x61 && value <= 0x66) {
+    return value - 0x61 + 10;
+  }
+
+  throw new Error(`${name} must contain only hexadecimal characters.`);
+}
+
+function fixedBufferFromHex(
+  value: string,
+  length: number,
+  name: string,
+): Buffer {
+  if (value.length !== length * 2) {
+    throw new Error(`${name} must be ${length} bytes.`);
+  }
+
+  const result = Buffer.allocUnsafe(length);
+  for (let i = 0; i < length; i++) {
+    result[i] =
+      (hexNibble(value.charCodeAt(i * 2), name) << 4) |
+      hexNibble(value.charCodeAt(i * 2 + 1), name);
+  }
+
+  return result;
+}
+
 export interface BlzIncomingMessage {
   messageType: number;
   apsFrame: BlzApsFrame;
@@ -727,7 +760,7 @@ export class Driver extends EventEmitter {
       let networkKey = backup.networkOptions.networkKey;
       // Convert hex string to Buffer if needed
       if (typeof networkKey === "string") {
-        networkKey = Buffer.from(networkKey, "hex");
+        networkKey = fixedBufferFromHex(networkKey, 16, "Network key");
       }
       // can only change network key and link key when the stack is on and leave the current network
       await run(() =>

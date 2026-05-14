@@ -791,6 +791,9 @@ Future BLZ refactors should follow these rules:
   without generic `Buffer.from()` source-buffer clones.
 - Reworked `BlzEUI64` hex-string parsing to fill the fixed 8-byte identity
   buffer directly, avoiding `Buffer.from(hex, "hex")` in address construction.
+- Reworked restore-path backup network-key hex parsing to fill a fixed 16-byte
+  buffer directly before `setNetworkKeyInfo()`, avoiding `Buffer.from(hex,
+  "hex")` on backup restore.
 
 ## Next Steps
 

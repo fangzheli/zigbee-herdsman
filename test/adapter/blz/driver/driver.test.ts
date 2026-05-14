@@ -2042,6 +2042,48 @@ describe("BLZ high-level driver lifecycle", () => {
         }
     });
 
+    it("restores a network from a string backup key without Buffer.from hex conversion", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const setNetworkKeyInfo = vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        const networkKey = "0102030405060708090a0b0c0d0e0f10";
+        vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
+            networkOptions: {
+                panId: networkOptions.panID,
+                extendedPanId: Buffer.of(1, 2, 3, 4, 5, 6, 7, 8),
+                networkKey,
+            },
+            networkKeyInfo: {
+                sequenceNumber: 5,
+                frameCounter: 1234,
+            },
+            logicalChannel: 11,
+        } as any);
+        setDriverBlz(driver, {formNetwork});
+        const originalFrom = Buffer.from;
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+            if (value === networkKey) {
+                throw new Error("backup network key hex conversion used");
+            }
+
+            return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+        }) as typeof Buffer.from);
+
+        try {
+            await (driver as unknown as {formNetwork: (restore: boolean) => Promise<void>}).formNetwork(true);
+
+            expect(setNetworkKeyInfo).toHaveBeenCalledWith(
+                Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+                1234,
+                5,
+            );
+            expect(formNetwork).toHaveBeenCalledWith(0x0807060504030201n, networkOptions.panID, 11);
+            expect(fromSpy).not.toHaveBeenCalledWith(networkKey, "hex");
+        } finally {
+            fromSpy.mockRestore();
+        }
+    });
+
     it("checks restore compatibility without cloning configured network bytes", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
