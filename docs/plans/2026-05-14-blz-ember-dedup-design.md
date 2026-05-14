@@ -245,6 +245,9 @@ Future BLZ refactors should follow these rules:
 - Defused high-level driver waiter cancellation before `waiter.start()`, so ZDO
   send-failure cleanup can cancel driver waiters without unhandled internal
   rejections.
+- Moved unstarted-waiter rejection handling into shared `Waitress`: remove/clear
+  still reject the underlying promise, but internally mark unstarted promises as
+  handled so cleanup before `start()` cannot create unhandled rejections.
 
 ## Next Steps
 

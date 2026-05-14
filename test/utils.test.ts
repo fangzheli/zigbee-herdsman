@@ -187,6 +187,36 @@ describe("Utils", () => {
         ).toBe("rejected:Waitress removed");
     });
 
+    it("Test waitress remove rejects unstarted waiters without unhandled rejection", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000);
+
+        waitress.remove(waiter.ID);
+        await new Promise((resolve) => setImmediate(resolve));
+
+        await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress removed"));
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
+    });
+
+    it("Test waitress clear rejects unstarted waiters without unhandled rejection", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000);
+
+        waitress.clear();
+        await new Promise((resolve) => setImmediate(resolve));
+
+        await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress cleared"));
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
+    });
+
     it("Test waitress removes timed out waiters immediately", async () => {
         vi.useFakeTimers();
         const validator = (payload: string, matcher: number): boolean => {

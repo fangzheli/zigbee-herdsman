@@ -2,8 +2,10 @@ interface Waiter<TPayload, TMatcher> {
     ID: number;
     resolve: (payload: TPayload) => void;
     reject: (error: Error) => void;
+    promise: Promise<TPayload>;
     timer?: NodeJS.Timeout;
     resolved: boolean;
+    started: boolean;
     timedout: boolean;
     matcher: TMatcher;
 }
@@ -27,7 +29,7 @@ export class Waitress<TPayload, TMatcher> {
     public clear(): void {
         for (const [, waiter] of this.waiters) {
             clearTimeout(waiter.timer);
-            waiter.reject(new Error("Waitress cleared"));
+            this.rejectWaiter(waiter, new Error("Waitress cleared"));
         }
 
         this.waiters.clear();
@@ -48,7 +50,7 @@ export class Waitress<TPayload, TMatcher> {
                 clearTimeout(waiter.timer);
             }
 
-            waiter.reject(new Error("Waitress removed"));
+            this.rejectWaiter(waiter, new Error("Waitress removed"));
             this.waiters.delete(id);
         }
     }
@@ -57,14 +59,28 @@ export class Waitress<TPayload, TMatcher> {
         this.currentID += 1;
         const ID = this.currentID;
 
+        let resolvePromise!: (payload: TPayload) => void;
+        let rejectPromise!: (error: Error) => void;
         const promise: Promise<TPayload> = new Promise((resolve, reject): void => {
-            const object: Waiter<TPayload, TMatcher> = {matcher, resolve, reject, timedout: false, resolved: false, ID};
-            this.waiters.set(ID, object);
+            resolvePromise = resolve;
+            rejectPromise = reject;
         });
+        const object: Waiter<TPayload, TMatcher> = {
+            matcher,
+            resolve: resolvePromise,
+            reject: rejectPromise,
+            promise,
+            timedout: false,
+            resolved: false,
+            started: false,
+            ID,
+        };
+        this.waiters.set(ID, object);
 
         const start = (): {promise: Promise<TPayload>; ID: number} => {
             const waiter = this.waiters.get(ID);
             if (waiter && !waiter.resolved && !waiter.timer) {
+                waiter.started = true;
                 // Capture the stack trace from the caller of start()
                 const error = new Error(this.timeoutFormatter(matcher, timeout));
                 Error.captureStackTrace(error);
@@ -95,5 +111,13 @@ export class Waitress<TPayload, TMatcher> {
             }
         }
         return foundMatching;
+    }
+
+    private rejectWaiter(waiter: Waiter<TPayload, TMatcher>, error: Error): void {
+        waiter.reject(error);
+
+        if (!waiter.started) {
+            waiter.promise.catch(() => {});
+        }
     }
 }
