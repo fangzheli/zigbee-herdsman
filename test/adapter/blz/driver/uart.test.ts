@@ -240,6 +240,22 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should release the serial port reference when flush close fails", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockRejectedValue(
+        new Error("Flush close failed"),
+      );
+
+      await driver.connect(serialPortOptions);
+
+      await expect(driver.close(true)).rejects.toThrow("Flush close failed");
+
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should clean listeners and pipes when TCP socket open fails", async () => {
       const connect = driver.connect(tcpPortOptions);
       socketPortMock.once.mock.calls.find((call) => call[0] === "error")?.[1](

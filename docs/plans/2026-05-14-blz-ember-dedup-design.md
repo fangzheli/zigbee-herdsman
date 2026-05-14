@@ -286,6 +286,9 @@ Future BLZ refactors should follow these rules:
 - Made TCP UART open reject and clean up when the socket closes before `ready`,
   preventing a connection attempt from remaining pending without an `error`
   event.
+- Made serial UART close release the serial-port reference and destroy the port
+  even when `asyncFlushAndClose()` rejects, avoiding a retained port object after
+  close failure.
 
 ## Next Steps
 

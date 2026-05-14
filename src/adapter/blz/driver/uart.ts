@@ -288,13 +288,15 @@ export class SerialDriver extends EventEmitter {
         } else {
           this.serialPort.destroy();
         }
-        this.serialPort = undefined;
       } catch (error) {
+        this.serialPort.destroy();
         if (emitClose) {
           this.emit("close");
         }
 
         throw error;
+      } finally {
+        this.serialPort = undefined;
       }
     } else if (this.socketPort) {
       this.detachSocketPort();
