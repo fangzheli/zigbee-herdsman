@@ -60,6 +60,21 @@ function channelToMask(channel: number): number {
   return 2 ** channel;
 }
 
+function uint64FromLittleEndianBytes(value: ArrayLike<number>): bigint {
+  if (value.length < 8) {
+    throw new RangeError(
+      `Buffer too small. Expected at least 8 bytes, received ${value.length}`,
+    );
+  }
+
+  let result = 0n;
+  for (let i = 7; i >= 0; i--) {
+    result = (result << 8n) | BigInt(value[i] & 0xff);
+  }
+
+  return result;
+}
+
 export interface BlzIncomingMessage {
   messageType: number;
   apsFrame: BlzApsFrame;
@@ -682,9 +697,8 @@ export class Driver extends EventEmitter {
 
     let formStatus: BlzStatus;
     if (restore) {
-      const [backupextendedPanID] = uint64_t.deserialize(
-        uint64_t,
-        Buffer.from(backup!.networkOptions.extendedPanId),
+      const backupextendedPanID = uint64FromLittleEndianBytes(
+        backup!.networkOptions.extendedPanId,
       );
       formStatus = await run(() =>
         blz.formNetwork(
@@ -694,9 +708,8 @@ export class Driver extends EventEmitter {
         ),
       );
     } else {
-      const [nwkoptextendedPanID] = uint64_t.deserialize(
-        uint64_t,
-        Buffer.from(this.nwkOpt.extendedPanID!),
+      const nwkoptextendedPanID = uint64FromLittleEndianBytes(
+        this.nwkOpt.extendedPanID!,
       );
       formStatus = await run(() =>
         blz.formNetwork(

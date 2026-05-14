@@ -762,6 +762,9 @@ Future BLZ refactors should follow these rules:
 - Reused the shared empty buffer for empty mapped-buffer serialization results,
   avoiding zero-length segment and output-buffer allocations for empty schemas
   or empty typed lists.
+- Reworked network formation extended-PAN-ID conversion to read little-endian
+  array-like bytes directly into a bigint, avoiding temporary `Buffer.from()`
+  clones for configured or backup PAN IDs.
 
 ## Next Steps
 
