@@ -120,6 +120,36 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(eui64.toString()).toBe("0000000000003344");
     });
 
+    it("cancels network ID to EUI64 lookup when stopping", async () => {
+        vi.useFakeTimers();
+        const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {
+            execCommand,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        } as unknown as Driver["blz"];
+        const lookup = driver.networkIdToEUI64(0x3344);
+        const lookupResult = lookup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            lookupResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void lookup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
+    });
+
     it("releases the BLZ instance reference when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const blzMock = {

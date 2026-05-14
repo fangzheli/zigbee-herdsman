@@ -1109,9 +1109,15 @@ export class Driver extends EventEmitter {
       }
     }
 
-    const response = await this.getBlz().execCommand("getEui64ByNodeId", {
-      nodeId: nwk,
-    });
+    const blz = this.getBlz();
+    const requestGeneration = this.requestGeneration;
+    const response = await this.runRequestOperation(
+      () =>
+        blz.execCommand("getEui64ByNodeId", {
+          nodeId: nwk,
+        }),
+      requestGeneration,
+    );
 
     if (response.status === BlzStatus.SUCCESS) {
       return this.cacheNodeIeee(nwk, response.eui64);

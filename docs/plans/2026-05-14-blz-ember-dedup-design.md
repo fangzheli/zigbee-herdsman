@@ -432,6 +432,9 @@ Future BLZ refactors should follow these rules:
 - Reused high-level driver request-operation cancellation for multicast and
   broadcast APS sends, so direct `mrequest()` and `brequest()` calls also
   resolve on stop while the lower send is still pending.
+- Reused high-level driver request-operation cancellation for standalone
+  `networkIdToEUI64()` lookups, so `Driver.stop()` rejects the lookup while the
+  lower address query is still pending.
 
 ## Next Steps
 
