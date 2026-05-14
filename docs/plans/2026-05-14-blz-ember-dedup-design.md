@@ -404,6 +404,9 @@ Future BLZ refactors should follow these rules:
   inspection or current-network leave is still pending.
 - Extended `runStartupOperation()` to startup network formation and restore, so
   `Driver.stop()` also rejects startup while `formNetwork()` is still pending.
+- Added a BLZ transport connect-operation cancellation wrapper and used it for
+  reconnect pre-close, so `Blz.close()` rejects reconnect while the old serial
+  driver close is still pending.
 
 ## Next Steps
 

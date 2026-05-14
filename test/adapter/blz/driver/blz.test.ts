@@ -293,6 +293,35 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
     });
 
+    it("should cancel reconnect while closing the existing serial driver", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+
+      await blz.connect(serialPortOptions);
+
+      serialDriverMock.close.mockReturnValue(new Promise<void>(() => {}));
+      const reconnect = blz.connect(serialPortOptions);
+      const reconnectResult = reconnect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const close = blz.close(false);
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        reconnectResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void reconnect.catch(() => {});
+      void close.catch(() => {});
+
+      expect(observed).toBe("rejected:Connection cancelled by close");
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+    });
+
     it("should coalesce concurrent connect attempts", async () => {
       let releaseConnect: (() => void) | undefined;
       serialDriverMock.connect.mockReturnValue(

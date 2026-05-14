@@ -337,7 +337,10 @@ export class Blz extends EventEmitter {
       this.clearWatchdogTimer();
       this.queue.clear();
       this.waitress.clear();
-      await this.serialDriver.close(false);
+      await this.runConnectOperation(
+        () => this.serialDriver.close(false),
+        connectGeneration,
+      );
     }
 
     let rejectConnectReset: ((error: Error) => void) | undefined;
@@ -463,6 +466,34 @@ export class Blz extends EventEmitter {
   private throwIfConnectionChanged(connectGeneration: number): void {
     if (this.isConnectCancelled(connectGeneration)) {
       throw new Error("Connection closed");
+    }
+  }
+
+  private async runConnectOperation<T>(
+    operation: () => Promise<T>,
+    connectGeneration: number,
+  ): Promise<T> {
+    let rejectConnectClose: ((error: Error) => void) | undefined;
+    const closeDuringOperation = new Promise<never>((_, reject): void => {
+      rejectConnectClose = reject;
+      this.cancelPendingConnectAttempt = reject;
+    });
+
+    try {
+      const result = await Promise.race([
+        operation(),
+        closeDuringOperation,
+      ]);
+      this.throwIfConnectionChanged(connectGeneration);
+
+      return result;
+    } finally {
+      if (
+        rejectConnectClose &&
+        this.cancelPendingConnectAttempt === rejectConnectClose
+      ) {
+        this.cancelPendingConnectAttempt = undefined;
+      }
     }
   }
 
