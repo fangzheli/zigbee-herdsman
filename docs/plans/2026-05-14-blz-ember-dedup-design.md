@@ -524,6 +524,9 @@ Future BLZ refactors should follow these rules:
   collector continues into later network/security reads. Backup creation also
   reads the BLZ version without retaining the whole transport object across the
   async collection flow.
+- Tightened parser tail retention further: when corrupted input contains
+  garbage before an incomplete START-delimited frame, only the partial frame
+  from START onward is retained for the next chunk.
 
 ## Next Steps
 

@@ -49,21 +49,23 @@ export class Parser extends stream.Transform {
     }
 
     // Save unprocessed data for the next chunk.
-    if (buffer.indexOf(consts.START) === -1) {
+    const firstStart = buffer.indexOf(consts.START);
+    if (firstStart === -1) {
       this.tail = [];
       cb();
       return;
     }
+    const partialFrame = firstStart === 0 ? buffer : buffer.subarray(firstStart);
 
     // Guard against unbounded growth from corrupted serial data (missing END delimiter).
-    if (buffer.length > 16384) {
+    if (partialFrame.length > 16384) {
       logger.warning(
-        `Parser buffer overflow (${buffer.length} bytes), discarding`,
+        `Parser buffer overflow (${partialFrame.length} bytes), discarding`,
         NS,
       );
       this.tail = [];
     } else {
-      this.tail = [buffer];
+      this.tail = [partialFrame];
     }
     cb();
   }
