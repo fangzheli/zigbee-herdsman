@@ -519,6 +519,14 @@ export class Blz extends EventEmitter {
       data = Buffer.from(data);
     }
     logger.debug(`<== Frame: ${data.toString("hex")}`, NS);
+    if (data.length < 6) {
+      logger.error(
+        `Received malformed BLZ frame: expected at least 6 bytes, received ${data.length}`,
+        NS,
+      );
+      return;
+    }
+
     let frameId: number;
     frameId = data.readUInt16LE(2);
     const sequence = (data[1] & 0x70) >> 4;

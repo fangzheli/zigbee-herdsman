@@ -631,6 +631,9 @@ Future BLZ refactors should follow these rules:
   synchronous listener path.
 - Made UART parsed-frame and error-frame handlers synchronous, avoiding
   per-frame Promise allocation on the serial receive hot path.
+- Added a BLZ transport receive guard for undersized raw frames, so malformed
+  serial data is logged and discarded before frame-ID reads can throw from the
+  EventEmitter listener.
 
 ## Next Steps
 

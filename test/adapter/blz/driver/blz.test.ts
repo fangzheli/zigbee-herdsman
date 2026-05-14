@@ -694,5 +694,26 @@ describe("BLZ Driver", () => {
       serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
       expect(callback).toHaveBeenCalled();
     });
+
+    it("should ignore malformed received buffers that are too short for a BLZ frame", () => {
+      const frame = vi.fn();
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      blz.on("frame", frame);
+
+      const receivedHandler = serialDriverMock.on.mock.calls.find(
+        (call) => call[0] === "received",
+      )?.[1];
+
+      try {
+        expect(() => receivedHandler(Buffer.from([0x00, 0x01, 0x02]))).not.toThrow();
+        expect(frame).not.toHaveBeenCalled();
+        expect(error).toHaveBeenCalledWith(
+          "Received malformed BLZ frame: expected at least 6 bytes, received 3",
+          NS,
+        );
+      } finally {
+        error.mockRestore();
+      }
+    });
   });
 });
