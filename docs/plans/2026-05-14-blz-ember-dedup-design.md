@@ -1,0 +1,110 @@
+# BLZ Ember/EZSP Dedup Experiment
+
+## Goal
+
+Create an experimental branch that makes the BLZ adapter look less like a copied
+legacy EZSP adapter while preserving BLZ-specific protocol behavior. The branch
+should also document what the current `ember` adapter does better than legacy
+`ezsp`, and it should avoid lifecycle or timer changes that can leak memory.
+
+## Current Shape
+
+There are three relevant implementations:
+
+- `src/adapter/ezsp`: legacy Silicon Labs EZSP adapter. It is still available,
+  but its startup warning says it is deprecated and recommends migration to
+  `ember` for newer firmware.
+- `src/adapter/ember`: current Silicon Labs adapter. It uses the newer typed
+  EZSP/ASH implementation and richer adapter behavior.
+- `src/adapter/blz`: Bouffalo BLZ adapter. It is not EZSP on the wire, but much
+  of its adapter/driver layout was copied from legacy `ezsp`.
+
+The first low-risk duplication is adapter-level ZCL waiter matching. BLZ had its
+own `WaitressMatcher`, timeout formatter, and validator. That duplicated logic
+already existed centrally on `Adapter` and in the legacy EZSP adapter.
+
+## Refactor Direction
+
+Recommended approach: incremental convergence.
+
+1. Reuse common adapter-layer primitives first.
+   - Use `Adapter.zclWaitressValidator` and
+     `Adapter.clusterWaitressTimeoutFormatter` in BLZ.
+   - Keep BLZ-specific frame construction, channel-change handling, join/leave
+     semantics, and unsupported feature decisions local to BLZ.
+
+2. Extract only proven protocol-neutral helpers.
+   - Candidate helpers: bounded delimited parser behavior, CRC16, byte stuffing,
+     request timeout cleanup, listener/timer teardown assertions.
+   - Do not merge BLZ's transport into EZSP/ASH. BLZ has a different frame
+     header, command IDs, reset behavior, and acknowledgement model.
+
+3. Use the `ember` adapter as the target architecture, not as a direct base
+   class.
+   - Adopt typed event maps where practical.
+   - Prefer one owner for request waiters and lifecycle cleanup.
+   - Cache network parameters instead of repeatedly asking the NCP.
+   - Keep queue and waiters explicit so timeout cancellation remains visible.
+
+Rejected approach: making BLZ inherit from legacy `EZSPAdapter`.
+
+- It would reduce surface duplication quickly, but it would encode the wrong
+  protocol identity and keep the deprecated architecture as the parent.
+
+Rejected approach: port BLZ directly onto `EmberAdapter`.
+
+- `EmberAdapter` assumes Silicon Labs EZSP commands, ASH framing, stack status
+  callbacks, and Ember-specific policies. BLZ can borrow patterns from it, but a
+  direct subclass would be fragile.
+
+## Ember Advantages Over Legacy EZSP
+
+The current `ember` path has several advantages that are useful as a model for
+BLZ:
+
+- It is the migration target for Silicon Labs firmware newer than the legacy
+  EZSP path. Discovery tests also treat mDNS `ezsp` radio type as `ember`.
+- It has a richer stack configuration surface: concentrator settings, child
+  limits, transient key timeout, poll timeout, and optional CCA mode.
+- It explicitly manages source route discovery and multicast table entries.
+- It has a network cache for EUI64, PAN ID, extended PAN ID, channel, and update
+  ID to avoid frequent NCP transactions.
+- It uses a typed EZSP event map and a single adapter-level `EmberOneWaitress`
+  for cross-event matching between incoming messages and message-sent callbacks.
+- Its ASH layer uses bounded/preallocated buffers and free lists, reducing
+  allocation churn and making overflow handling explicit.
+- Its stop path clears watchdog intervals and removes EZSP/ASH/port listeners.
+
+## Memory Leak Guardrails
+
+Future BLZ refactors should follow these rules:
+
+- Any `setInterval` or `setTimeout` added for watchdogs, retries, or deferred
+  channel-change work must be cleared in `stop()` or `close()`.
+- Any listener added during startup must either be registered on an object that
+  is discarded on stop, or be removed explicitly on stop. Avoid repeatedly
+  creating `.bind(this)` handlers on a long-lived object unless `removeAllListeners`
+  is called for that object.
+- Waiters must be cancelled on send failure and cleared during adapter/driver
+  stop.
+- Parser tail buffers must stay bounded when delimiters are missing.
+- Any extraction should add a regression test for waiter timeout cleanup,
+  listener count stability across start/stop, or bounded buffering if it touches
+  those areas.
+
+## Completed In This Experiment
+
+- Created branch `experiment/blz-ember-dedup`.
+- Changed BLZ adapter ZCL waiter matching to use the shared `Adapter` matcher and
+  timeout formatter.
+- Added a regression test proving BLZ now resolves a waiter on a ZCL default
+  response the same way the shared adapter matcher does.
+
+## Next Steps
+
+1. Extract a BLZ adapter send helper for ZDO unicast/broadcast logging, waiter
+   setup, send failure cancellation, and response logging.
+2. Add lifecycle tests around `BLZAdapter.stop()`, `Driver.stop()`, `Blz.close()`,
+   and `SerialDriver.close()` to lock down waitress/listener/timer cleanup.
+3. Only then consider parser/CRC/stuffing extraction, because the driver layer is
+   closer to hardware and easier to regress.

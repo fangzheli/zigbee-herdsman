@@ -355,6 +355,11 @@ export class Blz extends EventEmitter {
     this.serialDriver.removeAllListeners("reset");
     this.serialDriver.on("reset", this.onSerialReset.bind(this));
 
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = undefined;
+    }
+
     if (WATCHDOG_WAKE_PERIOD) {
       this.watchdogTimer = setInterval(
         this.watchdogHandler.bind(this),

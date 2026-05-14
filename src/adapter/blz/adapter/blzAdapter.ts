@@ -9,8 +9,11 @@ import * as ZSpec from "../../../zspec";
 import * as Zcl from "../../../zspec/zcl";
 import * as Zdo from "../../../zspec/zdo";
 import * as ZdoTypes from "../../../zspec/zdo/definition/tstypes";
-import Adapter from "../../adapter";
-import { ZclPayload } from "../../events";
+import Adapter, {
+  type ClusterWaitressMatcher,
+  type ZclWaitressPayload,
+} from "../../adapter";
+import type { ZclPayload } from "../../events";
 import {
   AdapterOptions,
   CoordinatorVersion,
@@ -28,17 +31,9 @@ const autoDetectDefinitions = [
   { manufacturer: "wch.cn", vendorId: "1A86", productId: "7523" }, // ThirdReality Zigbee USB Dongle
 ];
 
-interface WaitressMatcher {
-  address?: number | string;
-  endpoint: number;
-  transactionSequenceNumber?: number;
-  clusterID: number;
-  commandIdentifier: number;
-}
-
 export class BLZAdapter extends Adapter {
   private driver: Driver;
-  private waitress: Waitress<ZclPayload, WaitressMatcher>;
+  private waitress: Waitress<ZclWaitressPayload, ClusterWaitressMatcher>;
   private interpanLock: boolean;
   private queue: Queue;
   private closing: boolean;
@@ -53,9 +48,9 @@ export class BLZAdapter extends Adapter {
     this.hasZdoMessageOverhead = true;
     this.manufacturerID = Zcl.ManufacturerCode.BOUFFALO_LAB_NANJING_CO_LTD;
 
-    this.waitress = new Waitress<ZclPayload, WaitressMatcher>(
-      this.waitressValidator,
-      this.waitressTimeoutFormatter,
+    this.waitress = new Waitress<ZclWaitressPayload, ClusterWaitressMatcher>(
+      Adapter.zclWaitressValidator,
+      Adapter.clusterWaitressTimeoutFormatter,
     );
     this.interpanLock = false;
     this.closing = false;
@@ -75,7 +70,7 @@ export class BLZAdapter extends Adapter {
     this.driver.on("incomingMessage", this.processMessage.bind(this));
   }
 
-  private async processMessage(frame: BlzIncomingMessage): Promise<void> {
+  private processMessage(frame: BlzIncomingMessage): void {
     logger.debug(() => `processMessage: ${JSON.stringify(frame)}`, NS);
 
     if (frame.apsFrame.profileId === Zdo.ZDO_PROFILE_ID) {
@@ -100,7 +95,9 @@ export class BLZAdapter extends Adapter {
         destinationEndpoint: frame.apsFrame.destinationEndpoint,
       };
 
-      this.waitress.resolve(payload);
+      if (payload.header !== undefined) {
+        this.waitress.resolve(payload as ZclWaitressPayload);
+      }
       this.emit("zclPayload", payload);
     } else if (
       frame.apsFrame.profileId === ZSpec.TOUCHLINK_PROFILE_ID &&
@@ -959,16 +956,13 @@ export class BLZAdapter extends Adapter {
     commandIdentifier: number,
     timeout: number,
   ): { start: () => { promise: Promise<ZclPayload> }; cancel: () => void } {
-    const waiter = this.waitress.waitFor(
-      {
-        address: networkAddress,
-        endpoint,
-        clusterID,
-        commandIdentifier,
-        transactionSequenceNumber,
-      },
-      timeout,
-    );
+    const waiter = this.waitress.waitFor({
+      address: networkAddress,
+      endpoint,
+      clusterId: clusterID,
+      commandId: commandIdentifier,
+      transactionSequenceNumber,
+    }, timeout);
     const cancel = (): void => this.waitress.remove(waiter.ID);
     return { start: waiter.start, cancel };
   }
@@ -993,32 +987,5 @@ export class BLZAdapter extends Adapter {
     );
 
     return { cancel: waiter.cancel, promise: waiter.start().promise };
-  }
-
-  private waitressTimeoutFormatter(
-    matcher: WaitressMatcher,
-    timeout: number,
-  ): string {
-    return (
-      `Timeout - ${matcher.address} - ${matcher.endpoint}` +
-      ` - ${matcher.transactionSequenceNumber} - ${matcher.clusterID}` +
-      ` - ${matcher.commandIdentifier} after ${timeout}ms`
-    );
-  }
-
-  private waitressValidator(
-    payload: ZclPayload,
-    matcher: WaitressMatcher,
-  ): boolean {
-    return Boolean(
-      payload.header &&
-      (!matcher.address || payload.address === matcher.address) &&
-      payload.endpoint === matcher.endpoint &&
-      (!matcher.transactionSequenceNumber ||
-        payload.header.transactionSequenceNumber ===
-          matcher.transactionSequenceNumber) &&
-      payload.clusterID === matcher.clusterID &&
-      matcher.commandIdentifier === payload.header.commandIdentifier,
-    );
   }
 }

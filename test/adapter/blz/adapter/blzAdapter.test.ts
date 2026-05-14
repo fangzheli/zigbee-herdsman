@@ -302,6 +302,55 @@ describe("BLZ Adapter", () => {
 
       expect(callback).toHaveBeenCalled();
     });
+
+    it("should resolve ZCL waiters with default responses like the shared adapter matcher", async () => {
+      const waiter = adapter.waitFor(
+        0x1234,
+        1,
+        Zcl.FrameType.SPECIFIC,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        7,
+        Zcl.Clusters.genOnOff.ID,
+        Zcl.Clusters.genOnOff.commands.toggle.ID,
+        100,
+      );
+
+      const defaultResponse = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.SERVER_TO_CLIENT,
+        true,
+        undefined,
+        7,
+        "defaultRsp",
+        Zcl.Clusters.genOnOff.ID,
+        {
+          cmdId: Zcl.Clusters.genOnOff.commands.toggle.ID,
+          statusCode: Zcl.Status.SUCCESS,
+        },
+        {},
+      );
+
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = ZSpec.HA_PROFILE_ID;
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      apsFrame.sourceEndpoint = 1;
+      apsFrame.destinationEndpoint = 1;
+
+      await driverMock.on.mock.calls.find(
+        (call) => call[0] === "incomingMessage",
+      )?.[1]({
+        apsFrame,
+        message: defaultResponse.toBuffer(),
+        sender: 0x1234,
+        lqi: 255,
+      });
+
+      await vi.advanceTimersByTimeAsync(100);
+      await expect(waiter.promise).resolves.toMatchObject({
+        address: 0x1234,
+        clusterID: Zcl.Clusters.genOnOff.ID,
+      });
+    });
   });
 
   afterEach(() => {
