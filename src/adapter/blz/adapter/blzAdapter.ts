@@ -564,6 +564,7 @@ export class BLZAdapter extends Adapter {
     disableResponse: boolean,
     disableRecovery: boolean,
     sourceEndpoint?: number,
+    profileId?: number,
   ): Promise<ZclPayload | undefined> {
     return await this.queue.execute<ZclPayload | undefined>(async () => {
       this.checkInterpanLock();
@@ -578,6 +579,7 @@ export class BLZAdapter extends Adapter {
         disableRecovery,
         0,
         0,
+        profileId ?? ZSpec.HA_PROFILE_ID,
       );
     }, networkAddress);
   }
@@ -593,6 +595,7 @@ export class BLZAdapter extends Adapter {
     disableRecovery: boolean,
     responseAttempt: number,
     dataRequestAttempt: number,
+    profileId: number,
   ): Promise<ZclPayload | undefined> {
     if (ieeeAddr == null) {
       ieeeAddr = `0x${this.driver.ieee.toString()}`;
@@ -628,7 +631,7 @@ export class BLZAdapter extends Adapter {
       zclFrame.cluster.ID,
       disableResponse || zclFrame.header.frameControl.disableDefaultResponse,
     );
-    frame.profileId = ZSpec.HA_PROFILE_ID;
+    frame.profileId = profileId;
     frame.sourceEndpoint = sourceEndpoint || 0x01;
     frame.destinationEndpoint = endpoint;
     frame.groupId = 0;
@@ -666,6 +669,7 @@ export class BLZAdapter extends Adapter {
             disableRecovery,
             responseAttempt + 1,
             dataRequestAttempt,
+            profileId,
           );
         } else {
           throw error;
@@ -677,13 +681,15 @@ export class BLZAdapter extends Adapter {
   public async sendZclFrameToGroup(
     groupID: number,
     zclFrame: Zcl.Frame,
+    sourceEndpoint?: number,
+    profileId?: number,
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
       this.checkInterpanLock();
       const frame = this.driver.makeApsFrame(zclFrame.cluster.ID, false);
-      frame.profileId = ZSpec.HA_PROFILE_ID;
-      frame.sourceEndpoint = 0x01;
-      frame.destinationEndpoint = 0x01;
+      frame.profileId = profileId ?? ZSpec.HA_PROFILE_ID;
+      frame.sourceEndpoint = sourceEndpoint ?? 0x01;
+      frame.destinationEndpoint = 0xff;
       frame.groupId = groupID;
 
       const sent = await this.driver.mrequest(frame, zclFrame.toBuffer());
@@ -704,6 +710,7 @@ export class BLZAdapter extends Adapter {
     zclFrame: Zcl.Frame,
     sourceEndpoint: number,
     destination: ZSpec.BroadcastAddress,
+    profileId?: number,
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
       this.checkInterpanLock();
@@ -713,9 +720,10 @@ export class BLZAdapter extends Adapter {
         return;
       }
       frame.profileId =
-        sourceEndpoint === ZSpec.GP_ENDPOINT && endpoint === ZSpec.GP_ENDPOINT
+        profileId ??
+        (sourceEndpoint === ZSpec.GP_ENDPOINT && endpoint === ZSpec.GP_ENDPOINT
           ? ZSpec.GP_PROFILE_ID
-          : ZSpec.HA_PROFILE_ID;
+          : ZSpec.HA_PROFILE_ID);
       frame.sourceEndpoint = sourceEndpoint;
       frame.destinationEndpoint = endpoint;
       frame.groupId = destination;

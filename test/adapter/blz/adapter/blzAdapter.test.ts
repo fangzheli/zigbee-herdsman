@@ -352,6 +352,129 @@ describe("BLZ Adapter", () => {
       await rejection;
     });
 
+    it("should use explicit profile ID for endpoint ZCL sends", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.request.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await (
+        adapter.sendZclFrameToEndpoint as unknown as (
+          ieeeAddr: string,
+          networkAddress: number,
+          endpoint: number,
+          zclFrame: Zcl.Frame,
+          timeout: number,
+          disableResponse: boolean,
+          disableRecovery: boolean,
+          sourceEndpoint?: number,
+          profileId?: number,
+        ) => Promise<unknown>
+      )("0x0102030405060708", 0x1234, 3, zclFrame, 1000, true, true, 2, 0x0105);
+
+      expect(driverMock.request).toHaveBeenCalledWith(
+        0x1234,
+        expect.objectContaining({
+          profileId: 0x0105,
+          sourceEndpoint: 2,
+          destinationEndpoint: 3,
+        }),
+        zclFrame.toBuffer(),
+      );
+    });
+
+    it("should use source endpoint and profile ID for group ZCL sends", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.mrequest.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = (
+        adapter.sendZclFrameToGroup as unknown as (
+          groupID: number,
+          zclFrame: Zcl.Frame,
+          sourceEndpoint?: number,
+          profileId?: number,
+        ) => Promise<void>
+      )(0x1234, zclFrame, 5, 0x0105);
+
+      await vi.advanceTimersByTimeAsync(200);
+      await send;
+
+      expect(driverMock.mrequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profileId: 0x0105,
+          sourceEndpoint: 5,
+          destinationEndpoint: 0xff,
+          groupId: 0x1234,
+        }),
+        zclFrame.toBuffer(),
+      );
+    });
+
+    it("should use explicit profile ID for broadcast ZCL sends", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.brequest.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = (
+        adapter.sendZclFrameToAll as unknown as (
+          endpoint: number,
+          zclFrame: Zcl.Frame,
+          sourceEndpoint: number,
+          destination: ZSpec.BroadcastAddress,
+          profileId?: number,
+        ) => Promise<void>
+      )(3, zclFrame, 2, ZSpec.BroadcastAddress.DEFAULT, 0x0105);
+
+      await vi.advanceTimersByTimeAsync(200);
+      await send;
+
+      expect(driverMock.brequest).toHaveBeenCalledWith(
+        ZSpec.BroadcastAddress.DEFAULT,
+        expect.objectContaining({
+          profileId: 0x0105,
+          sourceEndpoint: 2,
+          destinationEndpoint: 3,
+        }),
+        zclFrame.toBuffer(),
+      );
+    });
+
     it("should preserve the extended PAN ID when changing channel", async () => {
       driverMock.networkParams.panId = 0x2ea0;
       driverMock.networkParams.extendedPanId = Buffer.from(

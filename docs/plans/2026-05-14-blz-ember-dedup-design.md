@@ -253,6 +253,9 @@ Future BLZ refactors should follow these rules:
   shared `Waitress` implementation.
 - Made BLZ group and broadcast ZCL sends check the lower multicast/broadcast
   request status and reject on false-send results instead of reporting success.
+- Aligned BLZ ZCL endpoint/group/broadcast sends with the common adapter
+  interface by honoring optional `profileId`, honoring group `sourceEndpoint`,
+  and using endpoint `0xff` for group APS frames.
 
 ## Next Steps
 
