@@ -167,6 +167,22 @@ describe("BLZ Driver", () => {
       expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
     });
 
+    it("should close the existing serial driver before reconnecting", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      await blz.connect(serialPortOptions);
+      await blz.connect(serialPortOptions);
+
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+      expect(serialDriverMock.close).toHaveBeenCalledTimes(1);
+    });
+
     it("should clear the previous watchdog timer when reconnect attempts fail", async () => {
       const clearIntervalSpy = vi.spyOn(global, "clearInterval");
       serialDriverMock.connect.mockResolvedValueOnce(undefined);
@@ -193,7 +209,10 @@ describe("BLZ Driver", () => {
 
     it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
-      serialDriverMock.isInitialized.mockReturnValueOnce(false).mockReturnValueOnce(true);
+      serialDriverMock.isInitialized
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
       serialDriverMock.close.mockResolvedValue(undefined);
 
       const connect = blz.connect(serialPortOptions);

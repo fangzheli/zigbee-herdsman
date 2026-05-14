@@ -306,6 +306,10 @@ export class Blz extends EventEmitter {
     let connected = false;
     this.attachSerialDriverEventBridge();
 
+    if (this.serialDriver.isInitialized()) {
+      await this.serialDriver.close(false);
+    }
+
     const resetForReconnect = (): void => {
       throw new Error("Failure to connect");
     };

@@ -196,6 +196,9 @@ Future BLZ refactors should follow these rules:
 - Marked the UART driver uninitialized on abnormal port close before emitting
   `reset`, so higher layers do not attempt direct UART operations against a
   closed port during recovery.
+- Closed an already-initialized serial driver before a successful `Blz.connect()`
+  reconnect attempt, preventing reconnects from orphaning the previous serial
+  port while replacing watchdog state.
 
 ## Next Steps
 
