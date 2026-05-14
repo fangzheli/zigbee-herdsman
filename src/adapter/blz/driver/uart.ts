@@ -134,6 +134,9 @@ export class SerialDriver extends EventEmitter {
 
         reject(err);
       };
+      const openClose = (): void => {
+        openError(new Error("Socket closed before ready"));
+      };
 
       this.socketPort!.on("connect", () => {
         logger.debug("Socket connected", NS);
@@ -145,6 +148,7 @@ export class SerialDriver extends EventEmitter {
 
         logger.debug("Socket ready", NS);
         this.socketPort!.removeListener("error", openError);
+        this.socketPort!.removeListener("close", openClose);
         this.socketPort!.once("close", this.onPortClose.bind(this));
         this.socketPort!.on("error", this.onPortError.bind(this));
 
@@ -162,6 +166,7 @@ export class SerialDriver extends EventEmitter {
         resolve();
       });
       this.socketPort!.once("error", openError);
+      this.socketPort!.once("close", openClose);
 
       this.socketPort!.connect(info.port, info.host);
     });

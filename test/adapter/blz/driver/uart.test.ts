@@ -256,6 +256,25 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should reject and clean listeners when TCP socket closes before ready", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      const closeBeforeReady = socketPortMock.once.mock.calls.find(
+        (call) => call[0] === "close",
+      )?.[1];
+
+      expect(closeBeforeReady).toBeDefined();
+      closeBeforeReady();
+
+      await expect(connect).rejects.toThrow("Socket closed before ready");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
     it("should remove TCP socket listeners when closing", async () => {
       const connect = driver.connect(tcpPortOptions);
       await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();

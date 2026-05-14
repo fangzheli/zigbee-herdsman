@@ -283,6 +283,9 @@ Future BLZ refactors should follow these rules:
 - Replaced high-level `Driver` cleanup of `Blz` listeners with stable bound
   handlers and targeted `off()` calls for `close`, `reset`, and `frame`, so
   driver-owned listeners are detached without clearing unrelated listeners.
+- Made TCP UART open reject and clean up when the socket closes before `ready`,
+  preventing a connection attempt from remaining pending without an `error`
+  event.
 
 ## Next Steps
 
