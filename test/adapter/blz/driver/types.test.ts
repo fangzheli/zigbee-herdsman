@@ -10,6 +10,8 @@ import {
     uint32_t,
     uint64_t,
     LVBytes,
+    list,
+    LVList,
     Bytes,
     Fixed16Bytes,
     WordList,
@@ -253,6 +255,24 @@ describe('BLZ Types', () => {
                 () => WordList.serialize(WordList, [0x1234, 0x5678]),
                 Buffer.from([0x34, 0x12, 0x78, 0x56]),
             );
+        });
+    });
+
+    describe('Generic lists', () => {
+        it('should serialize using the declared item type', () => {
+            const Uint16List = list(uint16_t);
+
+            const result = Uint16List.serialize(Uint16List, [0x1234, 0x5678]);
+
+            expect(result).toEqual(Buffer.from([0x34, 0x12, 0x78, 0x56]));
+        });
+
+        it('should serialize length-prefixed lists using the item count', () => {
+            const Uint16List = LVList(uint16_t);
+
+            const result = Uint16List.serialize(Uint16List, [0x1234, 0x5678]);
+
+            expect(result).toEqual(Buffer.from([0x02, 0x34, 0x12, 0x78, 0x56]));
         });
     });
 

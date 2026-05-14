@@ -558,6 +558,9 @@ Future BLZ refactors should follow these rules:
 - Hardened `BlzEUI64` construction from array-like values to copy the input
   bytes, preventing later mutation of the caller-owned buffer from changing the
   EUI64 object.
+- Fixed generic BLZ list serialization to use the declared item type and fixed
+  length-prefixed lists to write the actual item count, keeping type
+  serialization consistent without retaining unnecessary intermediate arrays.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.

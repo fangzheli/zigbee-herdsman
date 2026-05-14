@@ -176,8 +176,7 @@ export class LVBytes {
 export abstract class List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        // console.assert(((cls._length === null) || (cls.length === cls._length)));
-        return Buffer.from(value.map((i) => i.serialize(cls, i)));
+        return serializeBufferSegments(value.map((i) => cls.itemtype.serialize(cls.itemtype, i)));
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -185,7 +184,7 @@ export abstract class List {
         let item;
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
         const r: any[] = [];
-        while (data) {
+        while (data.length > 0) {
             [item, data] = cls.itemtype.deserialize(cls.itemtype, data);
             r.push(item);
         }
@@ -196,9 +195,11 @@ export abstract class List {
 class _LVList extends List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        const head = [cls.length];
         const data = super.serialize(cls, value);
-        return Buffer.from(head.concat(data));
+        const result = Buffer.allocUnsafe(1 + data.length);
+        result.writeUInt8(value.length, 0);
+        data.copy(result, 1);
+        return result;
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
