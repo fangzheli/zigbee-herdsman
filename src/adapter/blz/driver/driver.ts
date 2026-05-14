@@ -56,6 +56,10 @@ type IeeeMfg = {
   prefix: number[];
 };
 
+function channelToMask(channel: number): number {
+  return 2 ** channel;
+}
+
 export interface BlzIncomingMessage {
   messageType: number;
   apsFrame: BlzApsFrame;
@@ -178,6 +182,7 @@ export class Driver extends EventEmitter {
     const networkParams = this.networkParams;
     networkParams.Channel = channel;
     networkParams.nwkUpdateId = nwkUpdateId;
+    networkParams.channels = channelToMask(channel);
   }
 
   /**
@@ -518,6 +523,7 @@ export class Driver extends EventEmitter {
       networkParams.panId = netParams.panId;
       networkParams.Channel = netParams.channel;
       networkParams.nwkUpdateId = netParams.nwkUpdateId;
+      networkParams.channels = netParams.channelMask;
       this.networkParams = networkParams;
       logger.debug(
         `Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`,

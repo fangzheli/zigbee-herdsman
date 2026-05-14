@@ -108,6 +108,7 @@ describe("BLZ high-level driver lifecycle", () => {
         networkParams.extendedPanId = Buffer.from("0102030405060708", "hex");
         networkParams.Channel = 11;
         networkParams.nwkUpdateId = 0;
+        networkParams.channels = 2 ** 11;
         (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams = networkParams;
         (driver as unknown as {ieee: BlzEUI64}).ieee = new BlzEUI64("0102030405060708");
     }
@@ -305,7 +306,20 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(freshSnapshot).not.toBe(snapshot);
         expect(freshSnapshot.Channel).toBe(11);
         expect(freshSnapshot.nwkUpdateId).toBe(0);
+        expect(freshSnapshot.channels).toBe(2 ** 11);
         expect(freshSnapshot.extendedPanId).toEqual(Buffer.from("0102030405060708", "hex"));
+    });
+
+    it("keeps cached channel mask aligned when network parameters are updated", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+
+        driver.updateNetworkParametersSnapshot(20, 3);
+
+        const snapshot = driver.getNetworkParametersSnapshot();
+        expect(snapshot.Channel).toBe(20);
+        expect(snapshot.nwkUpdateId).toBe(3);
+        expect(snapshot.channels).toBe(2 ** 20);
     });
 
     it("cancels network ID to EUI64 lookup when stopping", async () => {

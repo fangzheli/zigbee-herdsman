@@ -684,6 +684,9 @@ Future BLZ refactors should follow these rules:
 - Hardened BLZ byte unstuffing to reject a dangling escape byte at the end of a
   frame instead of silently dropping it and passing a shortened frame further
   into the receive path.
+- Kept the high-level driver's cached network channel mask aligned with cached
+  channel state: startup now stores the NCP `channelMask`, and channel-change
+  snapshot updates refresh both `Channel` and `channels`.
 
 ## Next Steps
 
