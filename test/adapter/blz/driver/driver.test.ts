@@ -241,6 +241,34 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("stops retrying APS requests when driver stop interrupts the retry delay", async () => {
+        vi.useFakeTimers();
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);
+        const blzMock = {
+            sendApsData,
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = blzMock as unknown as Driver["blz"];
+        const request = driver.request(0x3344, makeApsFrame(), Buffer.from([0x0c]));
+        const requestResult = request.then((value) => `resolved:${value}`);
+
+        await vi.advanceTimersByTimeAsync(0);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            requestResult,
+            Promise.resolve("pending"),
+        ]);
+        await vi.advanceTimersByTimeAsync(3000);
+        await request;
+
+        expect(observed).toBe("resolved:false");
+        expect(sendApsData).toHaveBeenCalledTimes(1);
+    });
+
     it("closes BLZ resources when startup fails after connecting", async () => {
         const blzMock = {
             on: vi.fn(),

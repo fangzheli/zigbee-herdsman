@@ -313,6 +313,9 @@ Future BLZ refactors should follow these rules:
 - Added a UART operation generation guard so reset, close, or port-close cleanup
   cancels active `sendDATA()` retry loops immediately instead of allowing stale
   sends to retry after waiter cleanup.
+- Added high-level driver request generation and cancellable APS retry waits, so
+  `Driver.stop()` interrupts active unicast retry delays instead of leaving
+  requests pending until the retry window expires.
 
 ## Next Steps
 

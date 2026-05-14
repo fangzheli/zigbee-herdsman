@@ -86,6 +86,8 @@ export class Driver extends EventEmitter {
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private stopGeneration = 0;
+  private requestGeneration = 0;
+  private readonly requestRetryWaiters = new Set<() => void>();
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -228,6 +230,8 @@ export class Driver extends EventEmitter {
     internalReset: boolean = false,
   ): Promise<void> {
     logger.debug("Stopping driver", NS);
+    this.requestGeneration += 1;
+    this.cancelRequestRetryWaiters();
     if (!internalReset) {
       this.stopGeneration += 1;
     }
@@ -678,7 +682,13 @@ export class Driver extends EventEmitter {
     data: Buffer,
     extendedTimeout = false,
   ): Promise<boolean> {
+    const requestGeneration = this.requestGeneration;
+
     for (let attempt = 0; attempt < REQUEST_ATTEMPT_DELAYS.length; attempt++) {
+      if (this.isRequestCancelled(requestGeneration)) {
+        return false;
+      }
+
       try {
         let resolvedNwk: number;
 
@@ -726,13 +736,61 @@ export class Driver extends EventEmitter {
         );
       }
 
+      if (this.isRequestCancelled(requestGeneration)) {
+        return false;
+      }
+
       // Wait before retrying (unless this was the last attempt)
       if (attempt < REQUEST_ATTEMPT_DELAYS.length - 1) {
-        await wait(REQUEST_ATTEMPT_DELAYS[attempt]);
+        const continueRetry = await this.waitForRequestRetry(
+          REQUEST_ATTEMPT_DELAYS[attempt],
+          requestGeneration,
+        );
+
+        if (!continueRetry) {
+          return false;
+        }
       }
     }
 
     return false;
+  }
+
+  private isRequestCancelled(requestGeneration: number): boolean {
+    return this.requestGeneration !== requestGeneration || !this.blz;
+  }
+
+  private cancelRequestRetryWaiters(): void {
+    const waiters = [...this.requestRetryWaiters];
+    this.requestRetryWaiters.clear();
+
+    for (const cancel of waiters) {
+      cancel();
+    }
+  }
+
+  private async waitForRequestRetry(
+    milliseconds: number,
+    requestGeneration: number,
+  ): Promise<boolean> {
+    if (this.isRequestCancelled(requestGeneration)) {
+      return false;
+    }
+
+    let cancel!: () => void;
+    return await new Promise<boolean>((resolve): void => {
+      const timer = setTimeout((): void => {
+        this.requestRetryWaiters.delete(cancel);
+        resolve(!this.isRequestCancelled(requestGeneration));
+      }, milliseconds);
+      cancel = (): void => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      this.requestRetryWaiters.add(cancel);
+    }).finally(() => {
+      this.requestRetryWaiters.delete(cancel);
+    });
   }
 
   public async mrequest(
