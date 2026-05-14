@@ -33,8 +33,11 @@ describe("BLZ Serial Driver", () => {
     asyncOpen: ReturnType<typeof vi.fn>;
     asyncFlushAndClose: ReturnType<typeof vi.fn>;
     pipe: ReturnType<typeof vi.fn>;
+    unpipe: ReturnType<typeof vi.fn>;
     once: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
+    removeAllListeners: ReturnType<typeof vi.fn>;
+    destroy: ReturnType<typeof vi.fn>;
     isOpen: boolean;
   };
   let parserMock: {
@@ -90,6 +93,7 @@ describe("BLZ Serial Driver", () => {
       unpipe: vi.fn(),
       once: vi.fn(),
       on: vi.fn(),
+      removeAllListeners: vi.fn(),
       destroy: vi.fn(),
       isOpen: true,
     };
@@ -146,6 +150,23 @@ describe("BLZ Serial Driver", () => {
       expect(driver.isInitialized()).toBe(false);
     });
 
+    it("should clean listeners and pipes when serial open fails", async () => {
+      serialPortMock.asyncOpen.mockRejectedValue(
+        new Error("Connection failed"),
+      );
+
+      await expect(driver.connect(serialPortOptions)).rejects.toThrow(
+        "Connection failed",
+      );
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(serialPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+    });
+
     it("should handle disconnection", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
@@ -155,6 +176,17 @@ describe("BLZ Serial Driver", () => {
 
       expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
       expect(driver.isInitialized()).toBe(false);
+    });
+
+    it("should remove serial port listeners when closing", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+
+      await driver.connect(serialPortOptions);
+      await driver.close(true);
+
+      expect(parserMock.removeAllListeners).toHaveBeenCalled();
+      expect(serialPortMock.removeAllListeners).toHaveBeenCalled();
     });
   });
 

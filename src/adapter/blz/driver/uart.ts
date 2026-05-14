@@ -100,10 +100,10 @@ export class SerialDriver extends EventEmitter {
     } catch (error) {
       this.initialized = false;
       // Clean up pipes and port on failure to prevent orphaned streams
-      this.writer.unpipe(this.serialPort);
-      this.serialPort.unpipe(this.parser);
+      this.cleanupParser();
+      this.detachSerialPort();
       this.serialPort.destroy();
-      this.serialPort = undefined as unknown as SerialPort;
+      this.serialPort = undefined;
       throw error;
     }
   }
@@ -255,16 +255,14 @@ export class SerialDriver extends EventEmitter {
     logger.debug("Closing UART", NS);
     this.queue.clear();
     this.waitress.clear();
-    this.parser.removeAllListeners();
-    this.parser.reset();
+    this.cleanupParser();
 
     if (this.initialized) {
       this.initialized = false;
 
       if (this.serialPort) {
         try {
-          this.writer.unpipe(this.serialPort);
-          this.serialPort.unpipe(this.parser);
+          this.detachSerialPort();
           await this.serialPort.asyncFlushAndClose();
         } catch (error) {
           if (emitClose) {
@@ -283,6 +281,22 @@ export class SerialDriver extends EventEmitter {
     if (emitClose) {
       this.emit("close");
     }
+  }
+
+  private cleanupParser(): void {
+    this.parser.removeAllListeners();
+    this.parser.reset();
+  }
+
+  private detachSerialPort(): void {
+    if (!this.serialPort) {
+      return;
+    }
+
+    this.writer.unpipe(this.serialPort);
+    this.serialPort.unpipe(this.parser);
+    this.serialPort.removeAllListeners("close");
+    this.serialPort.removeAllListeners("error");
   }
 
   private onPortError(error: Error): void {

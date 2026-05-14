@@ -186,13 +186,15 @@ export class Driver extends EventEmitter {
   public async stop(emitClose: boolean = true): Promise<void> {
     logger.debug("Stopping driver", NS);
 
-    if (this.blz) {
-      this.blz.removeAllListeners();
-      await this.blz.close(emitClose);
+    try {
+      if (this.blz) {
+        this.blz.removeAllListeners();
+        await this.blz.close(emitClose);
+      }
+    } finally {
+      // Clear pending waiters to avoid dangling promises/timers even if close fails.
+      this.waitress.clear();
     }
-
-    // Clear pending waiters to avoid dangling promises/timers
-    this.waitress.clear();
   }
 
   public async startup(): Promise<TsType.StartResult> {
