@@ -233,6 +233,9 @@ Future BLZ refactors should follow these rules:
 - Avoided creating BLZ command waiters for `execCommand("reset")`, matching the
   reset command's no-response behavior and preventing high-level unstarted
   waiters from accumulating.
+- Defused UART waiter cancellation when `writer.sendData()` throws before the
+  waiter is started, preventing `Waitress.remove()` from creating an unhandled
+  internal rejection.
 
 ## Next Steps
 

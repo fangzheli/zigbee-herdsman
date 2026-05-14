@@ -432,6 +432,16 @@ describe("BLZ Serial Driver", () => {
         (driver as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
       ).toBe(0);
     });
+
+    it("should handle synchronous writer failures before waiters start", async () => {
+      writerMock.sendData.mockImplementation(() => {
+        throw new Error("write failed");
+      });
+
+      await expect(driver.sendDATA(Buffer.from([1, 2, 3]), 0x0000, 0)).rejects.toThrow(
+        "Failed to send data after 0 retries",
+      );
+    });
   });
 
   describe("Error handling", () => {
