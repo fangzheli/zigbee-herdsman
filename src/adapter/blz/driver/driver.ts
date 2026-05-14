@@ -86,6 +86,7 @@ export class Driver extends EventEmitter {
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
+  private stopPromise?: Promise<void>;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestOperations = new CancellableOperation();
@@ -273,6 +274,24 @@ export class Driver extends EventEmitter {
     emitClose: boolean = true,
     internalReset: boolean = false,
   ): Promise<void> {
+    this.prepareStop(internalReset);
+
+    if (this.stopPromise) {
+      logger.debug("Driver stop already in progress.", NS);
+      return await this.stopPromise;
+    }
+
+    const stopPromise = this.performStop(emitClose).finally(() => {
+      if (this.stopPromise === stopPromise) {
+        this.stopPromise = undefined;
+      }
+    });
+    this.stopPromise = stopPromise;
+
+    return await stopPromise;
+  }
+
+  private prepareStop(internalReset: boolean): void {
     logger.debug("Stopping driver", NS);
     this.requestGeneration += 1;
     this.cancelRequestOperations(new Error("Driver stopped"));
@@ -284,7 +303,9 @@ export class Driver extends EventEmitter {
       this.resetForceOperations.cancel(new Error("Driver stopped"));
       this.startupOperations.cancel(new Error("Driver stopped"));
     }
+  }
 
+  private async performStop(emitClose: boolean): Promise<void> {
     try {
       if (this.blz) {
         const blz = this.blz;

@@ -506,6 +506,9 @@ Future BLZ refactors should follow these rules:
 - Added a BLZ transport close barrier, so `Blz.connect()` waits for an in-flight
   `Blz.close()` before reconnecting and cannot start a second lower serial close
   while the first close is still pending.
+- Added a high-level driver stop barrier, so concurrent `Driver.stop()` calls
+  share one lower `Blz.close()` while still applying each caller's stop
+  cancellation side effects.
 
 ## Next Steps
 

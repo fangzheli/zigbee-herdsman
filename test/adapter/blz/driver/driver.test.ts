@@ -284,6 +284,32 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("coalesces concurrent stop calls against the same BLZ instance", async () => {
+        let releaseClose: (() => void) | undefined;
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockReturnValue(
+                new Promise<void>((resolve) => {
+                    releaseClose = resolve;
+                }),
+            ),
+        };
+        driver.blz = blzMock as unknown as Driver["blz"];
+
+        const firstStop = driver.stop(false);
+        await Promise.resolve();
+        const secondStop = driver.stop(false);
+        await Promise.resolve();
+
+        expect(blzMock.close).toHaveBeenCalledTimes(1);
+
+        releaseClose?.();
+        await Promise.all([firstStop, secondStop]);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("detaches owned BLZ listeners without broad listener cleanup when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const blzMock = {
