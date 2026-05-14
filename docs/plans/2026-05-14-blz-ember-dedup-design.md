@@ -687,6 +687,9 @@ Future BLZ refactors should follow these rules:
 - Kept the high-level driver's cached network channel mask aligned with cached
   channel state: startup now stores the NCP `channelMask`, and channel-change
   snapshot updates refresh both `Channel` and `channels`.
+- Collapsed the BLZ parser's retained tail state from a one-element buffer
+  array into a single bounded buffer, matching the current parser behavior and
+  reducing the chance of accidental multi-buffer retention growth.
 
 ## Next Steps
 

@@ -8,21 +8,20 @@ import Frame from "./frame";
 import { unstuffFrameData } from "./framing";
 
 const NS = "zh:blz:uart";
+const EMPTY_BUFFER = Buffer.alloc(0);
 
 export class Parser extends stream.Transform {
-  private tail: Buffer[];
+  private tail: Buffer;
 
   public constructor() {
     super();
-    this.tail = [];
+    this.tail = EMPTY_BUFFER;
   }
 
   public _transform(chunk: Buffer, _: string, cb: () => void): void {
     logger.debug(`<-- [${chunk.toString("hex")}]`, NS);
 
-    // Append the new chunk to the tail for processing
-    this.tail.push(chunk);
-    let buffer = this.tail.length === 1 ? this.tail[0] : joinBuffers(this.tail);
+    let buffer = this.tail.length === 0 ? chunk : joinBuffers(this.tail, chunk);
 
     let startPlace = buffer.indexOf(consts.START);
     let endPlace = buffer.indexOf(consts.END, startPlace + 1);
@@ -51,7 +50,7 @@ export class Parser extends stream.Transform {
     // Save unprocessed data for the next chunk.
     const firstStart = buffer.indexOf(consts.START);
     if (firstStart === -1) {
-      this.tail = [];
+      this.tail = EMPTY_BUFFER;
       cb();
       return;
     }
@@ -63,30 +62,22 @@ export class Parser extends stream.Transform {
         `Parser buffer overflow (${partialFrame.length} bytes), discarding`,
         NS,
       );
-      this.tail = [];
+      this.tail = EMPTY_BUFFER;
     } else {
-      this.tail = [partialFrame];
+      this.tail = partialFrame;
     }
     cb();
   }
 
   public reset(): void {
-    // Clear tail
-    this.tail.length = 0;
+    this.tail = EMPTY_BUFFER;
   }
 }
 
-function joinBuffers(buffers: Buffer[]): Buffer {
-  let length = 0;
-  for (const buffer of buffers) {
-    length += buffer.length;
-  }
-
-  const result = Buffer.allocUnsafe(length);
-  let offset = 0;
-  for (const buffer of buffers) {
-    offset += buffer.copy(result, offset);
-  }
+function joinBuffers(first: Buffer, second: Buffer): Buffer {
+  const result = Buffer.allocUnsafe(first.length + second.length);
+  let offset = first.copy(result, 0);
+  offset += second.copy(result, offset);
 
   return result;
 }

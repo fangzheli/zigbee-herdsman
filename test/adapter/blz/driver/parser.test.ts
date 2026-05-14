@@ -291,14 +291,15 @@ describe('BLZ Parser', () => {
             );
         });
 
-        it('should trim garbage before an incomplete START-delimited tail', () => {
+        it('should retain one trimmed buffer for an incomplete START-delimited tail', () => {
             const garbage = Buffer.from([0xff, 0xfe, 0xfd]);
             const partial = Buffer.from([consts.START, 0x01, 0x02]);
 
             parser._transform(Buffer.concat([garbage, partial]), 'binary', () => {});
 
-            const tail = (parser as unknown as {tail: Buffer[]}).tail;
-            expect(Buffer.concat(tail)).toEqual(partial);
+            const tail = (parser as unknown as {tail: Buffer}).tail;
+            expect(Buffer.isBuffer(tail)).toBe(true);
+            expect(tail).toEqual(partial);
         });
     });
 
