@@ -387,6 +387,9 @@ Future BLZ refactors should follow these rules:
   `runStartupOperation()`, and used it for both `Blz.connect()` and
   `Blz.forceReset()` so startup cannot remain pending behind either lower-layer
   operation after stop begins.
+- Extended `runStartupOperation()` to the startup endpoint registration step,
+  so `Driver.stop()` also rejects startup promptly while `addEndpoint()` is
+  pending.
 
 ## Next Steps
 

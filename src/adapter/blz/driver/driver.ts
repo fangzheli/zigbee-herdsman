@@ -348,14 +348,17 @@ export class Driver extends EventEmitter {
       );
       await this.waitForStartupDelay(2000, startupStopGeneration);
 
-      await this.addEndpoint({
-        inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
-        outputClusters: [
-          0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300,
-          0x0400,
-        ],
-      });
-      this.throwIfStartupCancelled(startupStopGeneration);
+      await this.runStartupOperation(
+        () =>
+          this.addEndpoint({
+            inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
+            outputClusters: [
+              0x0000, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0020, 0x0300,
+              0x0400,
+            ],
+          }),
+        startupStopGeneration,
+      );
 
       await blz.getVersion();
       this.throwIfStartupCancelled(startupStopGeneration);
