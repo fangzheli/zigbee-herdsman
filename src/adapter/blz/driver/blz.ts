@@ -357,10 +357,7 @@ export class Blz extends EventEmitter {
     this.serialDriver.removeAllListeners("reset");
     this.serialDriver.on("reset", this.onSerialReset.bind(this));
 
-    if (this.watchdogTimer) {
-      clearInterval(this.watchdogTimer);
-      this.watchdogTimer = undefined;
-    }
+    this.clearWatchdogTimer();
 
     if (WATCHDOG_WAKE_PERIOD) {
       this.watchdogTimer = setInterval(
@@ -373,6 +370,7 @@ export class Blz extends EventEmitter {
   }
 
   private async cleanupFailedConnectAttempt(): Promise<void> {
+    this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();
 
@@ -380,6 +378,13 @@ export class Blz extends EventEmitter {
       await this.serialDriver.close(false);
     } catch (error) {
       logger.debug(`Failed to close serial driver after connect failure: ${error}`, NS);
+    }
+  }
+
+  private clearWatchdogTimer(): void {
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = undefined;
     }
   }
 
@@ -418,8 +423,7 @@ export class Blz extends EventEmitter {
   public async close(emitClose: boolean): Promise<void> {
     logger.debug("Closing Blz", NS);
 
-    clearInterval(this.watchdogTimer);
-    this.watchdogTimer = undefined;
+    this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();
     this.serialDriver.removeAllListeners();

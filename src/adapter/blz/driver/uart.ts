@@ -283,6 +283,7 @@ export class SerialDriver extends EventEmitter {
         try {
           this.detachSerialPort();
           await this.serialPort.asyncFlushAndClose();
+          this.serialPort = undefined;
         } catch (error) {
           if (emitClose) {
             this.emit("close");

@@ -169,6 +169,12 @@ Future BLZ refactors should follow these rules:
 - Extended `Driver.stop()` cleanup to clear address caches along with pending
   waiters, avoiding stale device mappings after shutdown even if the lower close
   path throws.
+- Reused one BLZ watchdog cleanup path for successful reconnect, failed
+  reconnect attempts, and close. A failed reconnect after a previous successful
+  connection no longer leaves the old watchdog interval alive.
+- Released the UART serial-port reference after a successful serial
+  `asyncFlushAndClose()`, matching the TCP close path and avoiding retention of
+  a closed port object after shutdown.
 
 ## Next Steps
 
