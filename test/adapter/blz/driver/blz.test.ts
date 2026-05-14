@@ -269,6 +269,26 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.off.mock.calls.filter((call) => call[0] === "reset")).toHaveLength(2);
     });
 
+    it("should coalesce concurrent connect attempts", async () => {
+      let releaseConnect: (() => void) | undefined;
+      serialDriverMock.connect.mockReturnValue(
+        new Promise<void>((resolve) => {
+          releaseConnect = resolve;
+        }),
+      );
+      serialDriverMock.isInitialized.mockReturnValue(true);
+
+      const firstConnect = blz.connect(serialPortOptions);
+      await vi.advanceTimersByTimeAsync(0);
+      const secondConnect = blz.connect(serialPortOptions);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
+
+      releaseConnect?.();
+      await Promise.all([firstConnect, secondConnect]);
+    });
+
     it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized

@@ -275,6 +275,7 @@ export class Blz extends EventEmitter {
   private failures = 0;
   private inResetingProcess = false;
   private connectGeneration = 0;
+  private connectPromise?: Promise<void>;
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private serialDriverEventBridgeAttached = false;
@@ -310,6 +311,22 @@ export class Blz extends EventEmitter {
   }
 
   public async connect(options: SerialPortOptions): Promise<void> {
+    if (this.connectPromise) {
+      logger.debug("Connection already in progress.", NS);
+      return await this.connectPromise;
+    }
+
+    const connectPromise = this.performConnect(options).finally(() => {
+      if (this.connectPromise === connectPromise) {
+        this.connectPromise = undefined;
+      }
+    });
+    this.connectPromise = connectPromise;
+
+    return await connectPromise;
+  }
+
+  private async performConnect(options: SerialPortOptions): Promise<void> {
     let lastError: Error | null = null;
     let connected = false;
     const connectGeneration = this.connectGeneration;

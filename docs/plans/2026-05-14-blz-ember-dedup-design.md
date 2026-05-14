@@ -354,6 +354,9 @@ Future BLZ refactors should follow these rules:
 - Coalesced concurrent high-level `Driver.startup()` calls into one startup
   promise, preventing overlapping startup attempts from closing or replacing
   each other's BLZ transport instance.
+- Coalesced concurrent lower-level `Blz.connect()` calls into one connect
+  promise, preventing overlapping serial open attempts and duplicate temporary
+  reconnect listeners on the same UART driver.
 
 ## Next Steps
 
