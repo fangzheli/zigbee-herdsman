@@ -1115,6 +1115,74 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("restarts after reset interrupts a startup delay", async () => {
+        vi.useFakeTimers();
+        const firstBlzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn(),
+            networkInit: vi.fn(),
+            execCommand: vi.fn(),
+            setResetingProcess: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        const secondBlzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            setResetingProcess: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock
+            .mockImplementationOnce(() => firstBlzMock)
+            .mockImplementationOnce(() => secondBlzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(1000);
+
+        const reset = driver.reset();
+        await vi.advanceTimersByTimeAsync(8000);
+
+        await expect(reset).resolves.toBeUndefined();
+        await expect(startupResult).resolves.toBe("rejected:Driver reset");
+        expect(blzConstructorMock).toHaveBeenCalledTimes(2);
+        expect((driver as unknown as {blz?: unknown}).blz).toBe(secondBlzMock);
+    });
+
     it("cancels startup while BLZ forceReset is pending", async () => {
         vi.useFakeTimers();
         const blzMock = {

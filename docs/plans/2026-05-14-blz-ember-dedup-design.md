@@ -862,6 +862,9 @@ Future BLZ refactors should follow these rules:
 - Ignored new high-level reset requests while an explicit `Driver.stop()` is
   already in progress, preventing reset recovery from sending `forceReset()` or
   restarting against a lower BLZ transport that is already closing.
+- Preserved the specific startup cancellation reason when reset interrupts a
+  high-level startup delay, and treated reset-cancelled startup cleanup as
+  internal reset cleanup so the reset recovery can still restart the driver.
 
 ## Next Steps
 

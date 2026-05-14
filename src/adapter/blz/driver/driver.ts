@@ -134,6 +134,7 @@ export class Driver extends EventEmitter {
   private startupPromise?: Promise<TsType.StartResult>;
   private stopPromise?: Promise<void>;
   private emitCloseWhenStopCompletes = false;
+  private startupCancellationError?: Error;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestOperations = new CancellableOperation();
@@ -296,8 +297,7 @@ export class Driver extends EventEmitter {
     this.cancelRequestOperations(resetError);
     this.requestRetryDelay.cancel();
     this.waitress.clear();
-    this.startupDelay.cancel();
-    this.startupOperations.cancel(resetError);
+    this.cancelStartupOperations(resetError);
 
     try {
       // logger.debug(`Ready to reset in 10 seconds`, NS);
@@ -370,9 +370,8 @@ export class Driver extends EventEmitter {
     this.requestRetryDelay.cancel();
     this.stopGeneration += 1;
     this.resetDelay.cancel();
-    this.startupDelay.cancel();
+    this.cancelStartupOperations(closeError);
     this.resetForceOperations.cancel(closeError);
-    this.startupOperations.cancel(closeError);
     if (this.blz) {
       this.detachBlzListeners(this.blz);
       this.blz = undefined;
@@ -414,11 +413,11 @@ export class Driver extends EventEmitter {
     this.cancelRequestOperations(new Error("Driver stopped"));
     this.requestRetryDelay.cancel();
     if (!internalReset) {
+      const stopError = new Error("Driver stopped");
       this.stopGeneration += 1;
       this.resetDelay.cancel();
-      this.startupDelay.cancel();
-      this.resetForceOperations.cancel(new Error("Driver stopped"));
-      this.startupOperations.cancel(new Error("Driver stopped"));
+      this.resetForceOperations.cancel(stopError);
+      this.cancelStartupOperations(stopError);
     }
   }
 
@@ -460,6 +459,7 @@ export class Driver extends EventEmitter {
     const startupPromise = this.performStartup().finally(() => {
       if (this.startupPromise === startupPromise) {
         this.startupPromise = undefined;
+        this.startupCancellationError = undefined;
       }
     });
     this.startupPromise = startupPromise;
@@ -470,6 +470,7 @@ export class Driver extends EventEmitter {
   private async performStartup(): Promise<TsType.StartResult> {
     let result: TsType.StartResult = "resumed";
     this.transactionID = 1;
+    this.startupCancellationError = undefined;
 
     if (this.blz) {
       await this.stop(false);
@@ -616,9 +617,13 @@ export class Driver extends EventEmitter {
 
   private async cleanupFailedStartup(error: unknown): Promise<void> {
     logger.debug(`Startup failed, cleaning up BLZ resources: ${error}`, NS);
+    const resetCancelledStartup =
+      error === this.startupCancellationError &&
+      error instanceof Error &&
+      error.message === "Driver reset";
 
     try {
-      await this.stop(false);
+      await this.stop(false, resetCancelledStartup);
     } catch (stopError) {
       logger.debug(`Failed to stop after failed startup ${stopError}`, NS);
     }
@@ -1156,7 +1161,7 @@ export class Driver extends EventEmitter {
 
   private throwIfStartupCancelled(startupStopGeneration: number): void {
     if (this.stopGeneration !== startupStopGeneration) {
-      throw new Error("Driver stopped");
+      throw this.startupCancellationError ?? new Error("Driver stopped");
     }
   }
 
@@ -1172,8 +1177,14 @@ export class Driver extends EventEmitter {
     );
 
     if (!stillActive) {
-      throw new Error("Driver stopped");
+      throw this.startupCancellationError ?? new Error("Driver stopped");
     }
+  }
+
+  private cancelStartupOperations(error: Error): void {
+    this.startupCancellationError = error;
+    this.startupDelay.cancel();
+    this.startupOperations.cancel(error);
   }
 
   private async runStartupOperation<T>(
@@ -1183,7 +1194,7 @@ export class Driver extends EventEmitter {
     return await this.startupOperations.run(
       operation,
       () => this.stopGeneration === startupStopGeneration,
-      () => new Error("Driver stopped"),
+      () => this.startupCancellationError ?? new Error("Driver stopped"),
     );
   }
 
