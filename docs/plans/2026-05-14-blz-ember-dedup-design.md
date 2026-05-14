@@ -122,8 +122,12 @@ Future BLZ refactors should follow these rules:
 - Added regression tests for UART failed-open cleanup, UART close listener
   cleanup, TCP socket failed-open/close cleanup, and high-level driver waiter
   timer cleanup when BLZ close rejects.
+- Tightened parser tail retention: garbage without a START delimiter is now
+  discarded immediately instead of being retained until the overflow guard trips.
+  Only an actual partial frame starting at START remains in the bounded tail.
 
 ## Next Steps
 
-1. Consider parser/CRC/stuffing extraction, because the driver layer is
-   closer to hardware and easier to regress.
+1. Extract BLZ byte stuffing/unstuffing into a shared framing helper so parser
+   and writer use one implementation.
+2. Consider CRC/frame construction helpers after stuffing is shared.

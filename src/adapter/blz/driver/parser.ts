@@ -48,6 +48,12 @@ export class Parser extends stream.Transform {
     }
 
     // Save unprocessed data for the next chunk.
+    if (buffer.indexOf(consts.START) === -1) {
+      this.tail = [];
+      cb();
+      return;
+    }
+
     // Guard against unbounded growth from corrupted serial data (missing END delimiter).
     if (buffer.length > 16384) {
       logger.warning(

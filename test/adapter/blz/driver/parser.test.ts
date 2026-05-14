@@ -2,6 +2,7 @@ import {describe, expect, it, vi, beforeEach} from 'vitest';
 import {Parser} from '../../../../src/adapter/blz/driver/parser';
 import * as consts from '../../../../src/adapter/blz/driver/consts';
 import crc16ccitt from '../../../../src/adapter/blz/driver/utils/crc16ccitt';
+import {logger} from '../../../../src/utils/logger';
 
 describe('BLZ Parser', () => {
     let parser: Parser;
@@ -239,6 +240,18 @@ describe('BLZ Parser', () => {
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
+        });
+
+        it('should drop garbage without START delimiter without retaining it as tail', () => {
+            const warning = vi.spyOn(logger, 'warning');
+            const garbage = Buffer.alloc(16385, 0xff);
+
+            parser._transform(garbage, 'binary', () => {});
+
+            expect(warning).not.toHaveBeenCalledWith(
+                expect.stringContaining('Parser buffer overflow'),
+                expect.anything(),
+            );
         });
     });
 
