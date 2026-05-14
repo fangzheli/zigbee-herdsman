@@ -236,6 +236,31 @@ describe("BLZ Adapter", () => {
       expect(driverMock.stop).toHaveBeenCalled();
     });
 
+    it("should wait for an in-flight stop before starting again", async () => {
+      let resolveStop: (() => void) | undefined;
+      driverMock.stop.mockReturnValue(
+        new Promise<void>((resolve) => {
+          resolveStop = resolve;
+        }),
+      );
+      driverMock.startup.mockResolvedValue("resumed");
+
+      const stop = adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const start = adapter.start();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(driverMock.startup).not.toHaveBeenCalled();
+
+      resolveStop?.();
+      await stop;
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(start).resolves.toBe("resumed");
+      expect(driverMock.startup).toHaveBeenCalledTimes(1);
+    });
+
     it("should reject queued adapter jobs when stopping", async () => {
       vi.useRealTimers();
       driverMock.stop.mockResolvedValue(undefined);

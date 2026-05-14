@@ -50,6 +50,7 @@ export class BLZAdapter extends Adapter {
   private driverListenersAttached = false;
   private readonly runningOperations = new CancellableOperation();
   private startPromise?: Promise<StartResult>;
+  private stopPromise?: Promise<void>;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
@@ -175,6 +176,10 @@ export class BLZAdapter extends Adapter {
    * Adapter methods
    */
   public async start(): Promise<StartResult> {
+    if (this.stopPromise) {
+      await this.stopPromise;
+    }
+
     if (this.startPromise) {
       logger.debug("Adapter start already in progress.", NS);
       return await this.startPromise;
@@ -203,6 +208,22 @@ export class BLZAdapter extends Adapter {
   }
 
   public async stop(): Promise<void> {
+    if (this.stopPromise) {
+      logger.debug("Adapter stop already in progress.", NS);
+      return await this.stopPromise;
+    }
+
+    const stopPromise = this.performStop().finally(() => {
+      if (this.stopPromise === stopPromise) {
+        this.stopPromise = undefined;
+      }
+    });
+    this.stopPromise = stopPromise;
+
+    return await stopPromise;
+  }
+
+  private async performStop(): Promise<void> {
     this.closing = true;
     this.stopGeneration += 1;
     const stopError = new Error("Adapter stopped");

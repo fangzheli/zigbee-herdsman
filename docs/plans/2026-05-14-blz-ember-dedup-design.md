@@ -496,6 +496,10 @@ Future BLZ refactors should follow these rules:
   cleared cached network parameters after successful fresh network formation, so
   stop/restart and re-form paths do not expose stale coordinator or network
   state to adapter callers.
+- Added an adapter-level stop barrier, so `BLZAdapter.start()` waits for an
+  in-flight `BLZAdapter.stop()` to finish before calling `Driver.startup()`.
+  This prevents driver startup from overlapping driver shutdown and avoids a
+  completed stop detaching listeners from a newly-started adapter.
 
 ## Next Steps
 
