@@ -1179,10 +1179,7 @@ export class Driver extends EventEmitter {
     return this.transactionID;
   }
 
-  public makeApsFrame(
-    clusterId: number,
-    disableResponse: boolean,
-  ): BlzApsFrame {
+  public makeApsFrame(clusterId: number): BlzApsFrame {
     const frame = new BlzApsFrame();
     frame.clusterId = clusterId;
     frame.profileId = 0;

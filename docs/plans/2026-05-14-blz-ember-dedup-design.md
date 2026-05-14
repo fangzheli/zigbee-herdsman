@@ -614,6 +614,9 @@ Future BLZ refactors should follow these rules:
 - Avoided `Buffer.concat()` in both common and fragmented parser paths, and
   replaced the remaining BLZ type/schema/struct serialization concatenations
   with preallocated buffer copies.
+- Removed the unused `disableResponse` argument from high-level APS frame
+  construction, keeping response-waiter decisions at the adapter layer where
+  they are actually used.
 
 ## Next Steps
 

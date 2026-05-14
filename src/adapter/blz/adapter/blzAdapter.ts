@@ -423,7 +423,7 @@ export class BLZAdapter extends Adapter {
       this.throwIfStopped(generation);
 
       const clusterName = Zdo.ClusterId[clusterId];
-      const frame = this.driver.makeApsFrame(clusterId, disableResponse);
+      const frame = this.driver.makeApsFrame(clusterId);
       payload[0] = frame.sequence; // Sequence number is required for BLZ APS frame
       let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
       let responseClusterId: number | undefined;
@@ -565,7 +565,7 @@ export class BLZAdapter extends Adapter {
       this.checkInterpanLock();
       const generation = this.stopGeneration;
       this.throwIfStopped(generation);
-      const frame = this.driver.makeApsFrame(clusterId, disableResponse);
+      const frame = this.driver.makeApsFrame(clusterId);
 
       if (this.hasZdoMessageOverhead) {
         payload[0] = frame.sequence;
@@ -782,7 +782,6 @@ export class BLZAdapter extends Adapter {
 
     const frame = this.makeZclApsFrame(
       zclFrame.cluster.ID,
-      disableResponse || zclFrame.header.frameControl.disableDefaultResponse,
       profileId,
       sourceEndpoint || 0x01,
       endpoint,
@@ -851,7 +850,6 @@ export class BLZAdapter extends Adapter {
       this.checkInterpanLock();
       const frame = this.makeZclApsFrame(
         zclFrame.cluster.ID,
-        false,
         profileId ?? ZSpec.HA_PROFILE_ID,
         sourceEndpoint ?? 0x01,
         0xff,
@@ -892,7 +890,6 @@ export class BLZAdapter extends Adapter {
           : ZSpec.HA_PROFILE_ID);
       const frame = this.makeZclApsFrame(
         zclFrame.cluster.ID,
-        false,
         resolvedProfileId,
         sourceEndpoint,
         endpoint,
@@ -915,13 +912,12 @@ export class BLZAdapter extends Adapter {
 
   private makeZclApsFrame(
     clusterId: number,
-    disableResponse: boolean,
     profileId: number,
     sourceEndpoint: number,
     destinationEndpoint: number,
     groupId: number,
   ): BlzApsFrame {
-    const frame = this.driver.makeApsFrame(clusterId, disableResponse);
+    const frame = this.driver.makeApsFrame(clusterId);
     frame.profileId = profileId;
     frame.sourceEndpoint = sourceEndpoint;
     frame.destinationEndpoint = destinationEndpoint;
