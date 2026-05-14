@@ -144,7 +144,7 @@ export class BLZAdapter extends Adapter {
     }
   }
 
-  private async handleDeviceJoin(nwk: number, ieee: BlzEUI64): Promise<void> {
+  private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void {
     // Driver emits ieee as "0x" prefixed string, use as-is
     const ieeeAddr = ieee.toString().startsWith("0x")
       ? ieee.toString()

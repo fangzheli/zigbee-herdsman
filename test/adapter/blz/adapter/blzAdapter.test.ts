@@ -154,6 +154,8 @@ describe("BLZ Adapter", () => {
 
       expect(source).toContain("private onDriverClose(): void");
       expect(source).not.toContain("public onDriverClose(): void");
+      expect(source).toContain("private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void");
+      expect(source).not.toContain("private async handleDeviceJoin");
     });
 
     it("should stop successfully", async () => {

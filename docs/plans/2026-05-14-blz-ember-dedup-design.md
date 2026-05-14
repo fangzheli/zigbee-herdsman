@@ -626,6 +626,9 @@ Future BLZ refactors should follow these rules:
 - Added the missing schema-level empty-buffer guard for BLZ length-prefixed
   byte deserialization, so malformed payloads fail before any out-of-bounds
   buffer read.
+- Made the BLZ adapter device-join event handler synchronous, avoiding a
+  needless Promise allocation and keeping EventEmitter callback errors on the
+  synchronous listener path.
 
 ## Next Steps
 
