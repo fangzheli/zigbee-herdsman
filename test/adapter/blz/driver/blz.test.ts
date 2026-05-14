@@ -376,6 +376,44 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("should wait for an in-flight close before reconnecting", async () => {
+      let initialized = false;
+      const closeResolvers: (() => void)[] = [];
+      serialDriverMock.connect.mockImplementation(async () => {
+        initialized = true;
+      });
+      serialDriverMock.close.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            closeResolvers.push(() => {
+              initialized = false;
+              resolve();
+            });
+          }),
+      );
+      serialDriverMock.isInitialized.mockImplementation(() => initialized);
+
+      await blz.connect(serialPortOptions);
+
+      const close = blz.close(false);
+      await vi.advanceTimersByTimeAsync(0);
+      const reconnect = blz.connect(serialPortOptions);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const closeCallsBeforeRelease = serialDriverMock.close.mock.calls.length;
+      const connectCallsBeforeRelease = serialDriverMock.connect.mock.calls.length;
+
+      for (const resolveClose of closeResolvers.splice(0)) {
+        resolveClose();
+      }
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.all([close, reconnect]);
+
+      expect(closeCallsBeforeRelease).toBe(1);
+      expect(connectCallsBeforeRelease).toBe(1);
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(2);
+    });
+
     it("should coalesce concurrent connect attempts", async () => {
       let releaseConnect: (() => void) | undefined;
       serialDriverMock.connect.mockReturnValue(

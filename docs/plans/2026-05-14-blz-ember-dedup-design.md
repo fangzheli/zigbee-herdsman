@@ -503,6 +503,9 @@ Future BLZ refactors should follow these rules:
 - Preserved explicit BLZ-level close notification when `Blz.close(true)` reaches
   a lower serial-driver close failure, while still propagating the original
   close error to the caller.
+- Added a BLZ transport close barrier, so `Blz.connect()` waits for an in-flight
+  `Blz.close()` before reconnecting and cannot start a second lower serial close
+  while the first close is still pending.
 
 ## Next Steps
 

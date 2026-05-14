@@ -277,6 +277,7 @@ export class Blz extends EventEmitter {
   private inResetingProcess = false;
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
+  private closePromise?: Promise<void>;
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private readonly connectOperations = new CancellableOperation();
@@ -314,6 +315,10 @@ export class Blz extends EventEmitter {
   }
 
   public async connect(options: SerialPortOptions): Promise<void> {
+    if (this.closePromise) {
+      await this.closePromise;
+    }
+
     if (this.connectPromise) {
       logger.debug("Connection already in progress.", NS);
       return await this.connectPromise;
@@ -545,6 +550,22 @@ export class Blz extends EventEmitter {
   }
 
   public async close(emitClose: boolean): Promise<void> {
+    if (this.closePromise) {
+      logger.debug("Close already in progress.", NS);
+      return await this.closePromise;
+    }
+
+    const closePromise = this.performClose(emitClose).finally(() => {
+      if (this.closePromise === closePromise) {
+        this.closePromise = undefined;
+      }
+    });
+    this.closePromise = closePromise;
+
+    return await closePromise;
+  }
+
+  private async performClose(emitClose: boolean): Promise<void> {
     logger.debug("Closing Blz", NS);
 
     this.connectGeneration += 1;
