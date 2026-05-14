@@ -1114,6 +1114,28 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("handles bigint EUI64 values from device join callbacks", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const deviceJoined = vi.fn();
+        driver.on("deviceJoined", deviceJoined);
+
+        expect(() =>
+            (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+                "deviceJoinCallback",
+                {
+                    nodeId: 0x3344,
+                    eui64: 0x0000000000123456n,
+                    status: 0x01,
+                } as BLZFrameData,
+            ),
+        ).not.toThrow();
+
+        expect(deviceJoined).toHaveBeenCalledWith(
+            0x3344,
+            "0x0000000000123456",
+        );
+    });
+
     it("removes stale EUI64 mappings when a node ID is re-cached with a new EUI64", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x5566});

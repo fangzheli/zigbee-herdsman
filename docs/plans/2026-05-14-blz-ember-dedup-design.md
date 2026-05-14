@@ -459,6 +459,9 @@ Future BLZ refactors should follow these rules:
   relying on the detached serial bridge.
 - Routed BLZ incoming message type into adapter ZCL payload `wasBroadcast`, so
   broadcast ZCL messages no longer use the old hard-coded `false` placeholder.
+- Normalized `bigint` EUI64 values from BLZ `deviceJoinCallback` frames before
+  address-cache insertion, so real uint64 join callbacks do not throw or skip
+  cache cleanup/update paths.
 
 ## Next Steps
 

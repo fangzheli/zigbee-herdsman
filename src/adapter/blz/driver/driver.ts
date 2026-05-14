@@ -697,13 +697,13 @@ export class Driver extends EventEmitter {
 
   private cacheNodeIeee(
     nwk: number,
-    ieee: BlzEUI64 | ArrayLike<number> | string | number,
+    ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
   ): BlzEUI64 {
     const eui64 =
       ieee instanceof BlzEUI64
         ? ieee
         : new BlzEUI64(
-            typeof ieee === "number"
+            typeof ieee === "number" || typeof ieee === "bigint"
               ? ieee.toString(16).padStart(16, "0")
               : ieee,
           );
@@ -739,7 +739,7 @@ export class Driver extends EventEmitter {
     this.eui64ToNodeId.delete(this.normalizeIeee(ieeeAddr));
   }
 
-  public handleNodeJoined(nwk: number, ieee: number): void {
+  public handleNodeJoined(nwk: number, ieee: number | bigint): void {
     const eui64 = this.cacheNodeIeee(nwk, ieee);
     const ieeeAddrFull = `0x${eui64.toString()}`;
     logger.debug(`deviceJoined, 0x${nwk.toString(16)}, ${ieeeAddrFull}`, NS);
