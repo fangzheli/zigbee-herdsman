@@ -715,5 +715,28 @@ describe("BLZ Driver", () => {
         error.mockRestore();
       }
     });
+
+    it("should ignore received frames that cannot be decoded", () => {
+      const frame = vi.fn();
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      blz.on("frame", frame);
+
+      const receivedHandler = serialDriverMock.on.mock.calls.find(
+        (call) => call[0] === "received",
+      )?.[1];
+      const data = Buffer.alloc(6);
+      data.writeUInt16LE(0xffff, 2);
+
+      try {
+        expect(() => receivedHandler(data)).not.toThrow();
+        expect(frame).not.toHaveBeenCalled();
+        expect(error).toHaveBeenCalledWith(
+          expect.stringContaining("Failed to parse BLZ frame 0xffff"),
+          NS,
+        );
+      } finally {
+        error.mockRestore();
+      }
+    });
   });
 });

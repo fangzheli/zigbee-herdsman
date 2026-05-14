@@ -634,6 +634,9 @@ Future BLZ refactors should follow these rules:
 - Added a BLZ transport receive guard for undersized raw frames, so malformed
   serial data is logged and discarded before frame-ID reads can throw from the
   EventEmitter listener.
+- Contained BLZ transport frame decoding failures at the receive boundary, so
+  unknown or malformed frame IDs are logged and discarded instead of escaping
+  from the serial EventEmitter callback.
 
 ## Next Steps
 

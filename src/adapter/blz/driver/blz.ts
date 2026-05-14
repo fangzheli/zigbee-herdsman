@@ -532,7 +532,13 @@ export class Blz extends EventEmitter {
     const sequence = (data[1] & 0x70) >> 4;
     data = data.subarray(4, -2);
 
-    const frm = BLZFrameData.createFrame(frameId, false, data);
+    let frm: BLZFrameData;
+    try {
+      frm = BLZFrameData.createFrame(frameId, false, data);
+    } catch (error) {
+      logger.error(`Failed to parse BLZ frame 0x${frameId.toString(16)}: ${error}`, NS);
+      return;
+    }
 
     if (!frm) {
       logger.error(`Unparsed frame 0x${frameId.toString(16)}. Skipped`, NS);
