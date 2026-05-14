@@ -557,10 +557,12 @@ export class Blz extends EventEmitter {
     this.queue.clear(new Error("Connection closed"));
     this.waitress.clear();
     this.detachSerialDriverListeners();
-    await this.serialDriver.close(emitClose);
-
-    if (emitClose) {
-      this.emit("close");
+    try {
+      await this.serialDriver.close(emitClose);
+    } finally {
+      if (emitClose) {
+        this.emit("close");
+      }
     }
   }
 

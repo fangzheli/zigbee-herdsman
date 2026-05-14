@@ -500,6 +500,9 @@ Future BLZ refactors should follow these rules:
   in-flight `BLZAdapter.stop()` to finish before calling `Driver.startup()`.
   This prevents driver startup from overlapping driver shutdown and avoids a
   completed stop detaching listeners from a newly-started adapter.
+- Preserved explicit BLZ-level close notification when `Blz.close(true)` reaches
+  a lower serial-driver close failure, while still propagating the original
+  close error to the caller.
 
 ## Next Steps
 
