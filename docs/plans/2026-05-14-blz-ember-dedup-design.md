@@ -753,6 +753,9 @@ Future BLZ refactors should follow these rules:
 - Reworked `Fixed16Bytes.serialize()` to return validated Buffer inputs
   directly; the enclosing frame serializer owns the final copy, so network-key
   command fields no longer pay an extra clone first.
+- Reworked schema deserialization to preallocate the result array from the
+  known schema length and fill by index instead of dynamically growing it with
+  `push()`.
 
 ## Next Steps
 

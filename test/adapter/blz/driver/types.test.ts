@@ -20,7 +20,7 @@ import {
     WordList,
     int_t,
 } from '../../../../src/adapter/blz/driver/types/basic';
-import {serialize as serializeSchema} from '../../../../src/adapter/blz/driver/types';
+import {deserialize as deserializeSchema, serialize as serializeSchema} from '../../../../src/adapter/blz/driver/types';
 import {
     BlzEUI64,
     BlzValueId,
@@ -439,6 +439,15 @@ describe('BLZ Types', () => {
     });
 
     describe('Structured serialization', () => {
+        it('should deserialize schemas without dynamic result array growth', () => {
+            const result = deserializeSchema(Buffer.from([0x34, 0x12, 0x56]), [uint16_t, uint8_t]);
+            const source = fs.readFileSync('src/adapter/blz/driver/types/index.ts', 'utf8');
+
+            expect(result).toEqual([0x1234, 0x56]);
+            expect(source).not.toContain('result.push(value)');
+            expect(source).toContain('new Array(schema.length)');
+        });
+
         it('should serialize schemas without Buffer.concat', () => {
             expectWithoutBufferConcat(
                 () => serializeSchema([0x1234, 0x56], [uint16_t, uint8_t]),

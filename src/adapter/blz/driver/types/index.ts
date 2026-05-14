@@ -21,12 +21,13 @@ interface SchemaType {
 }
 
 export function deserialize(payload: Buffer, schema: SchemaType[]): unknown[] {
-    const result: unknown[] = [];
+    const result: unknown[] = new Array(schema.length);
     let value: unknown;
     let data = payload;
-    for (const type of schema) {
+    for (let i = 0; i < schema.length; i++) {
+        const type = schema[i];
         [value, data] = type.deserialize(type, data);
-        result.push(value);
+        result[i] = value;
     }
     return result;
 }
