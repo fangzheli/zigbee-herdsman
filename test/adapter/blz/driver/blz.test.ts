@@ -324,6 +324,30 @@ describe("BLZ Driver", () => {
 
       expect(reset).not.toHaveBeenCalled();
     });
+
+    it("should ignore watchdog failures after close interrupts an in-flight heartbeat", async () => {
+      let rejectHeartbeat: ((error: Error) => void) | undefined;
+      const reset = vi.fn();
+      const watchdog = (
+        blz as unknown as {watchdogHandler: () => Promise<void>}
+      ).watchdogHandler.bind(blz);
+      vi.spyOn(blz, "getVersion").mockReturnValue(
+        new Promise((_, reject) => {
+          rejectHeartbeat = reject;
+        }),
+      );
+      (blz as unknown as {failures: number}).failures = 2;
+      serialDriverMock.close.mockResolvedValue(undefined);
+      blz.on("reset", reset);
+
+      const run = watchdog();
+      await vi.advanceTimersByTimeAsync(0);
+      await blz.close(false);
+      rejectHeartbeat?.(new Error("heartbeat closed"));
+      await run;
+
+      expect(reset).not.toHaveBeenCalled();
+    });
   });
 
   describe("Value operations", () => {

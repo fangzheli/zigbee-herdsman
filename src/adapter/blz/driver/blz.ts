@@ -275,6 +275,7 @@ export class Blz extends EventEmitter {
   private failures = 0;
   private inResetingProcess = false;
   private connectGeneration = 0;
+  private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private serialDriverEventBridgeAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
@@ -428,6 +429,7 @@ export class Blz extends EventEmitter {
   }
 
   private clearWatchdogTimer(): void {
+    this.watchdogGeneration += 1;
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = undefined;
@@ -773,6 +775,7 @@ export class Blz extends EventEmitter {
   }
 
   private async watchdogHandler(): Promise<void> {
+    const watchdogGeneration = this.watchdogGeneration;
     logger.debug(`Time to watchdog ... ${this.failures}`, NS);
 
     if (this.inResetingProcess) {
@@ -782,8 +785,14 @@ export class Blz extends EventEmitter {
 
     try {
       await this.getVersion();
+      if (watchdogGeneration !== this.watchdogGeneration) {
+        return;
+      }
       this.failures = 0;
     } catch (error) {
+      if (watchdogGeneration !== this.watchdogGeneration) {
+        return;
+      }
       logger.error(`Watchdog heartbeat timeout ${error}`, NS);
 
       if (!this.inResetingProcess) {

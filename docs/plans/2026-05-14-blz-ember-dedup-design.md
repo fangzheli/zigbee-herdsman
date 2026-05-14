@@ -348,6 +348,9 @@ Future BLZ refactors should follow these rules:
 - Restored the BLZ transport reset-state flag when a high-level driver reset is
   cancelled by external stop, so the old transport object does not remain marked
   as resetting after the reset flow exits early.
+- Added BLZ watchdog generation checks, so an in-flight heartbeat that finishes
+  after `Blz.close()` or watchdog cleanup cannot count a stale failure or emit a
+  reset event after the transport has been closed.
 
 ## Next Steps
 
