@@ -2,50 +2,7 @@
 
 import * as basic from './basic';
 import {fixed_list} from './basic';
-
-function fixedEui64BufferFromBytes(value: ArrayLike<number>): Buffer {
-    if (value.length !== 8) {
-        throw new Error('Incorrect value passed');
-    }
-
-    const result = Buffer.allocUnsafe(8);
-    if (Buffer.isBuffer(value)) {
-        value.copy(result);
-    } else {
-        for (let i = 0; i < 8; i++) {
-            result[i] = value[i] & 0xff;
-        }
-    }
-
-    return result;
-}
-
-function hexNibble(value: number): number {
-    if (value >= 0x30 && value <= 0x39) {
-        return value - 0x30;
-    }
-    if (value >= 0x41 && value <= 0x46) {
-        return value - 0x41 + 10;
-    }
-    if (value >= 0x61 && value <= 0x66) {
-        return value - 0x61 + 10;
-    }
-
-    throw new Error('Incorrect value passed');
-}
-
-function fixedEui64BufferFromHex(value: string): Buffer {
-    if (value.length !== 16) {
-        throw new Error('Incorrect value passed');
-    }
-
-    const result = Buffer.allocUnsafe(8);
-    for (let i = 0; i < result.length; i++) {
-        result[i] = (hexNibble(value.charCodeAt(i * 2)) << 4) | hexNibble(value.charCodeAt(i * 2 + 1));
-    }
-
-    return result;
-}
+import { fixedBufferFromBytes, fixedBufferFromHex } from '../../byteUtils';
 
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     private readonly _value: Buffer;
@@ -53,12 +10,12 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     constructor(value: ArrayLike<number> | string | BlzEUI64) {
         super();
         if (value instanceof BlzEUI64) {
-            this._value = fixedEui64BufferFromBytes(value._value);
+            this._value = fixedBufferFromBytes(value._value, 8, 'Incorrect value passed');
         } else if (typeof value === 'string') {
             if (value.startsWith('0x')) value = value.slice(2);
-            this._value = fixedEui64BufferFromHex(value);
+            this._value = fixedBufferFromHex(value, 8, 'Incorrect value passed');
         } else {
-            this._value = fixedEui64BufferFromBytes(value);
+            this._value = fixedBufferFromBytes(value, 8, 'Incorrect value passed');
         }
     }
 
@@ -96,7 +53,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     public get value(): any {
-        return fixedEui64BufferFromBytes(this._value);
+        return fixedBufferFromBytes(this._value, 8, 'Incorrect value passed');
     }
 
     public toString(): string {

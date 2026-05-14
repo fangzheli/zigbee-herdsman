@@ -797,6 +797,9 @@ Future BLZ refactors should follow these rules:
 - Reworked the BLZ receive-handler non-Buffer fallback to normalize
   array-like frames with a direct copy helper, avoiding `Buffer.from()` on the
   EventEmitter receive path.
+- Consolidated repeated byte-copy and fixed-size hex parsing helpers into a
+  shared BLZ byte utility module, so backup, driver, frame receive, and EUI64
+  code share the same allocation and validation behavior.
 
 ## Next Steps
 

@@ -82,6 +82,26 @@ describe('BLZ Types', () => {
             expect(structSource).not.toContain('BlzRouteTableEntry');
             expect(basicSource).not.toContain('serializeBufferSegments');
         });
+
+        it('should keep byte copy and hex parsing helpers shared across BLZ modules', () => {
+            const sources = [
+                fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8'),
+                fs.readFileSync('src/adapter/blz/driver/blz.ts', 'utf8'),
+                fs.readFileSync('src/adapter/blz/driver/driver.ts', 'utf8'),
+                fs.readFileSync('src/adapter/blz/driver/types/basic.ts', 'utf8'),
+                fs.readFileSync('src/adapter/blz/driver/types/named.ts', 'utf8'),
+            ];
+
+            for (const source of sources) {
+                expect(source).not.toContain('function fixedBufferFromBytes(');
+                expect(source).not.toContain('function fixedBufferFromHex(');
+                expect(source).not.toContain('function fixedEui64BufferFromBytes(');
+                expect(source).not.toContain('function fixedEui64BufferFromHex(');
+                expect(source).not.toContain('function bufferFromBytes(');
+                expect(source).not.toContain('function copyBytes(');
+                expect(source).not.toContain('function hexNibble(');
+            }
+        });
     });
 
     describe('Basic Integer Types', () => {

@@ -1,4 +1,6 @@
 /* istanbul ignore file */
+import { bufferFromBytes, copyBytes } from "../../byteUtils";
+
 const EMPTY_BUFFER = Buffer.alloc(0);
 
 export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize: (item: T, index: number) => Buffer): Buffer {
@@ -22,23 +24,6 @@ export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize:
         offset += segment.copy(result, offset);
     }
 
-    return result;
-}
-
-function copyBytes(value: ArrayLike<number>, target: Buffer, offset = 0): void {
-    if (Buffer.isBuffer(value)) {
-        value.copy(target, offset);
-        return;
-    }
-
-    for (let i = 0; i < value.length; i++) {
-        target[offset + i] = value[i] & 0xff;
-    }
-}
-
-function bufferFromBytes(value: ArrayLike<number>): Buffer {
-    const result = Buffer.allocUnsafe(value.length);
-    copyBytes(value, result);
     return result;
 }
 

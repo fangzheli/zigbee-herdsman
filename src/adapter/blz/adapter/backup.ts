@@ -6,6 +6,7 @@ import type * as Models from "../../../models";
 import { BackupUtils } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { uint32MaskToChannels } from "../../../zspec/utils";
+import { fixedBufferFromBytes } from "../byteUtils";
 import type { Driver } from "../driver";
 
 const NS = "zh:blz:backup";
@@ -17,27 +18,6 @@ function extendedPanIdToBackupBuffer(value: bigint): Buffer {
   for (let i = 0; i < result.length; i++) {
     result[i] = Number(extPanId & 0xffn);
     extPanId >>= 8n;
-  }
-
-  return result;
-}
-
-function fixedBufferFromBytes(
-  value: ArrayLike<number>,
-  length: number,
-  name: string,
-): Buffer {
-  if (value.length !== length) {
-    throw new Error(`${name} must be ${length} bytes.`);
-  }
-
-  const result = Buffer.allocUnsafe(length);
-  if (Buffer.isBuffer(value)) {
-    value.copy(result);
-  } else {
-    for (let i = 0; i < length; i++) {
-      result[i] = value[i] & 0xff;
-    }
   }
 
   return result;
@@ -64,8 +44,16 @@ export class BLZAdapterBackup {
     assertActive();
     const netResult = await this.driver.getNetworkKeyInfo();
     assertActive();
-    const tclKey = fixedBufferFromBytes(linkResult.linkKey, 16, "Trust Center link key");
-    const netKey = fixedBufferFromBytes(netResult.nwkKey, 16, "Network key");
+    const tclKey = fixedBufferFromBytes(
+      linkResult.linkKey,
+      16,
+      "Trust Center link key must be 16 bytes.",
+    );
+    const netKey = fixedBufferFromBytes(
+      netResult.nwkKey,
+      16,
+      "Network key must be 16 bytes.",
+    );
     let netKeySequenceNumber = 0;
     let netKeyFrameCounter = 0;
     netKeySequenceNumber = netResult.nwkKeySeqNum;
@@ -96,7 +84,11 @@ export class BLZAdapterBackup {
       },
       securityLevel: 5,
       networkUpdateId: netParams.nwkUpdateId,
-      coordinatorIeeeAddress: fixedBufferFromBytes(ieee, 8, "Coordinator IEEE address"),
+      coordinatorIeeeAddress: fixedBufferFromBytes(
+        ieee,
+        8,
+        "Coordinator IEEE address must be 8 bytes.",
+      ),
       devices: [],
     };
   }

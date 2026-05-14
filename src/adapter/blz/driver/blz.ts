@@ -4,6 +4,7 @@ import { EventEmitter } from "events";
 
 import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
+import { bufferFromBytes } from "../byteUtils";
 import { SerialPortOptions } from "../../tstype";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
@@ -33,19 +34,6 @@ const MTOR_DELIVERY_FAIL_THRESHOLD = 3;
 const MAX_WATCHDOG_FAILURES = 2;
 const WATCHDOG_WAKE_PERIOD = 30; // in sec
 const BLZ_DEFAULT_RADIUS = 0;
-
-function bufferFromBytes(value: ArrayLike<number>): Buffer {
-  const result = Buffer.allocUnsafe(value.length);
-  if (Buffer.isBuffer(value)) {
-    value.copy(result);
-  } else {
-    for (let i = 0; i < value.length; i++) {
-      result[i] = value[i] & 0xff;
-    }
-  }
-
-  return result;
-}
 
 /**
  * Type-specific for BLZ Frames.
