@@ -338,11 +338,13 @@ export class SerialDriver extends EventEmitter {
 
   async reset(): Promise<void> {
     this.parser.reset();
+    this.throwIfClosing();
     this.cancelPendingOperations();
     this.sendSeq = 0;
     this.recvSeq = 0;
 
     return this.queue.execute(async () => {
+      this.throwIfClosing();
       try {
         logger.debug(
           `UART reset: sending reset frame with seq=${this.sendSeq}, ackSeq=${this.recvSeq}`,
@@ -356,6 +358,12 @@ export class SerialDriver extends EventEmitter {
         throw new Error(`Reset error: ${e}`);
       }
     });
+  }
+
+  private throwIfClosing(): void {
+    if (this.closePromise) {
+      throw new Error("Connection closed");
+    }
   }
 
   private handleReset(frame: Frame): void {

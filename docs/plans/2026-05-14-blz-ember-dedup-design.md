@@ -838,6 +838,9 @@ Future BLZ refactors should follow these rules:
 - Guarded direct UART-level `forceReset()` with the BLZ connection generation,
   preventing a close/reconnect boundary from being followed by a stale reset
   against the old serial driver state.
+- Guarded UART `reset()` against an in-flight close before sending the reset
+  frame, so close cleanup cannot be followed by a stale writer reset against a
+  closing serial or TCP transport.
 
 ## Next Steps
 

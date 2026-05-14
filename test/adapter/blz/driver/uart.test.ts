@@ -752,6 +752,17 @@ describe("BLZ Serial Driver", () => {
       expect(observed).toBe("rejected:Send cancelled by driver reset or close");
     });
 
+    it("should not send reset after close interrupts parser reset", async () => {
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+      parserMock.reset.mockImplementationOnce(() => {
+        void driver.close(false);
+      });
+
+      await expect(driver.reset()).rejects.toThrow("Connection closed");
+
+      expect(writerMock.sendReset).not.toHaveBeenCalled();
+    });
+
     it("should not retry pending sends after reset clears waiters", async () => {
       vi.useFakeTimers();
       try {
