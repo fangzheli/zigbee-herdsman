@@ -45,6 +45,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private nextTransactionID(): number");
         expect(source).not.toContain("public nextTransactionID(): number");
         expect(source).not.toContain("disableResponse: boolean,\n  ): BlzApsFrame");
+        expect(source).not.toContain("extendedTimeout = false");
+        expect(source).not.toContain("timeout = 30000,\n  ): Promise<boolean>");
     });
 
     afterEach(() => {

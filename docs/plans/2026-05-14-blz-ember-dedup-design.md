@@ -620,6 +620,9 @@ Future BLZ refactors should follow these rules:
 - Reused adapter-level cancellable operations for ZDO sends and ZCL endpoint,
   group, and broadcast lower driver sends, so `BLZAdapter.stop()` can release
   active adapter jobs without waiting for lower send promises to settle.
+- Removed unused legacy high-level driver request parameters from unicast and
+  multicast APS sends, keeping retry and timeout ownership in the existing
+  request cancellation helpers.
 
 ## Next Steps
 

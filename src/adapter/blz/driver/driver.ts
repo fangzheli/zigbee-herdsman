@@ -900,7 +900,6 @@ export class Driver extends EventEmitter {
     nwk: number | BlzEUI64,
     apsFrame: BlzApsFrame,
     data: Buffer,
-    extendedTimeout = false,
   ): Promise<boolean> {
     const requestGeneration = this.requestGeneration;
 
@@ -1082,7 +1081,6 @@ export class Driver extends EventEmitter {
   public async mrequest(
     apsFrame: BlzApsFrame,
     data: Buffer,
-    timeout = 30000,
   ): Promise<boolean> {
     this.getBlz();
     const requestGeneration = this.requestGeneration;
