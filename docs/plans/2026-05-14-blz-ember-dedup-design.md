@@ -239,6 +239,9 @@ Future BLZ refactors should follow these rules:
 - Defused BLZ command waiter cancellation when lower `sendDATA()` rejects before
   the command waiter is started, avoiding the same unhandled internal rejection
   at the command queue layer.
+- Defused BLZ adapter ZCL response waiter cancellation when APS send fails before
+  the response waiter is started, preventing `Waitress.remove()` from surfacing
+  an unhandled internal rejection.
 
 ## Next Steps
 
