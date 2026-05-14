@@ -612,12 +612,68 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should expose value copies without cloning the backing buffer through Buffer.from', () => {
+                const eui = new BlzEUI64('0102030405060708');
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    const value = eui.value;
+                    value[0] = 0xff;
+
+                    expect(value).toEqual(Buffer.of(0xff, 2, 3, 4, 5, 6, 7, 8));
+                    expect(eui.toString()).toBe('0102030405060708');
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
+
             it('should not retain mutable constructor input storage', () => {
-                const value = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+                const value = Buffer.of(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
                 const eui = new BlzEUI64(value);
                 value[0] = 0xff;
 
                 expect(eui.toString()).toBe('0102030405060708');
+            });
+
+            it('should copy constructor buffer input without cloning it through Buffer.from', () => {
+                const value = Buffer.of(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
+                const originalFrom = Buffer.from;
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((input: unknown, ...args: unknown[]) => {
+                    if (input === value) {
+                        throw new Error('constructor input clone used');
+                    }
+
+                    return (originalFrom as (...parameters: unknown[]) => Buffer)(input, ...args);
+                }) as typeof Buffer.from);
+
+                try {
+                    const eui = new BlzEUI64(value);
+                    value[0] = 0xff;
+
+                    expect(eui.toString()).toBe('0102030405060708');
+                    expect(fromSpy).not.toHaveBeenCalledWith(value);
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
+
+            it('should copy constructor EUI64 input without cloning its value through Buffer.from', () => {
+                const source = new BlzEUI64('0102030405060708');
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    const copy = new BlzEUI64(source);
+
+                    expect(copy.toString()).toBe('0102030405060708');
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
             });
 
             it('should convert to string without copying the backing buffer', () => {

@@ -3,13 +3,30 @@
 import * as basic from './basic';
 import {fixed_list} from './basic';
 
+function fixedEui64BufferFromBytes(value: ArrayLike<number>): Buffer {
+    if (value.length !== 8) {
+        throw new Error('Incorrect value passed');
+    }
+
+    const result = Buffer.allocUnsafe(8);
+    if (Buffer.isBuffer(value)) {
+        value.copy(result);
+    } else {
+        for (let i = 0; i < 8; i++) {
+            result[i] = value[i] & 0xff;
+        }
+    }
+
+    return result;
+}
+
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     private readonly _value: Buffer;
 
     constructor(value: ArrayLike<number> | string | BlzEUI64) {
         super();
         if (value instanceof BlzEUI64) {
-            this._value = Buffer.from(value._value);
+            this._value = fixedEui64BufferFromBytes(value._value);
         } else if (typeof value === 'string') {
             if (value.startsWith('0x')) value = value.slice(2);
             if (value.length !== 16) {
@@ -17,10 +34,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
             }
             this._value = Buffer.from(value, 'hex');
         } else {
-            if (value.length !== 8) {
-                throw new Error('Incorrect value passed');
-            }
-            this._value = Buffer.from(value);
+            this._value = fixedEui64BufferFromBytes(value);
         }
     }
 
@@ -58,7 +72,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     public get value(): any {
-        return Buffer.from(this._value);
+        return fixedEui64BufferFromBytes(this._value);
     }
 
     public toString(): string {

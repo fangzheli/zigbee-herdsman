@@ -786,6 +786,9 @@ Future BLZ refactors should follow these rules:
 - Reworked backup creation key and coordinator IEEE copies to fill fixed-size
   backup-owned buffers directly, keeping the ownership boundary while avoiding
   generic `Buffer.from(sourceBuffer)` clones.
+- Reworked `BlzEUI64` array, copy-constructor, and value-getter defensive
+  copies through a fixed 8-byte helper, keeping identity storage isolated
+  without generic `Buffer.from()` source-buffer clones.
 
 ## Next Steps
 
