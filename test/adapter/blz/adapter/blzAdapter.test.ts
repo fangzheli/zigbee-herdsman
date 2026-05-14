@@ -173,6 +173,17 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
+    it("should detach owned driver listeners when startup fails", async () => {
+      driverMock.startup.mockRejectedValue(new Error("startup failed"));
+
+      await expect(adapter.start()).rejects.toThrow("startup failed");
+
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+    });
+
     it("should cancel the startup settle delay when stopping", async () => {
       driverMock.startup.mockResolvedValue("resumed");
       driverMock.stop.mockResolvedValue(undefined);

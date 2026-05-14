@@ -199,12 +199,17 @@ export class BLZAdapter extends Adapter {
     this.closing = false;
     this.attachDriverListeners();
     const generation = this.stopGeneration;
-    const result = await this.runOperationWhileRunning(
-      () => this.driver.startup(),
-      generation,
-    );
-    await this.waitWhileRunning(1000, generation);
-    return result;
+    try {
+      const result = await this.runOperationWhileRunning(
+        () => this.driver.startup(),
+        generation,
+      );
+      await this.waitWhileRunning(1000, generation);
+      return result;
+    } catch (error) {
+      this.detachDriverListeners();
+      throw error;
+    }
   }
 
   public async stop(): Promise<void> {
