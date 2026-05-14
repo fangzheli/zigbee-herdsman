@@ -55,6 +55,7 @@ describe("BLZ Driver", () => {
     close: ReturnType<typeof vi.fn>;
     isInitialized: ReturnType<typeof vi.fn>;
     sendDATA: ReturnType<typeof vi.fn>;
+    reset: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
     off: ReturnType<typeof vi.fn>;
     removeAllListeners: ReturnType<typeof vi.fn>;
@@ -73,6 +74,7 @@ describe("BLZ Driver", () => {
       close: vi.fn(),
       isInitialized: vi.fn(),
       sendDATA: vi.fn(),
+      reset: vi.fn(),
       on: vi.fn(),
       off: vi.fn(),
       removeAllListeners: vi.fn(),
@@ -811,12 +813,38 @@ describe("BLZ Driver", () => {
       await expect(commandResult).resolves.toBe("rejected:Connection closed");
     });
 
+    it("should cancel active commands before forcing a UART reset", async () => {
+      serialDriverMock.sendDATA.mockReturnValue(new Promise<void>(() => {}));
+      serialDriverMock.reset.mockResolvedValue(undefined);
+
+      const command = blz.execCommand("getValue", {
+        valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+      });
+      const commandResult = command.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await blz.forceReset();
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+      const observed = await Promise.race([
+        commandResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void command.catch(() => {});
+
+      expect(observed).toBe("rejected:Connection reset");
+    });
+
     it("should handle send failures before command waiters start", async () => {
       const sendError = new Error("send failed");
       serialDriverMock.sendDATA.mockRejectedValue(sendError);
 
       const command = blz.execCommand("getValue", {
-          valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+        valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
       });
 
       await expect(command).rejects.toThrow("Failure send getValue");

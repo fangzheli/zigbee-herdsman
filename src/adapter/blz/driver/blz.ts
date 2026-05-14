@@ -579,6 +579,9 @@ export class Blz extends EventEmitter {
       throw new Error("Connection not initialized");
     }
 
+    this.queue.clear(new Error("Connection reset"));
+    this.waitress.clear();
+
     try {
       await this.serialDriver.reset();
       logger.debug("Direct UART reset sent successfully", NS);

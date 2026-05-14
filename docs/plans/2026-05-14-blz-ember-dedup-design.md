@@ -832,6 +832,9 @@ Future BLZ refactors should follow these rules:
 - Coalesced low-level BLZ watchdog heartbeats so a hung `getVersion()` probe
   cannot accumulate overlapping heartbeat commands or queued promises; watchdog
   generation changes still release the guard for close/reconnect boundaries.
+- Cleared low-level BLZ command queues and command waiters before direct
+  UART-level `forceReset()`, so reset recovery does not leave pre-reset command
+  promises pending while the UART layer resets underneath them.
 
 ## Next Steps
 
