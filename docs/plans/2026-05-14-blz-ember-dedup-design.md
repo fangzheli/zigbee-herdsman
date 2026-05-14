@@ -629,6 +629,8 @@ Future BLZ refactors should follow these rules:
 - Made the BLZ adapter device-join event handler synchronous, avoiding a
   needless Promise allocation and keeping EventEmitter callback errors on the
   synchronous listener path.
+- Made UART parsed-frame and error-frame handlers synchronous, avoiding
+  per-frame Promise allocation on the serial receive hot path.
 
 ## Next Steps
 

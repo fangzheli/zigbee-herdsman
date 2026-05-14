@@ -263,7 +263,7 @@ export class SerialDriver extends EventEmitter {
     }
   }
 
-  private async onParsed(frame: Frame): Promise<void> {
+  private onParsed(frame: Frame): void {
     try {
       if ((frame.control & 0x80) !== 0) {
         frame.checkCRC();
@@ -279,7 +279,7 @@ export class SerialDriver extends EventEmitter {
           this.handleACK(frame);
           break;
         case 0x0002:
-          await this.handleError(frame);
+          this.handleError(frame);
           break;
         case 0x0003:
           this.handleReset(frame);
@@ -330,7 +330,7 @@ export class SerialDriver extends EventEmitter {
     // this.waitress.resolve({frameId: -1});
   }
 
-  private async handleError(frame: Frame): Promise<void> {
+  private handleError(frame: Frame): void {
     logger.error(`<-- Error: NCP is in error state`, NS);
     // await this.reset();
   }
