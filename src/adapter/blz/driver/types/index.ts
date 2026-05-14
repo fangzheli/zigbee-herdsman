@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import {Bytes, fixed_list, int8s, list, LVBytes, LVList, serializeBufferSegments, uint_t, uint8_t, uint16_t, uint24_t, uint32_t, uint64_t, WordList} from "./basic";
+import {Bytes, fixed_list, int8s, list, LVBytes, LVList, serializeMappedBufferSegments, uint_t, uint8_t, uint16_t, uint24_t, uint32_t, uint64_t, WordList} from "./basic";
 import {
     BlzApsOption,
     BlzEUI64,
@@ -32,7 +32,7 @@ export function deserialize(payload: Buffer, schema: SchemaType[]): unknown[] {
 }
 
 export function serialize(data: unknown[], schema: SchemaType[]): Buffer {
-    return serializeBufferSegments(schema.map((s, idx) => s.serialize(s, data[idx])));
+    return serializeMappedBufferSegments(schema, (s, idx) => s.serialize(s, data[idx]));
 }
 
 export {

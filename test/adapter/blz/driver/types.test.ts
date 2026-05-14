@@ -44,6 +44,21 @@ function expectWithoutBufferConcat(action: () => Buffer, expected: Buffer): void
     }
 }
 
+function expectWithoutArrayMap(action: () => Buffer, expected: Buffer): void {
+    const mapSpy = vi.spyOn(Array.prototype, 'map').mockImplementation(() => {
+        throw new Error('Array.map used');
+    });
+    let result: Buffer | undefined;
+
+    try {
+        result = action();
+    } finally {
+        mapSpy.mockRestore();
+    }
+
+    expect(result).toEqual(expected);
+}
+
 describe('BLZ Types', () => {
     describe('Architecture', () => {
         it('should not keep legacy ZDO-only helper types in the BLZ type layer', () => {
@@ -298,6 +313,15 @@ describe('BLZ Types', () => {
             expect(result).toEqual(Buffer.from([0x34, 0x12, 0x78, 0x56]));
         });
 
+        it('should serialize without Array.map', () => {
+            const Uint16List = list(uint16_t);
+
+            expectWithoutArrayMap(
+                () => Uint16List.serialize(Uint16List, [0x1234, 0x5678]),
+                Buffer.from([0x34, 0x12, 0x78, 0x56]),
+            );
+        });
+
         it('should serialize length-prefixed lists using the item count', () => {
             const Uint16List = LVList(uint16_t);
 
@@ -327,11 +351,27 @@ describe('BLZ Types', () => {
 
             expect(() => FixedUint16List.serialize(FixedUint16List, [0x1234])).toThrow('Incorrect list length');
         });
+
+        it('should serialize without Array.map', () => {
+            const FixedUint16List = fixed_list(2, uint16_t);
+
+            expectWithoutArrayMap(
+                () => FixedUint16List.serialize(FixedUint16List, [0x1234, 0x5678]),
+                Buffer.from([0x34, 0x12, 0x78, 0x56]),
+            );
+        });
     });
 
     describe('Structured serialization', () => {
         it('should serialize schemas without Buffer.concat', () => {
             expectWithoutBufferConcat(
+                () => serializeSchema([0x1234, 0x56], [uint16_t, uint8_t]),
+                Buffer.from([0x34, 0x12, 0x56]),
+            );
+        });
+
+        it('should serialize schemas without Array.map', () => {
+            expectWithoutArrayMap(
                 () => serializeSchema([0x1234, 0x56], [uint16_t, uint8_t]),
                 Buffer.from([0x34, 0x12, 0x56]),
             );
@@ -348,6 +388,22 @@ describe('BLZ Types', () => {
             frame.sequence = 0x77;
 
             expectWithoutBufferConcat(
+                () => BlzApsFrame.serialize(BlzApsFrame, frame),
+                Buffer.from([0x04, 0x01, 0x06, 0x00, 0x01, 0x02, 0x00, 0x00, 0x34, 0x12, 0x77]),
+            );
+        });
+
+        it('should serialize structs without Array.map', () => {
+            const frame = new BlzApsFrame();
+            frame.profileId = 0x0104;
+            frame.clusterId = 0x0006;
+            frame.sourceEndpoint = 1;
+            frame.destinationEndpoint = 2;
+            frame.options = BlzApsOption.ZB_APS_TX_OPTIONS_NONE;
+            frame.groupId = 0x1234;
+            frame.sequence = 0x77;
+
+            expectWithoutArrayMap(
                 () => BlzApsFrame.serialize(BlzApsFrame, frame),
                 Buffer.from([0x04, 0x01, 0x06, 0x00, 0x01, 0x02, 0x00, 0x00, 0x34, 0x12, 0x77]),
             );

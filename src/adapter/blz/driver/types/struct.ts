@@ -2,7 +2,7 @@
 
 import * as basic from './basic';
 import * as named from './named';
-import {serializeBufferSegments} from './basic';
+import {serializeMappedBufferSegments} from './basic';
 
 export class BlzStruct {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -94,11 +94,8 @@ export class BlzApsFrame extends BlzStruct {
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
 function serializeFields(fields: any[][], obj: any): Buffer {
-    return serializeBufferSegments(
-        /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-        fields.map((field: any[]) => {
-            const value = obj[field[0]];
-            return field[1].serialize(field[1], value);
-        }),
-    );
+    return serializeMappedBufferSegments(fields, (field: any[]) => {
+        const value = obj[field[0]];
+        return field[1].serialize(field[1], value);
+    });
 }

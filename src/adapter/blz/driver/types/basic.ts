@@ -14,6 +14,26 @@ export function serializeBufferSegments(segments: Buffer[]): Buffer {
     return result;
 }
 
+export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize: (item: T, index: number) => Buffer): Buffer {
+    const segments: Buffer[] = new Array(items.length);
+    let length = 0;
+
+    for (let i = 0; i < items.length; i++) {
+        const segment = serialize(items[i], i);
+        segments[i] = segment;
+        length += segment.length;
+    }
+
+    const result = Buffer.allocUnsafe(length);
+    let offset = 0;
+
+    for (const segment of segments) {
+        offset += segment.copy(result, offset);
+    }
+
+    return result;
+}
+
 export class int_t {
     static _signed = true;
 
@@ -184,7 +204,7 @@ export class LVBytes {
 export abstract class List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        return serializeBufferSegments(value.map((i) => cls.itemtype.serialize(cls.itemtype, i)));
+        return serializeMappedBufferSegments(value, (i) => cls.itemtype.serialize(cls.itemtype, i));
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -264,7 +284,7 @@ class _FixedList extends List {
             throw new Error(`Incorrect list length. Expected ${cls._length}, received ${value.length}`);
         }
 
-        return serializeBufferSegments(value.map((i) => cls.itemtype.serialize(cls.itemtype, i)));
+        return serializeMappedBufferSegments(value, (i) => cls.itemtype.serialize(cls.itemtype, i));
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/

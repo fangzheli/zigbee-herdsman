@@ -669,6 +669,9 @@ Future BLZ refactors should follow these rules:
 - Contained malformed ZDO response parsing at the high-level driver receive
   boundary, so truncated ZDO payloads are logged and forwarded as raw incoming
   messages without throwing from the BLZ frame EventEmitter listener.
+- Replaced remaining `Array.map()` use in BLZ schema, struct, generic-list,
+  and fixed-list serialization with a preallocating mapped-buffer helper,
+  removing extra callback/intermediate-array churn from serialization paths.
 
 ## Next Steps
 
