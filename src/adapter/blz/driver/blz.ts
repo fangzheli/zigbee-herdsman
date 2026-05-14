@@ -276,6 +276,7 @@ export class Blz extends EventEmitter {
   private inResetingProcess = false;
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
+  private cancelPendingConnectAttempt?: (error: Error) => void;
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private serialDriverEventBridgeAttached = false;
@@ -355,14 +356,26 @@ export class Blz extends EventEmitter {
           const resetDuringConnect = new Promise<never>((_, reject): void => {
             rejectConnectReset = reject;
           });
+          let rejectConnectClose: ((error: Error) => void) | undefined;
+          const closeDuringConnect = new Promise<never>((_, reject): void => {
+            rejectConnectClose = reject;
+            this.cancelPendingConnectAttempt = reject;
+          });
 
           try {
             await Promise.race([
               this.serialDriver.connect(options),
               resetDuringConnect,
+              closeDuringConnect,
             ]);
           } finally {
             rejectConnectReset = undefined;
+            if (
+              rejectConnectClose &&
+              this.cancelPendingConnectAttempt === rejectConnectClose
+            ) {
+              this.cancelPendingConnectAttempt = undefined;
+            }
           }
 
           if (this.isConnectCancelled(connectGeneration)) {
@@ -514,6 +527,9 @@ export class Blz extends EventEmitter {
     logger.debug("Closing Blz", NS);
 
     this.connectGeneration += 1;
+    this.cancelPendingConnectAttempt?.(
+      new Error("Connection cancelled by close"),
+    );
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
     this.queue.clear(new Error("Connection closed"));

@@ -374,6 +374,9 @@ Future BLZ refactors should follow these rules:
   with an attempt-scoped abort promise, so reset events during connect flow
   through the same cleanup and retry path instead of escaping the EventEmitter
   callback while the connect promise remains ambiguous.
+- Added a BLZ transport connect-attempt close abort, so `Blz.close()` rejects
+  an in-flight lower serial `connect()` immediately instead of relying on the
+  UART layer to settle the pending attempt.
 
 ## Next Steps
 
