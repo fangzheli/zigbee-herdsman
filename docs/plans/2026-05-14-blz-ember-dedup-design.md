@@ -251,6 +251,8 @@ Future BLZ refactors should follow these rules:
 - Removed the now-duplicated unstarted-waiter catch logic from BLZ UART, command,
   driver, and adapter waiter wrappers so cancellation semantics live in the
   shared `Waitress` implementation.
+- Made BLZ group and broadcast ZCL sends check the lower multicast/broadcast
+  request status and reject on false-send results instead of reporting success.
 
 ## Next Steps
 

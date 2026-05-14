@@ -299,6 +299,59 @@ describe("BLZ Adapter", () => {
       expect(driverMock.mrequest).not.toHaveBeenCalled();
     });
 
+    it("should reject when group ZCL send fails", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.mrequest.mockResolvedValue(false);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToGroup(0x1234, zclFrame);
+      const rejection = expect(send).rejects.toThrow("Failed to send group request");
+
+      await vi.advanceTimersByTimeAsync(200);
+      await rejection;
+    });
+
+    it("should reject when broadcast ZCL send fails", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.brequest.mockResolvedValue(false);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToAll(
+        3,
+        zclFrame,
+        1,
+        ZSpec.BroadcastAddress.DEFAULT,
+      );
+      const rejection = expect(send).rejects.toThrow("Failed to send broadcast request");
+
+      await vi.advanceTimersByTimeAsync(200);
+      await rejection;
+    });
+
     it("should preserve the extended PAN ID when changing channel", async () => {
       driverMock.networkParams.panId = 0x2ea0;
       driverMock.networkParams.extendedPanId = Buffer.from(

@@ -686,7 +686,10 @@ export class BLZAdapter extends Adapter {
       frame.destinationEndpoint = 0x01;
       frame.groupId = groupID;
 
-      await this.driver.mrequest(frame, zclFrame.toBuffer());
+      const sent = await this.driver.mrequest(frame, zclFrame.toBuffer());
+      if (!sent) {
+        throw new Error(`Failed to send group request`);
+      }
       /**
        * As a group command is not confirmed and thus immidiately returns
        * (contrary to network address requests) we will give the
@@ -717,7 +720,10 @@ export class BLZAdapter extends Adapter {
       frame.destinationEndpoint = endpoint;
       frame.groupId = destination;
 
-      await this.driver.brequest(destination, frame, zclFrame.toBuffer());
+      const sent = await this.driver.brequest(destination, frame, zclFrame.toBuffer());
+      if (!sent) {
+        throw new Error(`Failed to send broadcast request`);
+      }
 
       /**
        * As a broadcast command is not confirmed and thus immidiately returns
