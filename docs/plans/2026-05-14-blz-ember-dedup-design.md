@@ -399,6 +399,9 @@ Future BLZ refactors should follow these rules:
 - Extended `runStartupOperation()` to the final startup network-parameter and
   coordinator IEEE queries, so `Driver.stop()` cannot leave startup pending
   while those last BLZ commands are in flight.
+- Extended `runStartupOperation()` to startup network restore-decision and
+  leave-network steps, so `Driver.stop()` rejects startup promptly while backup
+  inspection or current-network leave is still pending.
 
 ## Next Steps
 

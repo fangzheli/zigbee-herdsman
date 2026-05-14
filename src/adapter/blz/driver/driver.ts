@@ -373,13 +373,17 @@ export class Driver extends EventEmitter {
       ) {
         logger.info("The network setup need to be initialized", NS);
         await this.waitForStartupDelay(1000, startupStopGeneration);
-        const restore = await this.needsToBeRestore(this.nwkOpt);
-        this.throwIfStartupCancelled(startupStopGeneration);
+        const restore = await this.runStartupOperation(
+          () => this.needsToBeRestore(this.nwkOpt),
+          startupStopGeneration,
+        );
 
         logger.info(`Leaving the current network`, NS);
 
-        const st = await blz.leaveNetwork();
-        this.throwIfStartupCancelled(startupStopGeneration);
+        const st = await this.runStartupOperation(
+          () => blz.leaveNetwork(),
+          startupStopGeneration,
+        );
 
         if (st != BlzStatus.SUCCESS) {
           logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
