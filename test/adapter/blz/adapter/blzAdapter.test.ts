@@ -1733,7 +1733,7 @@ describe("BLZ Adapter", () => {
       expect(start).not.toHaveBeenCalled();
     });
 
-    it("should not mutate caller-owned ZDO payload buffers when assigning TSN", async () => {
+    it("should not mutate or clone caller-owned ZDO payload buffers through Buffer.from when assigning TSN", async () => {
       const apsFrame = new BlzApsFrame();
       apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
       apsFrame.clusterId = Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST;
@@ -1744,21 +1744,34 @@ describe("BLZ Adapter", () => {
 
       driverMock.makeApsFrame.mockReturnValue(apsFrame);
       driverMock.request.mockResolvedValue(true);
+      const originalFrom = Buffer.from;
+      const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+        if (value === payload) {
+          throw new Error("caller payload cloned");
+        }
 
-      await adapter.sendZdo(
-        "0x0102030405060708",
-        0x1234,
-        Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
-        payload,
-        true,
-      );
+        return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+      }) as typeof Buffer.from);
 
-      expect(payload).toEqual(Buffer.from([0xaa, 0xbb, 0xcc]));
-      expect(driverMock.request).toHaveBeenCalledWith(
-        0x1234,
-        apsFrame,
-        Buffer.from([4, 0xbb, 0xcc]),
-      );
+      try {
+        await adapter.sendZdo(
+          "0x0102030405060708",
+          0x1234,
+          Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+          payload,
+          true,
+        );
+
+        expect(payload).toEqual(Buffer.of(0xaa, 0xbb, 0xcc));
+        expect(driverMock.request).toHaveBeenCalledWith(
+          0x1234,
+          apsFrame,
+          Buffer.of(4, 0xbb, 0xcc),
+        );
+        expect(fromSpy).not.toHaveBeenCalledWith(payload);
+      } finally {
+        fromSpy.mockRestore();
+      }
     });
 
     it("should not finish active ZDO sends after stop interrupts the lower request", async () => {

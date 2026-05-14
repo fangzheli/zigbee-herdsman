@@ -53,6 +53,13 @@ function parseZclHeader(message: Buffer): Zcl.Header | undefined {
   return header;
 }
 
+function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
+  const requestPayload = Buffer.allocUnsafe(payload.length);
+  payload.copy(requestPayload);
+  requestPayload[0] = sequence;
+  return requestPayload;
+}
+
 type ZdoSendWaiter = {
   cancel: () => void;
 };
@@ -452,8 +459,8 @@ export class BLZAdapter extends Adapter {
 
       const clusterName = Zdo.ClusterId[clusterId];
       const frame = this.driver.makeApsFrame(clusterId);
-      const requestPayload = Buffer.from(payload);
-      requestPayload[0] = frame.sequence; // Sequence number is required for BLZ APS frame
+      // Sequence number is required for BLZ APS frame.
+      const requestPayload = clonePayloadWithSequence(payload, frame.sequence);
       let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
       let responseClusterId: number | undefined;
 

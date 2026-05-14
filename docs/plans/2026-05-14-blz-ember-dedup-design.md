@@ -777,6 +777,9 @@ Future BLZ refactors should follow these rules:
 - Reworked raw byte serialization to allocate and fill array-like inputs
   directly through the same local byte-copy helper, keeping Buffer inputs as
   pass-through segments for the enclosing frame serializer.
+- Reworked ordinary ZDO payload TSN injection to copy caller-owned buffers with
+  one `allocUnsafe()` plus `copy()`, preserving the immutability boundary
+  without `Buffer.from(payload)` cloning.
 
 ## Next Steps
 
