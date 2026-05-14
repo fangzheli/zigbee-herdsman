@@ -33,6 +33,9 @@ export class SerialDriver extends EventEmitter {
   private recvSeq = 0; // next frame number to receive
   private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
   private queue: Queue;
+  private readonly onParsedHandler = this.onParsed.bind(this);
+  private readonly onPortCloseHandler = this.onPortClose.bind(this);
+  private readonly onPortErrorHandler = this.onPortError.bind(this);
 
   constructor() {
     super();
@@ -82,14 +85,14 @@ export class SerialDriver extends EventEmitter {
     this.writer.pipe(this.serialPort);
 
     this.serialPort.pipe(this.parser);
-    this.parser.on("parsed", this.onParsed.bind(this));
+    this.parser.on("parsed", this.onParsedHandler);
 
     try {
       await this.serialPort.asyncOpen();
       logger.debug("Serialport opened", NS);
 
-      this.serialPort.once("close", this.onPortClose.bind(this));
-      this.serialPort.on("error", this.onPortError.bind(this));
+      this.serialPort.once("close", this.onPortCloseHandler);
+      this.serialPort.on("error", this.onPortErrorHandler);
 
       // reset
       // await this.reset();
@@ -310,7 +313,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   private cleanupParser(): void {
-    this.parser.removeAllListeners();
+    this.parser.off("parsed", this.onParsedHandler);
     this.parser.reset();
   }
 
@@ -321,8 +324,8 @@ export class SerialDriver extends EventEmitter {
 
     this.writer.unpipe(this.serialPort);
     this.serialPort.unpipe(this.parser);
-    this.serialPort.removeAllListeners("close");
-    this.serialPort.removeAllListeners("error");
+    this.serialPort.off("close", this.onPortCloseHandler);
+    this.serialPort.off("error", this.onPortErrorHandler);
   }
 
   private detachSocketPort(): void {

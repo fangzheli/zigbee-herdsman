@@ -301,6 +301,9 @@ Future BLZ refactors should follow these rules:
 - Made UART port `close` events perform the same waiter/queue/parser and
   port/socket reference cleanup as explicit close paths, so unexpected serial
   disconnects do not retain closed port objects.
+- Replaced UART serial-port/parser listener cleanup with stable bound handlers
+  and targeted `off()` calls for `parsed`, `close`, and `error`, avoiding broad
+  listener removal on the serial path.
 
 ## Next Steps
 
