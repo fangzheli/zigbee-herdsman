@@ -560,9 +560,8 @@ export class BLZAdapter extends Adapter {
     rawPayload: Buffer,
     disableResponse: boolean,
   ): Promise<void> {
-    const raw = Buffer.from(rawPayload);
     logger.debug(
-      `[BLZ] NWK_UPDATE_REQUEST raw  len=${raw.length}  ${raw.toString("hex")}`,
+      `[BLZ] NWK_UPDATE_REQUEST raw  len=${rawPayload.length}  ${rawPayload.toString("hex")}`,
       NS,
     );
 

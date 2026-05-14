@@ -719,6 +719,9 @@ Future BLZ refactors should follow these rules:
 - Added direct `BlzEUI64` instance copying and used it for the driver's
   coordinator IEEE snapshot, preserving the defensive copy boundary without
   converting the cached identity through a hex string.
+- Removed the adapter-level NWK update raw-payload copy that existed only for
+  debug logging; channel-change handling now logs the caller payload directly
+  before building its canonical broadcast buffer.
 
 ## Next Steps
 

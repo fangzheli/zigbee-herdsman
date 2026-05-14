@@ -1093,6 +1093,74 @@ describe("BLZ Adapter", () => {
       );
     });
 
+    it("should not copy the raw NWK update payload just for logging", async () => {
+      driverMock.makeApsFrame.mockReturnValue({
+        sequence: 9,
+        profileId: Zdo.ZDO_PROFILE_ID,
+        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        sourceEndpoint: 0,
+        destinationEndpoint: 0,
+      });
+      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      const payload = Zdo.Buffalo.buildRequest(
+        true,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        [15],
+        0xfe,
+        undefined,
+        1,
+        undefined,
+      );
+      const originalFrom = Buffer.from;
+      const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+        if (value === payload) {
+          throw new Error("raw payload copied");
+        }
+
+        return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+      }) as typeof Buffer.from);
+
+      const change = (
+        adapter as unknown as {
+          handleNwkUpdateRequest: (
+            networkAddress: number,
+            clusterId: Zdo.ClusterId,
+            rawPayload: Buffer,
+            disableResponse: boolean,
+          ) => Promise<void>;
+        }
+      ).handleNwkUpdateRequest(
+        ZSpec.BroadcastAddress.SLEEPY,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        payload,
+        true,
+      );
+      const changeResult = change.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        changeResult,
+        Promise.resolve("pending"),
+      ]);
+      fromSpy.mockRestore();
+
+      expect(observed).toBe("pending");
+      expect(driverMock.brequest).toHaveBeenCalledWith(
+        ZSpec.BroadcastAddress.SLEEPY,
+        expect.objectContaining({
+          clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        }),
+        Buffer.from("0900800000fe01ffff", "hex"),
+      );
+
+      await adapter.stop();
+      await change.catch(() => {});
+    });
+
     it("should cancel an in-flight channel change when stopping", async () => {
       driverMock.networkParams.panId = 0x2ea0;
       driverMock.networkParams.extendedPanId = Buffer.from(
