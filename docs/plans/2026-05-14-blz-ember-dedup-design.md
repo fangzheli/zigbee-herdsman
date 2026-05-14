@@ -228,6 +228,8 @@ Future BLZ refactors should follow these rules:
 - Cleared UART-level waiters during `SerialDriver.reset()`, so an in-flight
   `sendDATA()` does not remain pending across a reset until its normal timeout
   and retry path fires.
+- Avoided creating UART waiters for reset frames that intentionally do not wait
+  for a response, preventing unstarted waiters with no timer from accumulating.
 
 ## Next Steps
 

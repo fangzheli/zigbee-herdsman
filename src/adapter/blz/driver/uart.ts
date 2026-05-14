@@ -365,7 +365,10 @@ export class SerialDriver extends EventEmitter {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       const isRetransmission = attempt > 0;
-      const waiter = this.waitFor(frameId, 1000); // 1 second timeout per attempt
+      const waiter =
+        frameId === FRAMES.reset.ID
+          ? undefined
+          : this.waitFor(frameId, 1000); // 1 second timeout per attempt
 
       try {
         this.writer.sendData(
@@ -379,12 +382,14 @@ export class SerialDriver extends EventEmitter {
         this.sendSeq = (seq + 1) & 0x0f;
 
         // Don't wait for response if this is a reset command
-        if (frameId !== FRAMES.reset.ID) {
+        if (waiter) {
           await waiter.start().promise;
         }
         return;
       } catch (e) {
-        this.waitress.remove(waiter.ID);
+        if (waiter) {
+          this.waitress.remove(waiter.ID);
+        }
         logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
 
         if (attempt === retries) {

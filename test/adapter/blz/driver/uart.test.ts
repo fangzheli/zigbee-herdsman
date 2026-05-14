@@ -424,6 +424,14 @@ describe("BLZ Serial Driver", () => {
 
       expect(observed).toBe("rejected:Failed to send data after 0 retries");
     });
+
+    it("should not retain waiters for reset frames that do not wait for response", async () => {
+      await driver.sendDATA(Buffer.from([1, 2, 3]), 0x0003);
+
+      expect(
+        (driver as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+      ).toBe(0);
+    });
   });
 
   describe("Error handling", () => {
