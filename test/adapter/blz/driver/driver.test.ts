@@ -1231,6 +1231,43 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("fails startup when forming a new network returns a non-success status", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn().mockResolvedValue({
+                status: BlzStatus.SUCCESS,
+                nodeType: 1,
+                panId: networkOptions.panID,
+                extPanId: 0x0807060504030201n,
+                channel: 11,
+                nwkUpdateId: 0,
+            }),
+            leaveNetwork: vi.fn().mockResolvedValue(BlzStatus.SUCCESS),
+            formNetwork: vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        vi.spyOn(driver.backupMan, "getStoredBackup").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const rejection = expect(startup).rejects.toThrow("Failed to form network");
+        await vi.advanceTimersByTimeAsync(6000);
+
+        await rejection;
+        expect(blzMock.formNetwork).toHaveBeenCalledTimes(1);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("coalesces concurrent startup attempts", async () => {
         vi.useFakeTimers();
         const blzMock = {

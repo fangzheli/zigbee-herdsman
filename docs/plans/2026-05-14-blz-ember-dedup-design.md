@@ -484,6 +484,10 @@ Future BLZ refactors should follow these rules:
 - Hardened startup network validation so a stack-down result, non-success
   network-parameter status, mismatched coordinator identity, or missing extended
   PAN ID is treated as "needs initialization" without parsing absent fields.
+- Made high-level startup reject when the BLZ `formNetwork` command returns a
+  non-success status, preventing startup from continuing into final probes after
+  network formation failed and avoiding stale address-cache retention on failed
+  formation.
 
 ## Next Steps
 

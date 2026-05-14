@@ -562,12 +562,13 @@ export class Driver extends EventEmitter {
       }
     }
 
+    let formStatus: BlzStatus;
     if (restore) {
       const [backupextendedPanID] = uint64_t.deserialize(
         uint64_t,
         Buffer.from(backup!.networkOptions.extendedPanId),
       );
-      await blz.formNetwork(
+      formStatus = await blz.formNetwork(
         backupextendedPanID,
         backup!.networkOptions.panId,
         backup!.logicalChannel,
@@ -577,11 +578,15 @@ export class Driver extends EventEmitter {
         uint64_t,
         Buffer.from(this.nwkOpt.extendedPanID!),
       );
-      await blz.formNetwork(
+      formStatus = await blz.formNetwork(
         nwkoptextendedPanID,
         this.nwkOpt.panID,
         this.nwkOpt.channelList[0],
       );
+    }
+
+    if (formStatus !== BlzStatus.SUCCESS) {
+      throw new Error(`Failed to form network: status ${formStatus}`);
     }
 
     this.clearAddressCache();
