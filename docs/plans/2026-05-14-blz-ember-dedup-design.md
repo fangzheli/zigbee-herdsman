@@ -545,6 +545,9 @@ Future BLZ refactors should follow these rules:
 - Added a shared preallocating BLZ frame-field serializer for command and ZDO
   frame data classes, replacing per-frame `Buffer.concat(result)` in the BLZ
   command serialization hot path.
+- Avoided `Buffer.concat()` in the parser's common single-chunk path; fragmented
+  tails still concatenate only when there is previous partial frame data to
+  merge.
 
 ## Next Steps
 

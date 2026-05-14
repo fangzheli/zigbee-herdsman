@@ -22,7 +22,7 @@ export class Parser extends stream.Transform {
 
     // Append the new chunk to the tail for processing
     this.tail.push(chunk);
-    let buffer = Buffer.concat(this.tail);
+    let buffer = this.tail.length === 1 ? this.tail[0] : Buffer.concat(this.tail);
 
     let startPlace = buffer.indexOf(consts.START);
     let endPlace = buffer.indexOf(consts.END, startPlace + 1);

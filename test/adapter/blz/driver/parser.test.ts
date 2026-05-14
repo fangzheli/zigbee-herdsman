@@ -86,6 +86,21 @@ describe('BLZ Parser', () => {
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
+        it('should parse a single complete chunk without Buffer.concat allocation churn', async () => {
+            const frame = createCompleteFrame(0x00, 0x01, 0x0010);
+            const concatSpy = vi.spyOn(Buffer, 'concat');
+            try {
+                const parsePromise = getParsedFrame(parser);
+                parser._transform(frame, 'binary', () => {});
+                const parsedFrame = await parsePromise;
+
+                expect(parsedFrame.frameId).toBe(0x0010);
+                expect(concatSpy).not.toHaveBeenCalled();
+            } finally {
+                concatSpy.mockRestore();
+            }
+        });
+
         it('should parse frame with payload', async () => {
             const payload = Buffer.from([0x01, 0x02, 0x03, 0x04]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payload);
