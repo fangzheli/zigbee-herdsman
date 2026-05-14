@@ -744,6 +744,9 @@ Future BLZ refactors should follow these rules:
   because `writeUInt32LE()` fully initializes the outgoing value buffer.
 - Reworked startup extended-PAN-ID comparison to fill a fixed-length
   8-element array by index instead of dynamically growing it with `push()`.
+- Tightened BLZ command waiter matching further so unknown numeric frame IDs
+  return `false` directly instead of allocating an empty fallback array and
+  calling `includes()`.
 
 ## Next Steps
 

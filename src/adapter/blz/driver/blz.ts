@@ -775,9 +775,8 @@ export class Blz extends EventEmitter {
       return payload.frameName === matcher.frameId;
     }
 
-    return (FRAME_NAMES_BY_ID[matcher.frameId] ?? []).includes(
-      payload.frameName,
-    );
+    const frameNames = FRAME_NAMES_BY_ID[matcher.frameId];
+    return frameNames ? frameNames.includes(payload.frameName) : false;
   }
 
   private async watchdogHandler(): Promise<void> {

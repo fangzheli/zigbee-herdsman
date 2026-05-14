@@ -689,6 +689,32 @@ describe("BLZ Driver", () => {
       expect(result).toBe(false);
     });
 
+    it("should reject unknown numeric frame waiters without empty array matching churn", () => {
+      const includesSpy = vi.spyOn(Array.prototype, "includes").mockImplementation(() => {
+        throw new Error("Array.includes used");
+      });
+      let result = true;
+
+      try {
+        result = (
+          blz as unknown as {
+            waitressValidator: (
+              payload: {frameName: string},
+              matcher: {frameId: number},
+            ) => boolean;
+          }
+        ).waitressValidator(
+          {frameName: "getValue"},
+          {frameId: 0xffff},
+        );
+      } finally {
+        includesSpy.mockRestore();
+      }
+
+      expect(result).toBe(false);
+      expect(includesSpy).not.toHaveBeenCalled();
+    });
+
     it("should match string frame waiters without array matching churn", () => {
       const includesSpy = vi.spyOn(Array.prototype, "includes").mockImplementation(() => {
         throw new Error("Array.includes used");
