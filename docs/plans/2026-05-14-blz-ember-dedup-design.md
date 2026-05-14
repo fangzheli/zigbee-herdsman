@@ -546,6 +546,9 @@ Future BLZ refactors should follow these rules:
 - Moved backup creation behind `Driver.createBackup()` and made the driver's
   backup manager private, so `BLZAdapter` no longer reaches into a driver-owned
   helper object during stop-cancellable backup collection.
+- Changed high-level driver coordinator-version and network-parameter snapshot
+  getters to return defensive copies, preventing callers from retaining and
+  mutating driver-owned cached state.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.

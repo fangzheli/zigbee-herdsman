@@ -141,7 +141,7 @@ export class Driver extends EventEmitter {
 
     return {
       type: `BLZ v${version.product}`,
-      meta: version,
+      meta: { ...version },
     };
   }
 
@@ -150,7 +150,12 @@ export class Driver extends EventEmitter {
       throw new Error("BLZ network parameters are not available");
     }
 
-    return this.networkParams;
+    const snapshot = Object.assign(new BlzNetworkParameters(), this.networkParams);
+    if (Buffer.isBuffer(this.networkParams.extendedPanId)) {
+      snapshot.extendedPanId = Buffer.from(this.networkParams.extendedPanId);
+    }
+
+    return snapshot;
   }
 
   public getCoordinatorIeee(): BlzEUI64 {
@@ -165,7 +170,11 @@ export class Driver extends EventEmitter {
     channel: number,
     nwkUpdateId: number,
   ): void {
-    const networkParams = this.getNetworkParametersSnapshot();
+    if (!this.networkParams) {
+      throw new Error("BLZ network parameters are not available");
+    }
+
+    const networkParams = this.networkParams;
     networkParams.Channel = channel;
     networkParams.nwkUpdateId = nwkUpdateId;
   }

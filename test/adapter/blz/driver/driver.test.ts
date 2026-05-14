@@ -98,10 +98,25 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         driver.blz = {version} as unknown as Driver["blz"];
 
-        expect(driver.getCoordinatorVersion()).toEqual({
+        const coordinatorVersion = driver.getCoordinatorVersion();
+
+        expect(coordinatorVersion).toEqual({
             type: "BLZ v7",
             meta: version,
         });
+        expect(coordinatorVersion.meta).not.toBe(version);
+    });
+
+    it("does not expose mutable coordinator version metadata", () => {
+        const version = {product: 7, major: "1", minor: "2", patch: "3"};
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        driver.blz = {version} as unknown as Driver["blz"];
+
+        const coordinatorVersion = driver.getCoordinatorVersion();
+        coordinatorVersion.meta.product = 99;
+
+        expect(driver.getCoordinatorVersion().meta.product).toBe(7);
+        expect(version.product).toBe(7);
     });
 
     it("routes leave network through the driver command operation path", async () => {
@@ -199,6 +214,23 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect((driver as unknown as {networkParams?: BlzNetworkParameters}).networkParams).toBeUndefined();
         expect((driver as unknown as {ieee?: BlzEUI64}).ieee).toBeUndefined();
+    });
+
+    it("does not expose mutable network parameter snapshots", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+
+        const snapshot = driver.getNetworkParametersSnapshot();
+        snapshot.Channel = 20;
+        snapshot.nwkUpdateId = 10;
+        snapshot.extendedPanId[0] = 0xff;
+
+        const freshSnapshot = driver.getNetworkParametersSnapshot();
+
+        expect(freshSnapshot).not.toBe(snapshot);
+        expect(freshSnapshot.Channel).toBe(11);
+        expect(freshSnapshot.nwkUpdateId).toBe(0);
+        expect(freshSnapshot.extendedPanId).toEqual(Buffer.from("0102030405060708", "hex"));
     });
 
     it("cancels network ID to EUI64 lookup when stopping", async () => {
