@@ -125,9 +125,12 @@ Future BLZ refactors should follow these rules:
 - Tightened parser tail retention: garbage without a START delimiter is now
   discarded immediately instead of being retained until the overflow guard trips.
   Only an actual partial frame starting at START remains in the bounded tail.
+- Extracted BLZ byte stuffing and unstuffing into `framing.ts`, so `Parser` and
+  `Writer` now share one delimiter escaping implementation. Added pure helper
+  tests for reserved-byte escaping, unescaping, and round trips.
 
 ## Next Steps
 
-1. Extract BLZ byte stuffing/unstuffing into a shared framing helper so parser
-   and writer use one implementation.
-2. Consider CRC/frame construction helpers after stuffing is shared.
+1. Consider CRC/frame construction helpers now that stuffing is shared.
+2. Continue reducing transport-layer allocation churn where tests can pin the
+   behavior.

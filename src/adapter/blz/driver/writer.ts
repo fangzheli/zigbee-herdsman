@@ -3,6 +3,7 @@
 import * as stream from 'stream';
 import { logger } from '../../../utils/logger';
 import * as consts from './consts';
+import { stuffFrameData } from './framing';
 import { crc16ccitt } from './utils';
 
 const NS = 'zh:blz:uart';
@@ -64,18 +65,7 @@ export class Writer extends stream.Readable {
         frameBuffer.push(crc >> 8);
         frameBuffer.push(crc & 0xFF);
 
-        return Buffer.from([consts.START, ...this.stuff(frameBuffer), consts.END]);
-    }
-
-    private *stuff(buffer: number[]): Generator<number> {
-        for (const byte of buffer) {
-            if ([consts.START, consts.END, consts.ESCAPE].includes(byte)) {
-                yield consts.ESCAPE;
-                yield byte ^ consts.STUFF;
-            } else {
-                yield byte;
-            }
-        }
+        return Buffer.from([consts.START, ...stuffFrameData(Buffer.from(frameBuffer)), consts.END]);
     }
 
     private makeControlByte(isDebug: boolean=false, isRetransmission: boolean): number {

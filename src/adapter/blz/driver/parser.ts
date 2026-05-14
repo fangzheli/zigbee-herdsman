@@ -5,6 +5,7 @@ import * as stream from "node:stream";
 import { logger } from "../../../utils/logger";
 import * as consts from "./consts";
 import Frame from "./frame";
+import { unstuffFrameData } from "./framing";
 
 const NS = "zh:blz:uart";
 
@@ -31,7 +32,7 @@ export class Parser extends stream.Transform {
       const frameBuffer = buffer.subarray(startPlace + 1, endPlace); // Exclude delimiters
 
       try {
-        const unstuffedBuffer = Buffer.from([...this.unstuff(frameBuffer)]);
+        const unstuffedBuffer = unstuffFrameData(frameBuffer);
         const frame = Frame.fromBuffer(unstuffedBuffer);
 
         if (frame) {
@@ -65,23 +66,6 @@ export class Parser extends stream.Transform {
       this.tail = [buffer];
     }
     cb();
-  }
-
-  private *unstuff(buffer: Buffer): Generator<number> {
-    /* Unstuff (unescape) a buffer after receipt */
-    let escaped = false;
-    for (const byte of buffer) {
-      if (escaped) {
-        yield byte ^ consts.STUFF;
-        escaped = false;
-      } else {
-        if (byte === consts.ESCAPE) {
-          escaped = true;
-        } else {
-          yield byte;
-        }
-      }
-    }
   }
 
   public reset(): void {
