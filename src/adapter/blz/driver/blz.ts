@@ -280,6 +280,7 @@ export class Blz extends EventEmitter {
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
   private readonly connectOperations = new CancellableOperation();
+  private readonly connectResetOperations = new CancellableOperation();
   private serialDriverEventBridgeAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
@@ -344,9 +345,8 @@ export class Blz extends EventEmitter {
       );
     }
 
-    let rejectConnectReset: ((error: Error) => void) | undefined;
     const resetForReconnect = (): void => {
-      rejectConnectReset?.(new Error("Failure to connect"));
+      this.connectResetOperations.cancel(new Error("Failure to connect"));
     };
     this.serialDriver.on("reset", resetForReconnect);
 
@@ -357,22 +357,7 @@ export class Blz extends EventEmitter {
             `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
             NS,
           );
-          const resetDuringConnect = new Promise<never>((_, reject): void => {
-            rejectConnectReset = reject;
-          });
-
-          try {
-            await this.runConnectOperation(
-              () =>
-                Promise.race([
-                  this.serialDriver.connect(options),
-                  resetDuringConnect,
-                ]),
-              connectGeneration,
-            );
-          } finally {
-            rejectConnectReset = undefined;
-          }
+          await this.runSerialConnectAttempt(options, connectGeneration);
 
           if (this.isConnectCancelled(connectGeneration)) {
             throw new Error("Connection cancelled by close");
@@ -443,6 +428,21 @@ export class Blz extends EventEmitter {
     }
 
     logger.debug("Connection established successfully", NS);
+  }
+
+  private async runSerialConnectAttempt(
+    options: SerialPortOptions,
+    connectGeneration: number,
+  ): Promise<void> {
+    await this.runConnectOperation(
+      () =>
+        this.connectResetOperations.run(
+          () => this.serialDriver.connect(options),
+          () => !this.isConnectCancelled(connectGeneration),
+          () => new Error("Connection cancelled by close"),
+        ),
+      connectGeneration,
+    );
   }
 
   private async cleanupFailedConnectAttempt(
@@ -549,6 +549,9 @@ export class Blz extends EventEmitter {
 
     this.connectGeneration += 1;
     this.connectOperations.cancel(new Error("Connection cancelled by close"));
+    this.connectResetOperations.cancel(
+      new Error("Connection cancelled by close"),
+    );
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
     this.queue.clear(new Error("Connection closed"));

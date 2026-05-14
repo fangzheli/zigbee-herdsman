@@ -467,6 +467,12 @@ Future BLZ refactors should follow these rules:
   mappings retained.
 - Treated resolved node ID `0x0000` as a valid address lookup result, so EUI64
   sends to the coordinator are not retried and failed as unknown.
+- Reused `CancellableOperation` for BLZ reset-during-connect cancellation,
+  replacing the attempt-local abort promise while preserving failed-attempt
+  cleanup, retry, and close cancellation behavior.
+- Made high-level startup fail immediately when the final network-parameter
+  probe returns a non-success BLZ status, instead of continuing to coordinator
+  IEEE lookup after the stack failed to report valid network parameters.
 
 ## Next Steps
 

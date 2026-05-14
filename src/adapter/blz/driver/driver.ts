@@ -412,6 +412,9 @@ export class Driver extends EventEmitter {
           `Command (getNetworkParameters) returned unexpected state: ${netParams.status}`,
           NS,
         );
+        throw new Error(
+          `getNetworkParameters failed with status=${netParams.status}`,
+        );
       }
       logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);

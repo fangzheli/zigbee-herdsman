@@ -679,6 +679,47 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(reset).not.toHaveBeenCalled();
     });
 
+    it("fails startup when final network parameter probe reports a non-success status", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.GENERAL_ERROR,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const rejection = expect(startup).rejects.toThrow("getNetworkParameters failed");
+        await vi.advanceTimersByTimeAsync(3000);
+
+        await rejection;
+        expect(blzMock.execCommand).not.toHaveBeenCalledWith("getValue", expect.anything());
+    });
+
     it("cancels startup while addEndpoint is pending", async () => {
         vi.useFakeTimers();
         const blzMock = {
