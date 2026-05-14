@@ -289,6 +289,36 @@ describe("BLZ Driver", () => {
       await Promise.all([firstConnect, secondConnect]);
     });
 
+    it("should convert reset events during connect into a failed attempt", async () => {
+      serialDriverMock.connect.mockReturnValue(new Promise<void>(() => {}));
+      serialDriverMock.isInitialized.mockReturnValue(false);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const connect = blz.connect(serialPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const resetForReconnect = serialDriverMock.on.mock.calls
+        .filter((call) => call[0] === "reset")
+        .at(-1)?.[1];
+
+      expect(resetForReconnect).toBeDefined();
+      expect(() => resetForReconnect()).not.toThrow();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+
+      await blz.close(false);
+      await vi.advanceTimersByTimeAsync(0);
+
+      await expect(connectResult).resolves.toBe(
+        "rejected:Connection cancelled by close",
+      );
+    });
+
     it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized

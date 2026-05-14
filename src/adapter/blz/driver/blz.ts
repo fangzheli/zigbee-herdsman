@@ -339,8 +339,9 @@ export class Blz extends EventEmitter {
       await this.serialDriver.close(false);
     }
 
+    let rejectConnectReset: ((error: Error) => void) | undefined;
     const resetForReconnect = (): void => {
-      throw new Error("Failure to connect");
+      rejectConnectReset?.(new Error("Failure to connect"));
     };
     this.serialDriver.on("reset", resetForReconnect);
 
@@ -351,7 +352,18 @@ export class Blz extends EventEmitter {
             `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
             NS,
           );
-          await this.serialDriver.connect(options);
+          const resetDuringConnect = new Promise<never>((_, reject): void => {
+            rejectConnectReset = reject;
+          });
+
+          try {
+            await Promise.race([
+              this.serialDriver.connect(options),
+              resetDuringConnect,
+            ]);
+          } finally {
+            rejectConnectReset = undefined;
+          }
 
           if (this.isConnectCancelled(connectGeneration)) {
             throw new Error("Connection cancelled by close");

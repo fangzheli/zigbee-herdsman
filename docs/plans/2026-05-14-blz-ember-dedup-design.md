@@ -370,6 +370,10 @@ Future BLZ refactors should follow these rules:
 - Added UART open-phase cancellation for both serial and TCP connections, so
   `SerialDriver.close()` rejects an in-flight `connect()` before the port is
   fully opened/ready and releases parser, pipe, and port/socket references.
+- Replaced the BLZ transport's temporary connect-time reset listener `throw`
+  with an attempt-scoped abort promise, so reset events during connect flow
+  through the same cleanup and retry path instead of escaping the EventEmitter
+  callback while the connect promise remains ambiguous.
 
 ## Next Steps
 
