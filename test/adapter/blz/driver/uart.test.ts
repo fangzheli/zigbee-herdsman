@@ -179,6 +179,7 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("const onReady = (): void");
       expect(source).not.toContain("const onReady = async");
       expect(source).toContain("void handleSocketReady().catch");
+      expect(source).not.toContain("@ts-ignore");
     });
 
     it("should connect successfully", async () => {

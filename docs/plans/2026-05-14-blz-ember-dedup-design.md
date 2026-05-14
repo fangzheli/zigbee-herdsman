@@ -654,6 +654,8 @@ Future BLZ refactors should follow these rules:
   without a non-null assertion.
 - Guarded BLZ transport waiter matching for unknown numeric frame IDs, returning
   a clean non-match instead of throwing from the waiter validator.
+- Removed the UART serial-port constructor `@ts-ignore` by preserving literal
+  serial option types with `as const`.
 
 ## Next Steps
 

@@ -104,11 +104,9 @@ export class SerialDriver extends EventEmitter {
       stopBits: 1,
       xon: false,
       xoff: false,
-    };
+    } as const;
 
     logger.debug(`Opening SerialPort with ${JSON.stringify(options)}`, NS);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     this.serialPort = new SerialPort(options);
     const serialPort = this.serialPort;
 
