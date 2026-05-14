@@ -51,6 +51,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private onBlzReset(): void");
         expect(source).not.toContain("private async onBlzReset");
         expect(source).toContain("void this.reset().catch");
+        expect(source).not.toContain("extPanIdArray.push");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {

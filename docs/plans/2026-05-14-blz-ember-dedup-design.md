@@ -742,6 +742,8 @@ Future BLZ refactors should follow these rules:
   `writeBigUInt64BE()` covers the complete buffer.
 - Changed numeric `setValue()` payload construction to use `allocUnsafe(4)`
   because `writeUInt32LE()` fully initializes the outgoing value buffer.
+- Reworked startup extended-PAN-ID comparison to fill a fixed-length
+  8-element array by index instead of dynamically growing it with `push()`.
 
 ## Next Steps
 

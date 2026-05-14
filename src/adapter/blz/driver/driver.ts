@@ -623,13 +623,13 @@ export class Driver extends EventEmitter {
     }
 
     // Convert bigint extPanId to 8-byte array in little-endian order
-    const extPanIdArray = [];
+    const extPanIdArray = new Array<number>(8);
     let extPanId =
       typeof netParams.extPanId === "bigint"
         ? netParams.extPanId
         : BigInt(netParams.extPanId);
     for (let i = 0; i < 8; i++) {
-      extPanIdArray.push(Number(extPanId & 0xffn));
+      extPanIdArray[i] = Number(extPanId & 0xffn);
       extPanId >>= 8n;
     }
     const sameExtendedPanId = equals(options.extendedPanID, extPanIdArray);
