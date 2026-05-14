@@ -834,6 +834,62 @@ describe("BLZ Adapter", () => {
       await change.catch(() => {});
     });
 
+    it("should cancel channel change while reading network key info", async () => {
+      driverMock.networkParams.panId = 0x2ea0;
+      driverMock.networkParams.extendedPanId = Buffer.from(
+        "b3c6675b7437d674",
+        "hex",
+      );
+      driverMock.networkParams.Channel = 11;
+      driverMock.networkParams.nwkUpdateId = 0;
+      driverMock.makeApsFrame.mockReturnValue({
+        sequence: 9,
+        profileId: Zdo.ZDO_PROFILE_ID,
+        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        sourceEndpoint: 0,
+        destinationEndpoint: 0,
+      });
+      driverMock.brequest.mockResolvedValue(true);
+      driverMock.stop.mockResolvedValue(undefined);
+      driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
+      const payload = Zdo.Buffalo.buildRequest(
+        true,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        [15],
+        0xfe,
+        undefined,
+        1,
+        undefined,
+      );
+
+      const change = adapter.sendZdo(
+        ZSpec.BLANK_EUI64,
+        ZSpec.BroadcastAddress.SLEEPY,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        payload,
+        true,
+      );
+      const changeResult = change.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        changeResult,
+        Promise.resolve("pending"),
+      ]);
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.getNetworkKeyInfo).toHaveBeenCalled();
+      expect(driverMock.getGlobalTcLinkKey).not.toHaveBeenCalled();
+      expect(driverMock.blz.leaveNetwork).not.toHaveBeenCalled();
+      await change.catch(() => {});
+    });
+
     it("should clear the driver address cache when sending a leave request", async () => {
       const callback = vi.fn();
       adapter.on("deviceLeave", callback);

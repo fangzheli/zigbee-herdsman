@@ -416,6 +416,10 @@ Future BLZ refactors should follow these rules:
 - Coalesced concurrent `BLZAdapter.start()` calls into one start promise, so
   overlapping starts do not duplicate driver startup or overwrite each other's
   stop-cancellation hook.
+- Generalized adapter stop cancellation to in-flight operations and applied it
+  to channel-change lower calls, so `BLZAdapter.stop()` rejects channel change
+  while it is still reading keys, leaving, updating security, or reforming the
+  network.
 
 ## Next Steps
 
