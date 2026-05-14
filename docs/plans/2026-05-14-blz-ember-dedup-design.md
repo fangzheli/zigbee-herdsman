@@ -175,6 +175,9 @@ Future BLZ refactors should follow these rules:
 - Released the UART serial-port reference after a successful serial
   `asyncFlushAndClose()`, matching the TCP close path and avoiding retention of
   a closed port object after shutdown.
+- Reset the BLZ watchdog failure counter after a successful heartbeat, so
+  intermittent heartbeat misses do not accumulate across healthy checks and
+  trigger unnecessary reset/startup cleanup cycles.
 
 ## Next Steps
 

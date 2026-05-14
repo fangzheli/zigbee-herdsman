@@ -203,6 +203,27 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledWith(false);
       expect(serialDriverMock.connect).toHaveBeenCalledTimes(2);
     });
+
+    it("should reset watchdog failures after a successful heartbeat", async () => {
+      const reset = vi.fn();
+      const watchdog = (
+        blz as unknown as {watchdogHandler: () => Promise<void>}
+      ).watchdogHandler.bind(blz);
+      vi.spyOn(blz, "getVersion")
+        .mockRejectedValueOnce(new Error("first miss"))
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("second miss"))
+        .mockRejectedValueOnce(new Error("third miss"));
+
+      blz.on("reset", reset);
+
+      await watchdog();
+      await watchdog();
+      await watchdog();
+      await watchdog();
+
+      expect(reset).not.toHaveBeenCalled();
+    });
   });
 
   describe("Value operations", () => {

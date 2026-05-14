@@ -726,6 +726,7 @@ export class Blz extends EventEmitter {
 
     try {
       await this.getVersion();
+      this.failures = 0;
     } catch (error) {
       logger.error(`Watchdog heartbeat timeout ${error}`, NS);
 
