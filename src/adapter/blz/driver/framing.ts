@@ -105,6 +105,10 @@ function getUnstuffedLength(buffer: Buffer): number {
         }
     }
 
+    if (escaped) {
+        throw new Error("Dangling escape byte");
+    }
+
     return length;
 }
 

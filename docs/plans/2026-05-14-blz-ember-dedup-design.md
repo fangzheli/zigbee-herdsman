@@ -681,6 +681,9 @@ Future BLZ refactors should follow these rules:
 - Made the UART receive boundary verify CRC on every parsed frame, not only
   frames with the debug/control bit set, so corrupted DATA frames are dropped
   before ACK or upper-layer emission.
+- Hardened BLZ byte unstuffing to reject a dangling escape byte at the end of a
+  frame instead of silently dropping it and passing a shortened frame further
+  into the receive path.
 
 ## Next Steps
 
