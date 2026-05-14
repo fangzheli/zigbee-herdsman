@@ -916,6 +916,68 @@ describe("BLZ Adapter", () => {
       await change.catch(() => {});
     });
 
+    it("should serialize concurrent channel changes through the adapter queue", async () => {
+      driverMock.networkParams.panId = 0x2ea0;
+      driverMock.networkParams.extendedPanId = Buffer.from(
+        "b3c6675b7437d674",
+        "hex",
+      );
+      driverMock.networkParams.Channel = 11;
+      driverMock.networkParams.nwkUpdateId = 0;
+      driverMock.makeApsFrame.mockImplementation(() => ({
+        sequence: 9,
+        profileId: Zdo.ZDO_PROFILE_ID,
+        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        sourceEndpoint: 0,
+        destinationEndpoint: 0,
+      }));
+      driverMock.brequest.mockResolvedValue(true);
+      driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
+
+      const firstPayload = Zdo.Buffalo.buildRequest(
+        true,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        [15],
+        0xfe,
+        undefined,
+        1,
+        undefined,
+      );
+      const secondPayload = Zdo.Buffalo.buildRequest(
+        true,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        [20],
+        0xfe,
+        undefined,
+        2,
+        undefined,
+      );
+
+      const firstChange = adapter.sendZdo(
+        ZSpec.BLANK_EUI64,
+        ZSpec.BroadcastAddress.SLEEPY,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        firstPayload,
+        true,
+      );
+      const secondChange = adapter.sendZdo(
+        ZSpec.BLANK_EUI64,
+        ZSpec.BroadcastAddress.SLEEPY,
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        secondPayload,
+        true,
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(driverMock.brequest).toHaveBeenCalledTimes(1);
+      expect(driverMock.getNetworkKeyInfo).toHaveBeenCalledTimes(1);
+
+      await adapter.stop();
+      await Promise.all([firstChange.catch(() => {}), secondChange.catch(() => {})]);
+    });
+
     it("should clear the driver address cache when sending a leave request", async () => {
       const callback = vi.fn();
       adapter.on("deviceLeave", callback);

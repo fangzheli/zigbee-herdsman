@@ -488,6 +488,10 @@ Future BLZ refactors should follow these rules:
   non-success status, preventing startup from continuing into final probes after
   network formation failed and avoiding stale address-cache retention on failed
   formation.
+- Extended adapter queue ownership for BLZ NWK-update channel changes so the
+  broadcast, propagation wait, leave, security updates, re-form, and settle wait
+  run as one serialized job. A second channel-change request no longer overlaps
+  the first long-running network rebuild.
 
 ## Next Steps
 

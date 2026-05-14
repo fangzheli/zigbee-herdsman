@@ -559,12 +559,12 @@ export class BLZAdapter extends Adapter {
         undefined,
         generation,
       );
-    }, networkAddress);
 
-    await this.handleChannelChange(
-      channelChange.channel,
-      channelChange.nwkUpdateId,
-    );
+      await this.handleChannelChange(
+        channelChange.channel,
+        channelChange.nwkUpdateId,
+      );
+    }, networkAddress);
   }
 
   /**
