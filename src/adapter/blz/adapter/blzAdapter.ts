@@ -785,9 +785,9 @@ export class BLZAdapter extends Adapter {
       0,
     );
 
-    this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
     let dataConfirmResult: boolean;
     try {
+      this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
       dataConfirmResult = await this.driver.request(
         networkAddress,
         frame,

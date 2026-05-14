@@ -527,6 +527,9 @@ Future BLZ refactors should follow these rules:
 - Tightened parser tail retention further: when corrupted input contains
   garbage before an incomplete START-delimited frame, only the partial frame
   from START onward is retained for the next chunk.
+- Extended endpoint ZCL response-waiter cleanup to synchronous pre-send
+  failures such as node-cache/EUI64 conversion errors, preventing unstarted
+  adapter waiters from remaining in memory until shutdown.
 
 ## Next Steps
 

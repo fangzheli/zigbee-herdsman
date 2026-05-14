@@ -643,6 +643,42 @@ describe("BLZ Adapter", () => {
       expect(driverMock.request).toHaveBeenCalledTimes(1);
     });
 
+    it("should cancel endpoint ZCL response waiters when node caching throws", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.setNode.mockImplementation(() => {
+        throw new Error("set node failed");
+      });
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        false,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await expect(
+        adapter.sendZclFrameToEndpoint(
+          "0x0102030405060708",
+          0x1234,
+          1,
+          zclFrame,
+          1000,
+          false,
+          true,
+        ),
+      ).rejects.toThrow("set node failed");
+
+      expect(
+        (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+      ).toBe(0);
+    });
+
     it("should log endpoint ZCL retry state without stale data-request attempts", async () => {
       const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
       try {
