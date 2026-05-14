@@ -27,6 +27,7 @@ import { CancellableOperation } from "../driver/cancellableOperation";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType, BlzStatus } from "../driver/types";
 import type { BlzApsFrame } from "../driver/types/struct";
+import { formatIeeeAddress } from "../ieee";
 import { parseNwkUpdateChannelChange } from "./nwkUpdate";
 
 const NS = "zh:blz";
@@ -58,10 +59,6 @@ function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
   payload.copy(requestPayload);
   requestPayload[0] = sequence;
   return requestPayload;
-}
-
-function formatIeeeAddr(ieee: { toString: () => string }): string {
-  return `0x${ieee.toString().replace(/^0x/i, "").toLowerCase()}`;
 }
 
 type ZdoSendWaiter = {
@@ -175,7 +172,7 @@ export class BLZAdapter extends Adapter {
   }
 
   private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void {
-    const ieeeAddr = formatIeeeAddr(ieee);
+    const ieeeAddr = formatIeeeAddress(ieee);
     logger.debug(() => `Device join request received: ${nwk} ${ieeeAddr}`, NS);
 
     this.emit("deviceJoined", {
@@ -185,7 +182,7 @@ export class BLZAdapter extends Adapter {
   }
 
   private handleDeviceLeft(nwk: number, ieee: BlzEUI64): void {
-    const ieeeAddr = formatIeeeAddr(ieee);
+    const ieeeAddr = formatIeeeAddress(ieee);
     logger.debug(
       () => `Device left network request received: ${nwk} ${ieeeAddr}`,
       NS,
@@ -331,7 +328,7 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getCoordinatorIEEE(): Promise<string> {
-    return formatIeeeAddr(this.driver.getCoordinatorIeee());
+    return formatIeeeAddress(this.driver.getCoordinatorIeee());
   }
 
   public async permitJoin(
@@ -792,7 +789,7 @@ export class BLZAdapter extends Adapter {
   ): Promise<ZclPayload | undefined> {
     this.throwIfStopped(generation);
     if (ieeeAddr == null) {
-      ieeeAddr = formatIeeeAddr(this.driver.getCoordinatorIeee());
+      ieeeAddr = formatIeeeAddress(this.driver.getCoordinatorIeee());
     }
     logger.debug(
       `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +

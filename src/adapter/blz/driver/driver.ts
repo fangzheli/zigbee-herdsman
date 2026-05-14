@@ -11,6 +11,7 @@ import * as Zdo from "../../../zspec/zdo";
 import { GenericZdoResponse } from "../../../zspec/zdo/definition/tstypes";
 import { BLZAdapterBackup } from "../adapter/backup";
 import { fixedBufferFromBytes, fixedBufferFromHex } from "../byteUtils";
+import { normalizeIeeeAddress } from "../ieee";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
@@ -99,10 +100,6 @@ function bytesEqual(
   }
 
   return true;
-}
-
-function normalizeIeeeAddress(ieee: string): string {
-  return ieee.replace(/^0x/i, "").toLowerCase();
 }
 
 function addressesMatch(
@@ -944,11 +941,6 @@ export class Driver extends EventEmitter {
     logger.debug(`handleNetworkStatus: networkStatusCode=${status}`, NS);
   }
 
-  /** Normalize IEEE address to consistent format (no 0x prefix, lowercase). */
-  private normalizeIeee(ieee: string): string {
-    return normalizeIeeeAddress(ieee);
-  }
-
   private cacheNodeIeee(
     nwk: number,
     ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
@@ -961,12 +953,12 @@ export class Driver extends EventEmitter {
               ? ieee.toString(16).padStart(16, "0")
               : ieee,
           );
-    const normalized = this.normalizeIeee(eui64.toString());
+    const normalized = normalizeIeeeAddress(eui64);
     const previousEui64 = this.nodeIdToEui64.get(nwk);
     const previousNwk = this.eui64ToNodeId.get(normalized);
 
     if (previousEui64) {
-      this.eui64ToNodeId.delete(this.normalizeIeee(previousEui64.toString()));
+      this.eui64ToNodeId.delete(normalizeIeeeAddress(previousEui64));
     }
 
     if (previousNwk !== undefined && previousNwk !== nwk) {
@@ -1001,11 +993,11 @@ export class Driver extends EventEmitter {
   private removeCachedNode(nwk: number, ieeeAddr: string): void {
     const cachedEui64 = this.nodeIdToEui64.get(nwk);
     if (cachedEui64) {
-      this.eui64ToNodeId.delete(this.normalizeIeee(cachedEui64.toString()));
+      this.eui64ToNodeId.delete(normalizeIeeeAddress(cachedEui64));
     }
 
     this.nodeIdToEui64.delete(nwk);
-    this.eui64ToNodeId.delete(this.normalizeIeee(ieeeAddr));
+    this.eui64ToNodeId.delete(normalizeIeeeAddress(ieeeAddr));
   }
 
   public handleNodeJoined(nwk: number, ieee: number | bigint): void {
@@ -1043,7 +1035,7 @@ export class Driver extends EventEmitter {
         if (typeof nwk !== "number") {
           const eui64 = nwk as BlzEUI64;
           const strEui64 = eui64.toString();
-          let nodeId = this.eui64ToNodeId.get(this.normalizeIeee(strEui64));
+          let nodeId = this.eui64ToNodeId.get(normalizeIeeeAddress(strEui64));
 
           if (nodeId === undefined) {
             nodeId = (

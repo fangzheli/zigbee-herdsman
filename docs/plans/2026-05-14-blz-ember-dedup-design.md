@@ -878,6 +878,9 @@ Future BLZ refactors should follow these rules:
   coordinator-backed endpoint sends, and device join/leave events through one
   helper, avoiding malformed `0x0X...` addresses from upper-case prefixed
   driver values.
+- Extracted BLZ IEEE address normalization/formatting into a shared helper used
+  by both adapter event formatting and driver waiter/cache matching, so future
+  `0x` prefix behavior changes have one implementation.
 
 ## Next Steps
 
