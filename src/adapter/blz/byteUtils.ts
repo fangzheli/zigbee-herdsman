@@ -22,6 +22,14 @@ export function bufferFromBytes(value: ArrayLike<number>): Buffer {
   return result;
 }
 
+export function bufferForRetention(value: Buffer): Buffer {
+  if (value.byteOffset === 0 && value.buffer.byteLength === value.length) {
+    return value;
+  }
+
+  return bufferFromBytes(value);
+}
+
 export function fixedBufferFromBytes(
   value: ArrayLike<number>,
   length: number,

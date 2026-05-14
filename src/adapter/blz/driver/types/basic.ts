@@ -1,5 +1,5 @@
 /* istanbul ignore file */
-import { bufferFromBytes, copyBytes } from "../../byteUtils";
+import { bufferForRetention, bufferFromBytes, copyBytes } from "../../byteUtils";
 
 const EMPTY_BUFFER = Buffer.alloc(0);
 
@@ -189,8 +189,10 @@ export class LVBytes {
             throw new RangeError(`Buffer too small. Expected at least ${l + 1} bytes, received ${data.length}`);
         }
 
-        const s = data.subarray(1, l + 1);
-        return [s, data.subarray(l + 1)];
+        const s = bufferForRetention(data.subarray(1, l + 1));
+        const remainder =
+            data.length === l + 1 ? EMPTY_BUFFER : data.subarray(l + 1);
+        return [s, remainder];
     }
 }
 
@@ -318,7 +320,7 @@ export class Bytes {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
-        return [data, EMPTY_BUFFER];
+        return [bufferForRetention(data), EMPTY_BUFFER];
     }
 }
 
@@ -343,8 +345,9 @@ export class Fixed16Bytes extends Bytes {
         }
 
         // Extract exactly 16 bytes
-        const value = data.subarray(0, cls._size);
-        const remainder = data.subarray(cls._size);  // Remaining part of the buffer after the first 16 bytes
+        const value = bufferForRetention(data.subarray(0, cls._size));
+        const remainder =
+            data.length === cls._size ? EMPTY_BUFFER : data.subarray(cls._size);  // Remaining part of the buffer after the first 16 bytes
         return [value, remainder];  // Returns the 16-byte buffer and the remainder
     }
 }

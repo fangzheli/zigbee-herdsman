@@ -803,6 +803,9 @@ Future BLZ refactors should follow these rules:
 - Detached saved parser partial tails from larger chunk backing stores, so a
   short START-delimited tail after large noisy input does not keep the whole
   serial chunk alive until the next read.
+- Reused the same BLZ retention-safe buffer helper for parsed byte fields, so
+  `LVBytes`, terminal `Bytes`, and fixed 16-byte security fields do not expose
+  subarrays that can retain a larger inbound frame buffer.
 
 ## Next Steps
 

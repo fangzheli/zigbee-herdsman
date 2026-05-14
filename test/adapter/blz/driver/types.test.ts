@@ -294,6 +294,22 @@ describe('BLZ Types', () => {
             expect(remaining).toEqual(Buffer.from([0xEF]));
         });
 
+        it('should not retain a large source buffer when deserializing length-prefixed bytes', () => {
+            const chunk = Buffer.alloc(20000, 0);
+            const startOffset = chunk.length - 4;
+            chunk[startOffset] = 0x03;
+            chunk[startOffset + 1] = 0x01;
+            chunk[startOffset + 2] = 0x02;
+            chunk[startOffset + 3] = 0x03;
+
+            const [value, remaining] = LVBytes.deserialize(LVBytes, chunk.subarray(startOffset));
+
+            expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03]));
+            expect((value as Buffer).buffer).not.toBe(chunk.buffer);
+            expect(remaining.length).toBe(0);
+            expect((remaining as Buffer).buffer).not.toBe(chunk.buffer);
+        });
+
         it('should reject truncated length-prefixed bytes', () => {
             expect(() => LVBytes.deserialize(LVBytes, Buffer.from([0x02, 0xAB]))).toThrow(RangeError);
         });
@@ -361,8 +377,25 @@ describe('BLZ Types', () => {
             expect(remaining).toEqual(Buffer.alloc(0));
         });
 
+        it('should not retain a large source buffer when deserializing terminal bytes', () => {
+            const chunk = Buffer.alloc(20000, 0);
+            const startOffset = chunk.length - 3;
+            chunk[startOffset] = 0x01;
+            chunk[startOffset + 1] = 0x02;
+            chunk[startOffset + 2] = 0x03;
+
+            const [value, remaining] = Bytes.deserialize(Bytes, chunk.subarray(startOffset));
+
+            expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03]));
+            expect((value as Buffer).buffer).not.toBe(chunk.buffer);
+            expect(remaining.length).toBe(0);
+        });
+
         it('should deserialize terminal bytes without allocating a new empty remainder', () => {
-            const data = Buffer.from([0x01, 0x02, 0x03]);
+            const data = Buffer.alloc(3);
+            data[0] = 0x01;
+            data[1] = 0x02;
+            data[2] = 0x03;
             const allocSpy = vi.spyOn(Buffer, 'alloc').mockImplementation(() => {
                 throw new Error('Buffer.alloc used');
             });
@@ -418,6 +451,18 @@ describe('BLZ Types', () => {
             const [value, remaining] = Fixed16Bytes.deserialize(Fixed16Bytes, input);
             expect(value.length).toBe(16);
             expect(remaining.length).toBe(4);
+        });
+
+        it('should not retain a large source buffer when deserializing fixed bytes', () => {
+            const chunk = Buffer.alloc(20000, 0xab);
+            const startOffset = chunk.length - 16;
+
+            const [value, remaining] = Fixed16Bytes.deserialize(Fixed16Bytes, chunk.subarray(startOffset));
+
+            expect(value).toEqual(Buffer.alloc(16, 0xab));
+            expect((value as Buffer).buffer).not.toBe(chunk.buffer);
+            expect(remaining.length).toBe(0);
+            expect((remaining as Buffer).buffer).not.toBe(chunk.buffer);
         });
 
         it('should throw if buffer too small', () => {
