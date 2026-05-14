@@ -410,6 +410,9 @@ Future BLZ refactors should follow these rules:
 - Reused the connect-operation cancellation wrapper for failed-attempt cleanup,
   so `Blz.close()` also rejects connect while cleanup is still closing a failed
   serial attempt.
+- Added adapter-level start-operation cancellation, so `BLZAdapter.stop()`
+  rejects an in-flight `start()` even while it is still awaiting
+  `Driver.startup()`.
 
 ## Next Steps
 

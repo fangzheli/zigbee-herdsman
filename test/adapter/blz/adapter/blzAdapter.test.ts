@@ -7,6 +7,7 @@ import {
   AdapterOptions,
   NetworkOptions,
   SerialPortOptions,
+  StartResult,
 } from "../../../../src/adapter/tstype";
 import { logger } from "../../../../src/utils/logger";
 import * as Zcl from "../../../../src/zspec/zcl";
@@ -158,6 +159,30 @@ describe("BLZ Adapter", () => {
       await start.catch(() => {});
 
       expect(observed).toBe("rejected:Adapter stopped");
+    });
+
+    it("should cancel adapter start while driver startup is pending", async () => {
+      driverMock.startup.mockReturnValue(new Promise<StartResult>(() => {}));
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const start = adapter.start();
+      const startResult = start.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        startResult,
+        Promise.resolve("pending"),
+      ]);
+
+      void start.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.stop).toHaveBeenCalled();
     });
 
     it("should reject queued adapter jobs when stopping", async () => {

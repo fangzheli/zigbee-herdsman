@@ -47,6 +47,7 @@ export class BLZAdapter extends Adapter {
   private stopGeneration: number;
   private readonly stopDelay = new CancellableDelay();
   private driverListenersAttached = false;
+  private cancelPendingStart?: (error: Error) => void;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
@@ -174,7 +175,10 @@ export class BLZAdapter extends Adapter {
     this.closing = false;
     this.attachDriverListeners();
     const generation = this.stopGeneration;
-    const result = await this.driver.startup();
+    const result = await this.runStartOperation(
+      () => this.driver.startup(),
+      generation,
+    );
     await this.waitWhileRunning(1000, generation);
     return result;
   }
@@ -185,6 +189,7 @@ export class BLZAdapter extends Adapter {
     this.stopDelay.cancel();
     this.queue.clear(new Error("Adapter stopped"));
     this.waitress.clear();
+    this.cancelPendingStart?.(new Error("Adapter stopped"));
 
     try {
       await this.driver.stop();
@@ -206,6 +211,30 @@ export class BLZAdapter extends Adapter {
   private throwIfStopped(generation: number): void {
     if (this.closing || generation !== this.stopGeneration) {
       throw new Error("Adapter stopped");
+    }
+  }
+
+  private async runStartOperation<T>(
+    operation: () => Promise<T>,
+    generation: number,
+  ): Promise<T> {
+    this.throwIfStopped(generation);
+
+    let rejectStart: ((error: Error) => void) | undefined;
+    const startCancelled = new Promise<never>((_, reject): void => {
+      rejectStart = reject;
+      this.cancelPendingStart = reject;
+    });
+
+    try {
+      const result = await Promise.race([operation(), startCancelled]);
+      this.throwIfStopped(generation);
+
+      return result;
+    } finally {
+      if (rejectStart && this.cancelPendingStart === rejectStart) {
+        this.cancelPendingStart = undefined;
+      }
     }
   }
 
