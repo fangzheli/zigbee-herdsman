@@ -296,7 +296,7 @@ export class BLZAdapter extends Adapter {
     seconds: number,
     networkAddress?: number,
   ): Promise<void> {
-    if (!this.driver.blz?.isInitialized()) {
+    if (!this.driver.isInitialized()) {
       return;
     }
 

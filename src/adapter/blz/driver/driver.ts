@@ -125,6 +125,10 @@ export class Driver extends EventEmitter {
     return this.blz;
   }
 
+  public isInitialized(): boolean {
+    return this.blz?.isInitialized() ?? false;
+  }
+
   public getNetworkParametersSnapshot(): BlzNetworkParameters {
     if (!this.networkParams) {
       throw new Error("BLZ network parameters are not available");

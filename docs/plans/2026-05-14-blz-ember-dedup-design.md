@@ -536,6 +536,9 @@ Future BLZ refactors should follow these rules:
 - Reduced outgoing raw-frame allocation churn further by making CRC append,
   CRC verification, and raw frame construction write into preallocated buffers
   instead of using `Buffer.concat()` for header/payload/CRC assembly.
+- Added a high-level `Driver.isInitialized()` API and moved BLZ adapter permit
+  join checks off the public `driver.blz` transport field, reducing adapter
+  coupling to driver internals.
 
 ## Next Steps
 

@@ -30,6 +30,7 @@ describe("BLZ Adapter", () => {
     on: ReturnType<typeof vi.fn>;
     off: ReturnType<typeof vi.fn>;
     getBlz: ReturnType<typeof vi.fn>;
+    isInitialized: ReturnType<typeof vi.fn>;
     getCoordinatorIeee: ReturnType<typeof vi.fn>;
     getNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
     updateNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
@@ -89,6 +90,7 @@ describe("BLZ Adapter", () => {
       on: vi.fn(),
       off: vi.fn(),
       getBlz: vi.fn(),
+      isInitialized: vi.fn(),
       getCoordinatorIeee: vi.fn(),
       getNetworkParametersSnapshot: vi.fn(),
       updateNetworkParametersSnapshot: vi.fn(),
@@ -116,6 +118,7 @@ describe("BLZ Adapter", () => {
       handleNodeLeft: vi.fn(),
     };
     driverMock.getBlz.mockReturnValue(driverMock.blz);
+    driverMock.isInitialized.mockImplementation(() => driverMock.blz.isInitialized());
     driverMock.getCoordinatorIeee.mockImplementation(() => driverMock.ieee);
     driverMock.getNetworkParametersSnapshot.mockImplementation(() => driverMock.networkParams);
     driverMock.updateNetworkParametersSnapshot.mockImplementation((channel: number, nwkUpdateId: number) => {
@@ -385,6 +388,16 @@ describe("BLZ Adapter", () => {
       await adapter.permitJoin(60);
       expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
     }, 60000);
+
+    it("should check permit join initialization through the driver API", async () => {
+      (driverMock as unknown as {blz?: unknown}).blz = undefined;
+      driverMock.isInitialized.mockReturnValue(true);
+      driverMock.permitJoining.mockResolvedValue({ status: BlzStatus.SUCCESS });
+
+      await adapter.permitJoin(60, 0x0000);
+
+      expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
+    });
 
     it("should cancel coordinator permit join when stopping", async () => {
       driverMock.blz.isInitialized.mockReturnValue(true);
