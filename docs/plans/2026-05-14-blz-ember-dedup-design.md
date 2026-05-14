@@ -208,6 +208,9 @@ Future BLZ refactors should follow these rules:
 - Hardened the shared `Queue` used by BLZ reset/close paths: a running job that
   was removed by `Queue.clear()` no longer removes or starts unrelated jobs when
   its `finally` block later runs.
+- Extended `Queue.clear()` to reject jobs that have not started yet, so BLZ
+  reset/close cleanup does not leave queued command promises permanently
+  pending after their queue entry is discarded.
 
 ## Next Steps
 

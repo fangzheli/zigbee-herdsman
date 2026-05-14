@@ -2,6 +2,7 @@ interface Job {
     key?: string | number;
     running: boolean;
     start?: () => void;
+    rejectStart?: (error: Error) => void;
 }
 
 export class Queue {
@@ -20,11 +21,14 @@ export class Queue {
         // Minor optimization/workaround: various tests like the idea that a job that is immediately runnable is run without an event loop spin.
         // This also helps with stack traces in some cases, so avoid an `await` if we can help it.
         if (this.#getNext() !== job) {
-            await new Promise<void>((resolve): void => {
+            await new Promise<void>((resolve, reject): void => {
                 job.start = (): void => {
                     job.running = true;
                     this.#running += 1;
                     resolve();
+                };
+                job.rejectStart = (error: Error): void => {
+                    reject(error);
                 };
 
                 this.#executeNext();
@@ -72,6 +76,12 @@ export class Queue {
     }
 
     public clear(): void {
+        for (const job of this.#jobs) {
+            if (!job.running) {
+                job.rejectStart?.(new Error("Queue cleared"));
+            }
+        }
+
         this.#running = 0;
         this.#jobs.length = 0;
     }

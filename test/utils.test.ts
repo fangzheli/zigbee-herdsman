@@ -273,6 +273,42 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
+    it("Test queue clear rejects jobs that have not started", async () => {
+        const queue = new Queue(1);
+        const started: number[] = [];
+
+        let finishRunningJob: (() => void) | undefined;
+        const runningJobBlocker = new Promise<void>((resolve) => {
+            finishRunningJob = resolve;
+        });
+
+        const runningJob = queue.execute(async () => {
+            started.push(1);
+            await runningJobBlocker;
+        });
+        const queuedJob = queue.execute(async () => {
+            started.push(2);
+        });
+        const queuedResult = queuedJob.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        queue.clear();
+
+        const result = await Promise.race([
+            queuedResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
+
+        expect(result).toBe("rejected:Queue cleared");
+        expect(started).toEqual([1]);
+        expect(queue.count()).toBe(0);
+
+        finishRunningJob?.();
+        await runningJob;
+    });
+
     it("Test async mutex", async () => {
         vi.useFakeTimers();
 
