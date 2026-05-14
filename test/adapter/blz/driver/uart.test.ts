@@ -430,6 +430,7 @@ describe("BLZ Serial Driver", () => {
       );
 
       expect(callback).toHaveBeenCalled();
+      expect(driver.isInitialized()).toBe(false);
     });
 
     it("should handle normal port close", () => {

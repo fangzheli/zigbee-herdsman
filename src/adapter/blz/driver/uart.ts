@@ -338,11 +338,11 @@ export class SerialDriver extends EventEmitter {
 
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
+    this.initialized = false;
 
     if (err != null && err !== false) {
       this.emit("reset");
     } else {
-      this.initialized = false;
       this.emit("close");
     }
   }

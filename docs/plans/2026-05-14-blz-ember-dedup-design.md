@@ -193,6 +193,9 @@ Future BLZ refactors should follow these rules:
 - Cancelled the startup phase of an in-flight high-level `Driver.reset()` when
   an external `Driver.stop()` interrupts it, preventing shutdown from being
   followed by an unexpected driver restart.
+- Marked the UART driver uninitialized on abnormal port close before emitting
+  `reset`, so higher layers do not attempt direct UART operations against a
+  closed port during recovery.
 
 ## Next Steps
 
