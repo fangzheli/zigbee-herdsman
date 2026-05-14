@@ -516,6 +516,32 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should ignore repeated TCP ready events while reset is pending", async () => {
+      let finishReset!: () => void;
+      vi.spyOn(driver, "reset").mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishReset = resolve;
+        }),
+      );
+
+      const connect = driver.connect(tcpPortOptions);
+      const ready = socketPortMock.on.mock.calls.find(
+        (call) => call[0] === "ready",
+      )?.[1];
+
+      expect(ready).toBeDefined();
+      const firstReady = ready();
+      const secondReady = ready();
+      await Promise.resolve();
+
+      expect(driver.reset).toHaveBeenCalledTimes(1);
+
+      finishReset();
+      await firstReady;
+      await secondReady;
+      await connect;
+    });
+
     it("should remove TCP socket listeners when closing", async () => {
       const connect = driver.connect(tcpPortOptions);
       await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();

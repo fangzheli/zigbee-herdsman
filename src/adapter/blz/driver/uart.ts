@@ -185,6 +185,7 @@ export class SerialDriver extends EventEmitter {
 
     const openSocket = (): Promise<void> =>
       new Promise<void>((resolve, reject): void => {
+        let readyStarted = false;
         const openError = (err: Error): void => {
           if (settled) {
             return;
@@ -201,11 +202,13 @@ export class SerialDriver extends EventEmitter {
           logger.debug("Socket connected", NS);
         };
         const handleSocketReady = async (): Promise<void> => {
-          if (settled) {
+          if (settled || readyStarted) {
             return;
           }
 
+          readyStarted = true;
           logger.debug("Socket ready", NS);
+          socketPort.off("ready", onReady);
           socketPort.off("error", openError);
           socketPort.off("close", openClose);
           socketPort.once("close", this.onPortCloseHandler);

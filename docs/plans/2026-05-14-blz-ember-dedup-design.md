@@ -841,6 +841,9 @@ Future BLZ refactors should follow these rules:
 - Guarded UART `reset()` against an in-flight close before sending the reset
   frame, so close cleanup cannot be followed by a stale writer reset against a
   closing serial or TCP transport.
+- Made TCP socket `ready` handling one-shot during UART open, preventing
+  repeated `ready` emissions while reset is pending from running duplicate
+  reset/open-completion flows or attaching runtime listeners repeatedly.
 
 ## Next Steps
 
