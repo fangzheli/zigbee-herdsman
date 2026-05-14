@@ -1027,6 +1027,25 @@ describe("BLZ Driver", () => {
       ).toBe(0);
     });
 
+    it("should not stringify received frames unless debug logging evaluates the message", () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const receivedHandler = serialDriverMock.on.mock.calls.find(
+        (call) => call[0] === "received",
+      )?.[1];
+      const data = Buffer.from([0x00, 0x00, 0x03, 0x00, 0x00, 0x00]);
+      const toStringSpy = vi.spyOn(data, "toString").mockImplementation(() => {
+        throw new Error("eager received frame hex string");
+      });
+
+      try {
+        expect(() => receivedHandler(data)).not.toThrow();
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), NS);
+      } finally {
+        toStringSpy.mockRestore();
+        debug.mockRestore();
+      }
+    });
+
     it("should ignore malformed received buffers that are too short for a BLZ frame", () => {
       const frame = vi.fn();
       const error = vi.spyOn(logger, "error").mockImplementation(() => {});

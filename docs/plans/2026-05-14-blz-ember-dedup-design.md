@@ -910,6 +910,9 @@ Future BLZ refactors should follow these rules:
 - Added symmetric serialize-time validation for BLZ declared byte lengths and
   counted `WordList` fields, preventing internally inconsistent frames from
   being emitted when a length/count property does not match its payload.
+- Deferred BLZ raw frame hex formatting in the parser, writer, reset writer,
+  and received-frame path until debug logging evaluates the message, reducing
+  per-frame allocation churn when those debug messages are not emitted.
 
 ## Next Steps
 

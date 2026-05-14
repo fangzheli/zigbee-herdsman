@@ -20,7 +20,7 @@ export class Parser extends stream.Transform {
   }
 
   public _transform(chunk: Buffer, _: string, cb: () => void): void {
-    logger.debug(`<-- [${chunk.toString("hex")}]`, NS);
+    logger.debug(() => `<-- [${chunk.toString("hex")}]`, NS);
 
     let buffer = this.tail.length === 0 ? chunk : joinBuffers(this.tail, chunk);
 

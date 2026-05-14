@@ -101,6 +101,22 @@ describe('BLZ Parser', () => {
             }
         });
 
+        it('should not stringify raw chunks unless debug logging evaluates the message', () => {
+            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+            const chunk = Buffer.from([0xff, 0xfe, 0xfd]);
+            const toStringSpy = vi.spyOn(chunk, 'toString').mockImplementation(() => {
+                throw new Error('eager chunk hex string');
+            });
+
+            try {
+                expect(() => parser._transform(chunk, 'binary', () => {})).not.toThrow();
+                expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+            } finally {
+                toStringSpy.mockRestore();
+                debug.mockRestore();
+            }
+        });
+
         it('should parse frame with payload', async () => {
             const payload = Buffer.from([0x01, 0x02, 0x03, 0x04]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payload);

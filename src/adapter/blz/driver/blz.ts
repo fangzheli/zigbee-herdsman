@@ -646,7 +646,8 @@ export class Blz extends EventEmitter {
       logger.error(`Data is not a Buffer. Converting...`, NS);
       data = bufferFromBytes(data as ArrayLike<number>);
     }
-    logger.debug(`<== Frame: ${data.toString("hex")}`, NS);
+    const rawFrame = data;
+    logger.debug(() => `<== Frame: ${rawFrame.toString("hex")}`, NS);
     if (data.length < 6) {
       logger.error(
         `Received malformed BLZ frame: expected at least 6 bytes, received ${data.length}`,

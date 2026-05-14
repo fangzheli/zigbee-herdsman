@@ -1,7 +1,8 @@
-import {describe, expect, it, beforeEach} from 'vitest';
+import {describe, expect, it, beforeEach, vi} from 'vitest';
 import {Writer} from '../../../../src/adapter/blz/driver/writer';
 import * as consts from '../../../../src/adapter/blz/driver/consts';
 import crc16ccitt from '../../../../src/adapter/blz/driver/utils/crc16ccitt';
+import {logger} from '../../../../src/utils/logger';
 
 describe('BLZ Writer', () => {
     let writer: Writer;
@@ -58,6 +59,25 @@ describe('BLZ Writer', () => {
             writer.writeBuffer(testBuffer);
             const chunk = await outputPromise;
             expect(chunk).toEqual(testBuffer);
+        });
+
+        it('should not stringify outgoing buffers unless debug logging evaluates the message', async () => {
+            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+            const testBuffer = Buffer.from([0x01, 0x02, 0x03]);
+            const toStringSpy = vi.spyOn(testBuffer, 'toString').mockImplementation(() => {
+                throw new Error('eager outgoing hex string');
+            });
+
+            try {
+                const outputPromise = getWriterOutput(writer);
+
+                expect(() => writer.writeBuffer(testBuffer)).not.toThrow();
+                await outputPromise;
+                expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+            } finally {
+                toStringSpy.mockRestore();
+                debug.mockRestore();
+            }
         });
     });
 
@@ -232,6 +252,24 @@ describe('BLZ Writer', () => {
             const chunk = await outputPromise;
             const content = extractFrameContent(chunk);
             expect(content[0] & consts.DEBUG).toBe(consts.DEBUG);
+        });
+
+        it('should not stringify reset frames unless debug logging evaluates the message', async () => {
+            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+            const toStringSpy = vi.spyOn(Buffer.prototype, 'toString').mockImplementation(() => {
+                throw new Error('eager reset hex string');
+            });
+
+            try {
+                const outputPromise = getWriterOutput(writer);
+
+                expect(() => writer.sendReset(0, 0)).not.toThrow();
+                await outputPromise;
+                expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+            } finally {
+                toStringSpy.mockRestore();
+                debug.mockRestore();
+            }
         });
     });
 
