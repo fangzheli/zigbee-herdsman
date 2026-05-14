@@ -325,6 +325,9 @@ Future BLZ refactors should follow these rules:
 - Added cancellable UART send retry waits, so close/reset/port-close cleanup
   interrupts a `sendDATA()` retry sleep instead of leaving the send promise
   pending until the one-second retry delay expires.
+- Reused the adapter cancellable wait path for the startup settle delay, so
+  `BLZAdapter.stop()` rejects an in-flight `start()` settle wait instead of
+  allowing startup to resolve after shutdown begins.
 
 ## Next Steps
 

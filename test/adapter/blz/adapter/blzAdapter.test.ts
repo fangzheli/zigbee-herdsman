@@ -137,6 +137,29 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
+    it("should cancel the startup settle delay when stopping", async () => {
+      driverMock.startup.mockResolvedValue("resumed");
+      driverMock.stop.mockResolvedValue(undefined);
+
+      const start = adapter.start();
+      const startResult = start.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        startResult,
+        Promise.resolve("pending"),
+      ]);
+      await vi.advanceTimersByTimeAsync(1000);
+      await start.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+    });
+
     it("should reject queued adapter jobs when stopping", async () => {
       vi.useRealTimers();
       driverMock.stop.mockResolvedValue(undefined);

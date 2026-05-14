@@ -3,7 +3,7 @@
 import assert from "node:assert";
 
 import * as Models from "../../../models";
-import { Queue, wait, Waitress } from "../../../utils";
+import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import * as Zcl from "../../../zspec/zcl";
@@ -172,8 +172,9 @@ export class BLZAdapter extends Adapter {
   public async start(): Promise<StartResult> {
     this.closing = false;
     this.attachDriverListeners();
+    const generation = this.stopGeneration;
     const result = await this.driver.startup();
-    await wait(1000);
+    await this.waitWhileRunning(1000, generation);
     return result;
   }
 
