@@ -89,6 +89,7 @@ export class Driver extends EventEmitter {
   private requestGeneration = 0;
   private readonly requestRetryWaiters = new Set<() => void>();
   private readonly resetDelayWaiters = new Set<() => void>();
+  private readonly startupDelayWaiters = new Set<() => void>();
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -236,6 +237,7 @@ export class Driver extends EventEmitter {
     if (!internalReset) {
       this.stopGeneration += 1;
       this.cancelResetDelayWaiters();
+      this.cancelStartupDelayWaiters();
     }
 
     try {
@@ -270,6 +272,7 @@ export class Driver extends EventEmitter {
     if (this.blz) {
       await this.stop(false);
     }
+    const startupStopGeneration = this.stopGeneration;
 
     const blz = new Blz();
     this.blz = blz;
@@ -283,11 +286,12 @@ export class Driver extends EventEmitter {
         logger.debug(`BLZ could not connect: ${error}`, NS);
         throw error;
       }
+      this.throwIfStartupCancelled(startupStopGeneration);
 
       blz.on("reset", this.onBlzResetHandler);
 
       await blz.forceReset();
-      await wait(2000);
+      await this.waitForStartupDelay(2000, startupStopGeneration);
 
       await this.addEndpoint({
         inputClusters: [0x0000, 0x0003, 0x0006, 0x000a, 0x0019, 0x001a],
@@ -296,23 +300,27 @@ export class Driver extends EventEmitter {
           0x0400,
         ],
       });
+      this.throwIfStartupCancelled(startupStopGeneration);
 
       await blz.getVersion();
+      this.throwIfStartupCancelled(startupStopGeneration);
 
       if (await this.needsToBeInitialised(this.nwkOpt)) {
         logger.info("The network setup need to be initialized", NS);
-        await wait(1000);
+        await this.waitForStartupDelay(1000, startupStopGeneration);
         const restore = await this.needsToBeRestore(this.nwkOpt);
+        this.throwIfStartupCancelled(startupStopGeneration);
 
         logger.info(`Leaving the current network`, NS);
 
         const st = await blz.leaveNetwork();
+        this.throwIfStartupCancelled(startupStopGeneration);
 
         if (st != BlzStatus.SUCCESS) {
           logger.error(`leaveNetwork returned unexpected status: ${st}`, NS);
         }
 
-        await wait(1000);
+        await this.waitForStartupDelay(1000, startupStopGeneration);
         logger.info(`Left the current network`, NS);
 
         if (restore) {
@@ -324,12 +332,14 @@ export class Driver extends EventEmitter {
           await this.formNetwork(false);
           result = "reset";
         }
+        this.throwIfStartupCancelled(startupStopGeneration);
       }
-      await wait(1000);
+      await this.waitForStartupDelay(1000, startupStopGeneration);
       // TODO: make sure the stack is running
       logger.info("The Zigbee network is formed", NS);
 
       const netParams = await blz.execCommand("getNetworkParameters");
+      this.throwIfStartupCancelled(startupStopGeneration);
       logger.info(
         `Command (getNetworkParameters) returned: ${netParams.status}`,
         NS,
@@ -364,6 +374,7 @@ export class Driver extends EventEmitter {
           valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
         })
       ).value;
+      this.throwIfStartupCancelled(startupStopGeneration);
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
@@ -833,6 +844,47 @@ export class Driver extends EventEmitter {
     }
 
     return stillActive;
+  }
+
+  private throwIfStartupCancelled(startupStopGeneration: number): void {
+    if (this.stopGeneration !== startupStopGeneration) {
+      throw new Error("Driver stopped");
+    }
+  }
+
+  private cancelStartupDelayWaiters(): void {
+    const waiters = [...this.startupDelayWaiters];
+    this.startupDelayWaiters.clear();
+
+    for (const cancel of waiters) {
+      cancel();
+    }
+  }
+
+  private async waitForStartupDelay(
+    milliseconds: number,
+    startupStopGeneration: number,
+  ): Promise<void> {
+    this.throwIfStartupCancelled(startupStopGeneration);
+
+    let cancel!: () => void;
+    const stillActive = await new Promise<boolean>((resolve): void => {
+      const timer = setTimeout((): void => {
+        this.startupDelayWaiters.delete(cancel);
+        resolve(this.stopGeneration === startupStopGeneration);
+      }, milliseconds);
+      cancel = (): void => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      this.startupDelayWaiters.add(cancel);
+    }).finally(() => {
+      this.startupDelayWaiters.delete(cancel);
+    });
+
+    if (!stillActive) {
+      throw new Error("Driver stopped");
+    }
   }
 
   public async mrequest(

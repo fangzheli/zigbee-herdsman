@@ -346,6 +346,39 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(oldBlzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("cancels startup delay when stop interrupts startup", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(1000);
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            startupResult,
+            Promise.resolve("pending"),
+        ]);
+        await vi.advanceTimersByTimeAsync(2000);
+        await startup.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(addEndpoint).not.toHaveBeenCalled();
+    });
+
     it("caches sender EUI64 by node ID for incoming APS messages and clears it on leave", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const incomingMessage = vi.fn();

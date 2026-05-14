@@ -331,6 +331,9 @@ Future BLZ refactors should follow these rules:
 - Added cancellable high-level driver reset delays, so an external
   `Driver.stop()` interrupts reset backoff waits immediately instead of leaving
   the reset promise alive until the fixed delay expires.
+- Added high-level driver startup generation checks and cancellable startup
+  delays, so `Driver.stop()` interrupts startup settle waits and prevents later
+  initialization steps from running against a stopped BLZ instance.
 
 ## Next Steps
 
