@@ -639,6 +639,20 @@ describe("BLZ Serial Driver", () => {
         "rejectCondition" in (driver as unknown as Record<string, unknown>),
       ).toBe(false);
     });
+
+    it("should reject DATA frames with invalid CRC when the debug flag is clear", () => {
+      const callback = vi.fn();
+      driver.on("received", callback);
+      const frame = createFrame(0x0000, 0x01, 0x00, Buffer.from([1]));
+      vi.mocked(frame.checkCRC).mockImplementation(() => {
+        throw new Error("bad crc");
+      });
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+
+      expect(writerMock.sendACK).not.toHaveBeenCalled();
+      expect(callback).not.toHaveBeenCalled();
+    });
   });
 
   describe("Data sending", () => {

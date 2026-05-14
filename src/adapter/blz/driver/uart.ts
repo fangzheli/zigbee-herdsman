@@ -268,9 +268,7 @@ export class SerialDriver extends EventEmitter {
 
   private onParsed(frame: Frame): void {
     try {
-      if ((frame.control & 0x80) !== 0) {
-        frame.checkCRC();
-      }
+      frame.checkCRC();
       const frmNum = frame.sequence & 0x0f;
       const reTx = frame.control & 0x01;
 

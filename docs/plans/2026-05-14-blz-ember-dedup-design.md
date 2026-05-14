@@ -675,6 +675,12 @@ Future BLZ refactors should follow these rules:
 - Removed the now-unused `serializeBufferSegments()` helper from the BLZ type
   layer after moving all local serialization call sites to the mapped-buffer
   helper.
+- Guarded BLZ ZCL receive matching against reserved frame types, so malformed
+  ZCL headers are still emitted as raw payloads but no longer resolve response
+  waiters as if they were valid ZCL frames.
+- Made the UART receive boundary verify CRC on every parsed frame, not only
+  frames with the debug/control bit set, so corrupted DATA frames are dropped
+  before ACK or upper-layer emission.
 
 ## Next Steps
 

@@ -1388,6 +1388,46 @@ describe("BLZ Adapter", () => {
       expect(callback).toHaveBeenCalled();
     });
 
+    it("should not resolve ZCL waiters from frames with reserved frame types", async () => {
+      const waiter = adapter.waitFor(
+        0x1234,
+        1,
+        Zcl.FrameType.SPECIFIC,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        7,
+        Zcl.Clusters.genOnOff.ID,
+        Zcl.Clusters.genOnOff.commands.toggle.ID,
+        100,
+      );
+      const result = waiter.promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = ZSpec.HA_PROFILE_ID;
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      apsFrame.sourceEndpoint = 1;
+      apsFrame.destinationEndpoint = 1;
+
+      driverMock.on.mock.calls.find(
+        (call) => call[0] === "incomingMessage",
+      )?.[1]({
+        apsFrame,
+        message: Buffer.from([
+          0x02,
+          7,
+          Zcl.Clusters.genOnOff.commands.toggle.ID,
+        ]),
+        sender: 0x1234,
+        lqi: 255,
+      });
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      await expect(result).resolves.toContain("rejected:Timeout after 100ms");
+    });
+
     it("should mark broadcast ZCL messages", () => {
       const callback = vi.fn();
       adapter.on("zclPayload", callback);

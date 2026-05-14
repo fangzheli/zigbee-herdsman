@@ -35,6 +35,24 @@ const autoDetectDefinitions = [
   { manufacturer: "wch.cn", vendorId: "1A86", productId: "7523" }, // ThirdReality Zigbee USB Dongle
 ];
 
+function parseZclHeader(message: Buffer): Zcl.Header | undefined {
+  const header = Zcl.Header.fromBuffer(message);
+
+  if (
+    header !== undefined &&
+    header.frameControl.frameType !== Zcl.FrameType.GLOBAL &&
+    header.frameControl.frameType !== Zcl.FrameType.SPECIFIC
+  ) {
+    logger.debug(
+      `Ignoring ZCL header with reserved frame type ${header.frameControl.frameType}`,
+      NS,
+    );
+    return undefined;
+  }
+
+  return header;
+}
+
 type ZdoSendWaiter = {
   cancel: () => void;
 };
@@ -126,7 +144,7 @@ export class BLZAdapter extends Adapter {
     } else {
       const payload: ZclPayload = {
         clusterID: frame.apsFrame.clusterId,
-        header: Zcl.Header.fromBuffer(frame.message),
+        header: parseZclHeader(frame.message),
         data: frame.message,
         address: frame.sender,
         endpoint: frame.apsFrame.sourceEndpoint,
