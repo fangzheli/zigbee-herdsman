@@ -38,6 +38,8 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect(source).toContain("private blz?: Blz;");
         expect(source).not.toContain("public blz?: Blz;");
+        expect(source).toContain("private networkParams?: BlzNetworkParameters;");
+        expect(source).not.toContain("public networkParams?: BlzNetworkParameters;");
     });
 
     afterEach(() => {

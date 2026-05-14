@@ -549,6 +549,8 @@ Future BLZ refactors should follow these rules:
 - Made the high-level driver's lower BLZ transport private, keeping adapter and
   backup callers on driver-owned APIs instead of retaining access to
   transport-owned state.
+- Made the high-level driver's cached network-parameter snapshot private as
+  well, keeping mutable network state behind defensive snapshot/update APIs.
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.

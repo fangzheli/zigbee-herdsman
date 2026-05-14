@@ -79,7 +79,7 @@ const REQUEST_ATTEMPT_DELAYS = [500, 1000, 1500];
 export class Driver extends EventEmitter {
   private blz?: Blz;
   private nwkOpt: TsType.NetworkOptions;
-  public networkParams?: BlzNetworkParameters;
+  private networkParams?: BlzNetworkParameters;
   //// @ts-expect-error XXX: init in startup
   private eui64ToNodeId = new Map<string, number>();
   private nodeIdToEui64 = new Map<number, BlzEUI64>();
