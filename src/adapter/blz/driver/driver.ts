@@ -286,6 +286,11 @@ export class Driver extends EventEmitter {
     const resettingBlz = this.blz;
     let resetStateMarked = false;
     logger.debug(`Reset connection.`, NS);
+    const resetError = new Error("Driver reset");
+    this.requestGeneration += 1;
+    this.cancelRequestOperations(resetError);
+    this.requestRetryDelay.cancel();
+    this.waitress.clear();
 
     try {
       // logger.debug(`Ready to reset in 10 seconds`, NS);

@@ -853,6 +853,9 @@ Future BLZ refactors should follow these rules:
 - Reused the same low-level BLZ serial-state cleanup for UART reset recovery
   events, so pending BLZ commands and watchdogs are cancelled before the reset
   event is handed to the high-level driver.
+- Cancelled high-level driver request operations, retry delays, and ZDO waiters
+  immediately when `Driver.reset()` starts, instead of leaving old APS/ZDO
+  operations alive until the delayed stop phase runs.
 
 ## Next Steps
 

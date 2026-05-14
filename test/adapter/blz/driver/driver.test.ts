@@ -871,6 +871,37 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(sendApsData).toHaveBeenCalledTimes(1);
     });
 
+    it("stops active APS requests when driver reset starts", async () => {
+        vi.useFakeTimers();
+        const sendApsData = vi.fn().mockReturnValue(new Promise(() => {}));
+        const blzMock = {
+            sendApsData,
+            setResetingProcess: vi.fn(),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, blzMock);
+        vi.spyOn(driver, "stop").mockResolvedValue(undefined);
+        vi.spyOn(driver, "startup").mockResolvedValue("resumed");
+        const request = driver.request(0x3344, makeApsFrame(), Buffer.from([0x0c]));
+        const requestResult = request.then((value) => `resolved:${value}`);
+
+        await vi.advanceTimersByTimeAsync(0);
+        const reset = driver.reset();
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            requestResult,
+            Promise.resolve("pending"),
+        ]);
+
+        await vi.advanceTimersByTimeAsync(3000);
+        await reset;
+        void request.catch(() => {});
+
+        expect(observed).toBe("resolved:false");
+        expect(sendApsData).toHaveBeenCalledTimes(1);
+    });
+
     it("stops APS requests when driver stop interrupts EUI64 lookup", async () => {
         vi.useFakeTimers();
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
