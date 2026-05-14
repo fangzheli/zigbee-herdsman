@@ -161,6 +161,21 @@ describe('BLZ Parser', () => {
                 concatSpy.mockRestore();
             }
         });
+
+        it('should not retain a large noisy chunk when saving a short partial tail', () => {
+            const chunk = Buffer.alloc(20000, 0);
+            const startOffset = chunk.length - 4;
+            chunk[startOffset] = consts.START;
+            chunk[startOffset + 1] = 0x01;
+            chunk[startOffset + 2] = 0x02;
+            chunk[startOffset + 3] = 0x03;
+
+            parser._transform(chunk, 'binary', () => {});
+            const tail = (parser as unknown as {tail: Buffer}).tail;
+
+            expect(tail).toEqual(chunk.subarray(startOffset));
+            expect(tail.buffer).not.toBe(chunk.buffer);
+        });
     });
 
     describe('Byte unstuffing', () => {

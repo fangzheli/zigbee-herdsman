@@ -3,6 +3,7 @@
 import * as stream from "node:stream";
 
 import { logger } from "../../../utils/logger";
+import { bufferFromBytes } from "../byteUtils";
 import * as consts from "./consts";
 import Frame from "./frame";
 import { unstuffFrameData } from "./framing";
@@ -64,7 +65,7 @@ export class Parser extends stream.Transform {
       );
       this.tail = EMPTY_BUFFER;
     } else {
-      this.tail = partialFrame;
+      this.tail = retainTail(partialFrame);
     }
     cb();
   }
@@ -80,4 +81,12 @@ function joinBuffers(first: Buffer, second: Buffer): Buffer {
   offset += second.copy(result, offset);
 
   return result;
+}
+
+function retainTail(value: Buffer): Buffer {
+  if (value.byteOffset === 0 && value.buffer.byteLength === value.length) {
+    return value;
+  }
+
+  return bufferFromBytes(value);
 }

@@ -800,6 +800,9 @@ Future BLZ refactors should follow these rules:
 - Consolidated repeated byte-copy and fixed-size hex parsing helpers into a
   shared BLZ byte utility module, so backup, driver, frame receive, and EUI64
   code share the same allocation and validation behavior.
+- Detached saved parser partial tails from larger chunk backing stores, so a
+  short START-delimited tail after large noisy input does not keep the whole
+  serial chunk alive until the next read.
 
 ## Next Steps
 
