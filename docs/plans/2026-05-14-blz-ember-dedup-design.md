@@ -274,6 +274,9 @@ Future BLZ refactors should follow these rules:
 - Reset the BLZ watchdog failure counter after a successful reconnect, so stale
   heartbeat misses from a previous connection cannot immediately trigger a reset
   on the new connection.
+- Extended shared `Waitress` unstarted-promise cleanup to explicit
+  `reject(payload, message)` calls, matching the existing `remove()` and
+  `clear()` behavior and avoiding unhandled rejections before `start()`.
 
 ## Next Steps
 

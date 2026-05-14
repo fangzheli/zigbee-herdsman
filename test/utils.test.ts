@@ -217,6 +217,22 @@ describe("Utils", () => {
         expect(waitress.waiters.size).toStrictEqual(0);
     });
 
+    it("Test waitress reject rejects unstarted waiters without unhandled rejection", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 10000);
+
+        const handled = waitress.reject("up", "drop");
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(handled).toBe(true);
+        await expect(waiter.start().promise).rejects.toEqual(new Error("drop"));
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
+    });
+
     it("Test waitress removes timed out waiters immediately", async () => {
         vi.useFakeTimers();
         const validator = (payload: string, matcher: number): boolean => {

@@ -40,7 +40,7 @@ export class Waitress<TPayload, TMatcher> {
     }
 
     public reject(payload: TPayload, message: string): boolean {
-        return this.forEachMatching(payload, (waiter) => waiter.reject(new Error(message)));
+        return this.forEachMatching(payload, (waiter) => this.rejectWaiter(waiter, new Error(message)));
     }
 
     public remove(id: number): void {
