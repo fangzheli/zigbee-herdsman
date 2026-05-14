@@ -165,6 +165,23 @@ describe("Utils", () => {
         ).toBe("rejected:Waitress cleared");
     });
 
+    it("Test waitress removes timed out waiters immediately", async () => {
+        vi.useFakeTimers();
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const waiter = waitress.waitFor(2, 5000).start();
+        const result = waiter.promise.catch((error: Error) => error);
+
+        await vi.advanceTimersByTimeAsync(6000);
+
+        await expect(result).resolves.toEqual(new Error("Timedout '5000'"));
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
+        vi.useRealTimers();
+    });
+
     it("Test queue", async () => {
         const queue = new Queue(4);
         const finished: number[] = [];

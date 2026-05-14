@@ -70,6 +70,7 @@ export class Waitress<TPayload, TMatcher> {
                 waiter.timer = setTimeout((): void => {
                     waiter.timedout = true;
                     waiter.reject(error);
+                    this.waiters.delete(ID);
                 }, timeout);
             }
 

@@ -214,6 +214,9 @@ Future BLZ refactors should follow these rules:
 - Extended shared `Waitress.clear()` to reject pending waiters, so BLZ
   adapter/driver/UART cleanup resolves callers instead of leaving external
   request promises hanging after reset or stop.
+- Removed timed-out waiters from shared `Waitress` as soon as their timeout
+  fires, preventing BLZ request waiters from remaining in memory until a later
+  unrelated frame happens to scan the waiter map.
 
 ## Next Steps
 
