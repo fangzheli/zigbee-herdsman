@@ -273,6 +273,8 @@ export class Blz extends EventEmitter {
   private watchdogTimer?: NodeJS.Timeout;
   private failures = 0;
   private inResetingProcess = false;
+  private connectGeneration = 0;
+  private readonly connectRetryWaiters = new Set<() => void>();
   private serialDriverEventBridgeAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
@@ -308,6 +310,7 @@ export class Blz extends EventEmitter {
   public async connect(options: SerialPortOptions): Promise<void> {
     let lastError: Error | null = null;
     let connected = false;
+    const connectGeneration = this.connectGeneration;
     this.attachSerialDriverEventBridge();
 
     if (this.serialDriver.isInitialized()) {
@@ -330,6 +333,10 @@ export class Blz extends EventEmitter {
         );
         await this.serialDriver.connect(options);
 
+        if (this.isConnectCancelled(connectGeneration)) {
+          throw new Error("Connection cancelled by close");
+        }
+
         // Verify connection is actually established
         if (this.serialDriver.isInitialized()) {
           connected = true;
@@ -345,10 +352,21 @@ export class Blz extends EventEmitter {
         );
         await this.cleanupFailedConnectAttempt();
 
+        if (this.isConnectCancelled(connectGeneration)) {
+          throw lastError;
+        }
+
         if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
           const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
           logger.debug(`Waiting ${delay}ms before next attempt`, NS);
-          await wait(delay);
+          const continueRetry = await this.waitForConnectRetry(
+            delay,
+            connectGeneration,
+          );
+
+          if (!continueRetry) {
+            throw new Error("Connection cancelled by close");
+          }
         }
       }
     }
@@ -390,6 +408,43 @@ export class Blz extends EventEmitter {
     } catch (error) {
       logger.debug(`Failed to close serial driver after connect failure: ${error}`, NS);
     }
+  }
+
+  private isConnectCancelled(connectGeneration: number): boolean {
+    return this.connectGeneration !== connectGeneration;
+  }
+
+  private cancelConnectRetryWaiters(): void {
+    const waiters = [...this.connectRetryWaiters];
+    this.connectRetryWaiters.clear();
+
+    for (const cancel of waiters) {
+      cancel();
+    }
+  }
+
+  private async waitForConnectRetry(
+    milliseconds: number,
+    connectGeneration: number,
+  ): Promise<boolean> {
+    if (this.isConnectCancelled(connectGeneration)) {
+      return false;
+    }
+
+    let cancel!: () => void;
+    return await new Promise<boolean>((resolve): void => {
+      const timer = setTimeout((): void => {
+        this.connectRetryWaiters.delete(cancel);
+        resolve(!this.isConnectCancelled(connectGeneration));
+      }, milliseconds);
+      cancel = (): void => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      this.connectRetryWaiters.add(cancel);
+    }).finally(() => {
+      this.connectRetryWaiters.delete(cancel);
+    });
   }
 
   private clearWatchdogTimer(): void {
@@ -441,6 +496,8 @@ export class Blz extends EventEmitter {
   public async close(emitClose: boolean): Promise<void> {
     logger.debug("Closing Blz", NS);
 
+    this.connectGeneration += 1;
+    this.cancelConnectRetryWaiters();
     this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();

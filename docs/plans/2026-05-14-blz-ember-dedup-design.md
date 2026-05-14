@@ -316,6 +316,9 @@ Future BLZ refactors should follow these rules:
 - Added high-level driver request generation and cancellable APS retry waits, so
   `Driver.stop()` interrupts active unicast retry delays instead of leaving
   requests pending until the retry window expires.
+- Added BLZ transport connect generation and cancellable connect retry waits, so
+  `Blz.close()` interrupts a failed-connect retry delay and prevents another
+  serial connection attempt after shutdown begins.
 
 ## Next Steps
 

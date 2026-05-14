@@ -237,6 +237,37 @@ describe("BLZ Driver", () => {
       );
     });
 
+    it("should cancel connection retry waits when closing", async () => {
+      serialDriverMock.connect.mockRejectedValue(new Error("Connection failed"));
+      serialDriverMock.isInitialized.mockReturnValue(false);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const connect = blz.connect(serialPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+      await blz.close(false);
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        connectResult,
+        Promise.resolve("pending"),
+      ]);
+
+      for (let i = 1; i < MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        await vi.advanceTimersByTimeAsync(
+          SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i,
+        );
+      }
+
+      await connect.catch(() => {});
+
+      expect(observed).toBe("rejected:Connection cancelled by close");
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
+    });
+
     it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized
