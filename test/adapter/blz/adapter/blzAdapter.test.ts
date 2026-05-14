@@ -339,6 +339,43 @@ describe("BLZ Adapter", () => {
       await rejection;
     });
 
+    it("should cancel group send settle delay when stopping", async () => {
+      const apsFrame = new BlzApsFrame();
+      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+      driverMock.makeApsFrame.mockReturnValue(apsFrame);
+      driverMock.mrequest.mockResolvedValue(true);
+      driverMock.stop.mockResolvedValue(undefined);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const send = adapter.sendZclFrameToGroup(0x1234, zclFrame);
+      const sendResult = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      await adapter.stop();
+      await vi.advanceTimersByTimeAsync(0);
+      const observed = await Promise.race([
+        sendResult,
+        Promise.resolve("pending"),
+      ]);
+      await vi.advanceTimersByTimeAsync(200);
+      await send.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+    });
+
     it("should reject when broadcast ZCL send fails", async () => {
       const apsFrame = new BlzApsFrame();
       apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;

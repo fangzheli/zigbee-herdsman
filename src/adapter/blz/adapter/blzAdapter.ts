@@ -759,6 +759,7 @@ export class BLZAdapter extends Adapter {
     profileId?: number,
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
+      const generation = this.stopGeneration;
       this.checkInterpanLock();
       const frame = this.makeZclApsFrame(
         zclFrame.cluster.ID,
@@ -778,7 +779,7 @@ export class BLZAdapter extends Adapter {
        * (contrary to network address requests) we will give the
        * command some time to 'settle' in the network.
        */
-      await wait(200);
+      await this.waitWhileRunning(200, generation);
     });
   }
 
@@ -790,6 +791,7 @@ export class BLZAdapter extends Adapter {
     profileId?: number,
   ): Promise<void> {
     return await this.queue.execute<void>(async () => {
+      const generation = this.stopGeneration;
       this.checkInterpanLock();
       // Green Power is not supported by BLZ
       if (endpoint === ZSpec.GP_ENDPOINT) {
@@ -819,7 +821,7 @@ export class BLZAdapter extends Adapter {
        * (contrary to network address requests) we will give the
        * command some time to 'settle' in the network.
        */
-      await wait(200);
+      await this.waitWhileRunning(200, generation);
     });
   }
 

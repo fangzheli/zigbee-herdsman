@@ -319,6 +319,9 @@ Future BLZ refactors should follow these rules:
 - Added BLZ transport connect generation and cancellable connect retry waits, so
   `Blz.close()` interrupts a failed-connect retry delay and prevents another
   serial connection attempt after shutdown begins.
+- Reused the adapter cancellable wait path for group and broadcast ZCL settle
+  delays, so `BLZAdapter.stop()` rejects active settle waits instead of leaving
+  queue work pending until the fixed delay expires.
 
 ## Next Steps
 
