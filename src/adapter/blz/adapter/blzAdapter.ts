@@ -155,6 +155,7 @@ export class BLZAdapter extends Adapter {
 
   public async stop(): Promise<void> {
     this.closing = true;
+    this.queue.clear();
     this.waitress.clear();
 
     try {

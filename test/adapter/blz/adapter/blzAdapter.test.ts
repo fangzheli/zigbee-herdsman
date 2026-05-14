@@ -121,6 +121,68 @@ describe("BLZ Adapter", () => {
       expect(driverMock.stop).toHaveBeenCalled();
     });
 
+    it("should reject queued adapter jobs when stopping", async () => {
+      vi.useRealTimers();
+      driverMock.stop.mockResolvedValue(undefined);
+      let releaseRequest: (() => void) | undefined;
+      const firstRequest = new Promise<boolean>((resolve) => {
+        releaseRequest = () => resolve(true);
+      });
+      driverMock.request.mockReturnValueOnce(firstRequest).mockResolvedValue(true);
+      driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
+        const apsFrame = new BlzApsFrame();
+        apsFrame.clusterId = clusterId;
+        return apsFrame;
+      });
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      const firstSend = adapter.sendZclFrameToEndpoint(
+        "0x0102030405060708",
+        0x1234,
+        1,
+        zclFrame,
+        1000,
+        true,
+        true,
+      );
+      const secondSend = adapter.sendZclFrameToEndpoint(
+        "0x0102030405060709",
+        0x1235,
+        1,
+        zclFrame,
+        1000,
+        true,
+        true,
+      );
+      const secondResult = secondSend.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      expect(driverMock.request).toHaveBeenCalledTimes(1);
+      await adapter.stop();
+      const observed = await Promise.race([
+        secondResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      releaseRequest?.();
+      await firstSend;
+      await secondSend.catch(() => {});
+
+      expect(observed).toBe("rejected:Queue cleared");
+    });
+
     it("should emit disconnected after restart when the driver closes", async () => {
       driverMock.stop.mockResolvedValue(undefined);
       driverMock.startup.mockResolvedValue("resumed");

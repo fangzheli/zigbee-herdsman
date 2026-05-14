@@ -222,6 +222,9 @@ Future BLZ refactors should follow these rules:
 - Changed BLZ `sendZclFrameToAll()` to use the broadcast APS path instead of
   the multicast path, matching the method contract and preserving the existing
   post-send settle delay.
+- Cleared the BLZ adapter-level command queue during `BLZAdapter.stop()`, so
+  commands that have not started yet are rejected instead of staying pending or
+  running after shutdown.
 
 ## Next Steps
 
