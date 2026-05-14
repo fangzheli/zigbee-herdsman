@@ -274,6 +274,10 @@ export class Blz extends EventEmitter {
   private failures = 0;
   private inResetingProcess = false;
   private serialDriverEventBridgeAttached = false;
+  private readonly onSerialResetHandler = this.onSerialReset.bind(this);
+  private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
+  private readonly onFrameReceivedHandler = this.onFrameReceived.bind(this);
+  private readonly watchdogHandlerRef = this.watchdogHandler.bind(this);
   public version: {
     product: number;
     major: string;
@@ -361,15 +365,14 @@ export class Blz extends EventEmitter {
 
     this.inResetingProcess = false;
     this.failures = 0;
-    // Remove any previous listener to prevent stacking on reconnect
-    this.serialDriver.removeAllListeners("reset");
-    this.serialDriver.on("reset", this.onSerialReset.bind(this));
+    this.serialDriver.off("reset", this.onSerialResetHandler);
+    this.serialDriver.on("reset", this.onSerialResetHandler);
 
     this.clearWatchdogTimer();
 
     if (WATCHDOG_WAKE_PERIOD) {
       this.watchdogTimer = setInterval(
-        this.watchdogHandler.bind(this),
+        this.watchdogHandlerRef,
         WATCHDOG_WAKE_PERIOD * 1000,
       );
     }
@@ -401,9 +404,16 @@ export class Blz extends EventEmitter {
       return;
     }
 
-    this.serialDriver.on("received", this.onFrameReceived.bind(this));
-    this.serialDriver.on("close", this.onSerialClose.bind(this));
+    this.serialDriver.on("received", this.onFrameReceivedHandler);
+    this.serialDriver.on("close", this.onSerialCloseHandler);
     this.serialDriverEventBridgeAttached = true;
+  }
+
+  private detachSerialDriverListeners(): void {
+    this.serialDriver.off("received", this.onFrameReceivedHandler);
+    this.serialDriver.off("close", this.onSerialCloseHandler);
+    this.serialDriver.off("reset", this.onSerialResetHandler);
+    this.serialDriverEventBridgeAttached = false;
   }
 
   public isInitialized(): boolean {
@@ -434,8 +444,7 @@ export class Blz extends EventEmitter {
     this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();
-    this.serialDriver.removeAllListeners();
-    this.serialDriverEventBridgeAttached = false;
+    this.detachSerialDriverListeners();
     await this.serialDriver.close(emitClose);
   }
 

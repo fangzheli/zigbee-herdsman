@@ -144,6 +144,21 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledWith(true);
     });
 
+    it("should detach owned serial driver listeners without broad listener cleanup", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+      await blz.connect(serialPortOptions);
+      serialDriverMock.off.mockClear();
+      serialDriverMock.removeAllListeners.mockClear();
+
+      await blz.close(false);
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+      expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+    });
+
     it("should restore serial driver event bridge when reconnecting after close", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

@@ -277,6 +277,9 @@ Future BLZ refactors should follow these rules:
 - Extended shared `Waitress` unstarted-promise cleanup to explicit
   `reject(payload, message)` calls, matching the existing `remove()` and
   `clear()` behavior and avoiding unhandled rejections before `start()`.
+- Replaced `Blz` serial-driver listener cleanup with stable bound handlers and
+  targeted `off()` calls for `received`, `close`, and `reset`, avoiding broad
+  `removeAllListeners()` on the long-lived UART driver.
 
 ## Next Steps
 
