@@ -307,7 +307,7 @@ export function fixed_list(
 export class Bytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        return Buffer.from(value);
+        return Buffer.isBuffer(value) ? value : Buffer.from(value);
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/

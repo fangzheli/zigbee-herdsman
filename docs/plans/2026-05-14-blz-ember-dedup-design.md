@@ -747,6 +747,9 @@ Future BLZ refactors should follow these rules:
 - Tightened BLZ command waiter matching further so unknown numeric frame IDs
   return `false` directly instead of allocating an empty fallback array and
   calling `includes()`.
+- Reworked raw `Bytes.serialize()` so Buffer inputs are passed through directly;
+  the enclosing frame serializer still copies them into the final frame buffer,
+  avoiding an extra clone on raw payload fields.
 
 ## Next Steps
 

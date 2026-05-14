@@ -274,6 +274,27 @@ describe('BLZ Types', () => {
             expect(result).toEqual(Buffer.from([0x01, 0x02, 0x03]));
         });
 
+        it('should serialize Buffer input without cloning it first', () => {
+            const input = Buffer.from([0x01, 0x02, 0x03]);
+            const originalFrom = Buffer.from;
+            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+                if (value === input) {
+                    throw new Error('Buffer.from input clone used');
+                }
+
+                return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+            }) as typeof Buffer.from);
+
+            try {
+                const result = Bytes.serialize(Bytes, input);
+
+                expect(result).toBe(input);
+                expect(fromSpy).not.toHaveBeenCalledWith(input);
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
         it('should deserialize remaining bytes', () => {
             const [value, remaining] = Bytes.deserialize(Bytes, Buffer.from([0x01, 0x02, 0x03]));
             expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03]));
