@@ -239,4 +239,22 @@ describe("BLZ high-level driver lifecycle", () => {
             }),
         );
     });
+
+    it("clears address cache when forming a new network", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const execCommand = vi.fn().mockResolvedValue({
+            status: BlzStatus.SUCCESS,
+            eui64: Buffer.from("0000000000003344", "hex"),
+        });
+        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        driver.blz = {formNetwork, execCommand} as unknown as Driver["blz"];
+
+        driver.handleNodeJoined(0x3344, 0x1111);
+        await (driver as unknown as {formNetwork: (restore: boolean) => Promise<void>}).formNetwork(false);
+        const eui64 = await driver.networkIdToEUI64(0x3344);
+
+        expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
+        expect(eui64.toString()).toBe("0000000000003344");
+    });
 });

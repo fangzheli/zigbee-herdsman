@@ -155,6 +155,8 @@ Future BLZ refactors should follow these rules:
   EUI64 also removes the old EUI64 mapping to avoid stale sends and cache growth.
   Request-time EUI64-to-node resolution now uses the same cache helper so
   subsequent incoming APS messages can include `senderEui64`.
+- Cleared address caches after successful `formNetwork()`, preventing stale
+  device mappings from surviving a fresh network formation or restore.
 
 ## Next Steps
 

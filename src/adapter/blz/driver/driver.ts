@@ -399,6 +399,8 @@ export class Driver extends EventEmitter {
         this.nwkOpt.channelList[0],
       );
     }
+
+    this.clearAddressCache();
   }
 
   private handleFrame(frameName: string, frame: BLZFrameData): void {
@@ -574,6 +576,11 @@ export class Driver extends EventEmitter {
 
   private getCachedEui64(nwk: number): BlzEUI64 | undefined {
     return this.nodeIdToEui64.get(nwk);
+  }
+
+  private clearAddressCache(): void {
+    this.eui64ToNodeId.clear();
+    this.nodeIdToEui64.clear();
   }
 
   private removeCachedNode(nwk: number, ieeeAddr: string): void {
