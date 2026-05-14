@@ -518,13 +518,11 @@ export class Blz extends EventEmitter {
       async (): Promise<BLZFrameData> => {
         const data = this.makeFrame(name, params);
         const waiter = name === "reset" ? undefined : this.waitFor(name);
-        let waiterStarted = false;
         try {
           await this.serialDriver.sendDATA(data, FRAMES[name].ID);
 
           // Don't wait for response if this is a reset command
           if (waiter) {
-            waiterStarted = true;
             const response = await waiter.start().promise;
             return response.payload;
           } else {
@@ -533,9 +531,6 @@ export class Blz extends EventEmitter {
           }
         } catch {
           if (waiter) {
-            if (!waiterStarted) {
-              waiter.start().promise.catch(() => {});
-            }
             this.waitress.remove(waiter.ID);
           }
           throw new Error(`Failure send ${name}:` + JSON.stringify(data));

@@ -815,19 +815,8 @@ export class BLZAdapter extends Adapter {
       commandId: commandIdentifier,
       transactionSequenceNumber,
     }, timeout);
-    let started = false;
-    const start = (): { promise: Promise<ZclPayload> } => {
-      started = true;
-      return waiter.start();
-    };
-    const cancel = (): void => {
-      if (!started) {
-        waiter.start().promise.catch(() => {});
-      }
-
-      this.waitress.remove(waiter.ID);
-    };
-    return { start, cancel };
+    const cancel = (): void => this.waitress.remove(waiter.ID);
+    return { start: waiter.start, cancel };
   }
 
   public waitFor(

@@ -248,6 +248,9 @@ Future BLZ refactors should follow these rules:
 - Moved unstarted-waiter rejection handling into shared `Waitress`: remove/clear
   still reject the underlying promise, but internally mark unstarted promises as
   handled so cleanup before `start()` cannot create unhandled rejections.
+- Removed the now-duplicated unstarted-waiter catch logic from BLZ UART, command,
+  driver, and adapter waiter wrappers so cancellation semantics live in the
+  shared `Waitress` implementation.
 
 ## Next Steps
 

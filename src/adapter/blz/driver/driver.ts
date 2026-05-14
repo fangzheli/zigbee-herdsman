@@ -865,20 +865,7 @@ export class Driver extends EventEmitter {
     timeout = 10000,
   ): ReturnType<typeof this.waitress.waitFor> & { cancel: () => void } {
     const waiter = this.waitress.waitFor({ address, clusterId }, timeout);
-    let started = false;
-    const start = (): ReturnType<typeof waiter.start> => {
-      started = true;
-      return waiter.start();
-    };
-    const cancel = (): void => {
-      if (!started) {
-        waiter.start().promise.catch(() => {});
-      }
-
-      this.waitress.remove(waiter.ID);
-    };
-
-    return { ...waiter, start, cancel };
+    return { ...waiter, cancel: () => this.waitress.remove(waiter.ID) };
   }
 
   private waitressTimeoutFormatter(
