@@ -44,7 +44,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     public get value(): any {
-        return this._value;
+        return Buffer.from(this._value as ArrayLike<number>);
     }
 
     public toString(): string {

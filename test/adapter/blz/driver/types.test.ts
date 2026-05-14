@@ -327,6 +327,14 @@ describe('BLZ Types', () => {
                 expect(eui.toString()).toBe('0102030405060708');
             });
 
+            it('should not expose mutable value storage', () => {
+                const eui = new BlzEUI64('0102030405060708');
+                const value = eui.value;
+                value[0] = 0xff;
+
+                expect(eui.toString()).toBe('0102030405060708');
+            });
+
             it('should throw for invalid string length', () => {
                 expect(() => new BlzEUI64('0102030405')).toThrow('Incorrect value passed');
             });
