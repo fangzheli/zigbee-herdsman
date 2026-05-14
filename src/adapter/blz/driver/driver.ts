@@ -87,6 +87,9 @@ export class Driver extends EventEmitter {
   private resetPromise?: Promise<void>;
   private stopGeneration = 0;
   private transactionID = 1;
+  private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
+  private readonly onBlzResetHandler = this.onBlzReset.bind(this);
+  private readonly handleFrameHandler = this.handleFrame.bind(this);
   private serialOpt: TsType.SerialPortOptions;
   public backupMan: BLZAdapterBackup;
 
@@ -232,7 +235,7 @@ export class Driver extends EventEmitter {
     try {
       if (this.blz) {
         const blz = this.blz;
-        blz.removeAllListeners();
+        this.detachBlzListeners(blz);
         await blz.close(emitClose);
 
         if (this.blz === blz) {
@@ -244,6 +247,12 @@ export class Driver extends EventEmitter {
       this.waitress.clear();
       this.clearAddressCache();
     }
+  }
+
+  private detachBlzListeners(blz: Blz): void {
+    blz.off("close", this.onBlzCloseHandler);
+    blz.off("reset", this.onBlzResetHandler);
+    blz.off("frame", this.handleFrameHandler);
   }
 
   public async startup(): Promise<TsType.StartResult> {
@@ -258,7 +267,7 @@ export class Driver extends EventEmitter {
     this.blz = blz;
 
     try {
-      blz.on("close", this.onBlzClose.bind(this));
+      blz.on("close", this.onBlzCloseHandler);
 
       try {
         await blz.connect(this.serialOpt);
@@ -267,7 +276,7 @@ export class Driver extends EventEmitter {
         throw error;
       }
 
-      blz.on("reset", this.onBlzReset.bind(this));
+      blz.on("reset", this.onBlzResetHandler);
 
       await blz.forceReset();
       await wait(2000);
@@ -350,7 +359,7 @@ export class Driver extends EventEmitter {
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
-      blz.on("frame", this.handleFrame.bind(this));
+      blz.on("frame", this.handleFrameHandler);
       logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
       logger.debug("Network ready", NS);
 

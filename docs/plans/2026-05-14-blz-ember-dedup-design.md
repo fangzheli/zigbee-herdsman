@@ -280,6 +280,9 @@ Future BLZ refactors should follow these rules:
 - Replaced `Blz` serial-driver listener cleanup with stable bound handlers and
   targeted `off()` calls for `received`, `close`, and `reset`, avoiding broad
   `removeAllListeners()` on the long-lived UART driver.
+- Replaced high-level `Driver` cleanup of `Blz` listeners with stable bound
+  handlers and targeted `off()` calls for `close`, `reset`, and `frame`, so
+  driver-owned listeners are detached without clearing unrelated listeners.
 
 ## Next Steps
 
