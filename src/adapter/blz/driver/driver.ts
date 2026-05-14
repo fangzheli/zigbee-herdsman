@@ -84,6 +84,7 @@ export class Driver extends EventEmitter {
   // @ts-expect-error XXX: init in startup
   public ieee: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
+  private resetPromise?: Promise<void>;
   private transactionID = 1;
   private serialOpt: TsType.SerialPortOptions;
   public backupMan: BLZAdapterBackup;
@@ -144,6 +145,22 @@ export class Driver extends EventEmitter {
    * @returns
    */
   public async reset(): Promise<void> {
+    if (this.resetPromise) {
+      logger.debug("Reset already in progress.", NS);
+      return await this.resetPromise;
+    }
+
+    const resetPromise = this.performReset().finally(() => {
+      if (this.resetPromise === resetPromise) {
+        this.resetPromise = undefined;
+      }
+    });
+    this.resetPromise = resetPromise;
+
+    return await resetPromise;
+  }
+
+  private async performReset(): Promise<void> {
     logger.debug(`Reset connection.`, NS);
 
     try {

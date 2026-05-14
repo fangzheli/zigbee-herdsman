@@ -187,6 +187,9 @@ Future BLZ refactors should follow these rules:
 - Made the UART send-retry failure regression deterministic with fake timers,
   removing the real three-second retry delay that could intermittently exceed
   the Vitest timeout on loaded runs.
+- Coalesced concurrent high-level `Driver.reset()` calls into one reset flow, so
+  watchdog and UART-triggered resets cannot overlap and double-run
+  stop/startup cleanup against the same BLZ resources.
 
 ## Next Steps
 
