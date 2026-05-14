@@ -407,6 +407,9 @@ Future BLZ refactors should follow these rules:
 - Added a BLZ transport connect-operation cancellation wrapper and used it for
   reconnect pre-close, so `Blz.close()` rejects reconnect while the old serial
   driver close is still pending.
+- Reused the connect-operation cancellation wrapper for failed-attempt cleanup,
+  so `Blz.close()` also rejects connect while cleanup is still closing a failed
+  serial attempt.
 
 ## Next Steps
 

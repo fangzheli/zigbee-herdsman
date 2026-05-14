@@ -398,7 +398,12 @@ export class Blz extends EventEmitter {
             `Connection attempt ${i} failed: ${lastError.message}`,
             NS,
           );
-          await this.cleanupFailedConnectAttempt();
+
+          if (this.isConnectCancelled(connectGeneration)) {
+            throw lastError;
+          }
+
+          await this.cleanupFailedConnectAttempt(connectGeneration);
 
           if (this.isConnectCancelled(connectGeneration)) {
             throw lastError;
@@ -447,14 +452,23 @@ export class Blz extends EventEmitter {
     logger.debug("Connection established successfully", NS);
   }
 
-  private async cleanupFailedConnectAttempt(): Promise<void> {
+  private async cleanupFailedConnectAttempt(
+    connectGeneration: number,
+  ): Promise<void> {
     this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();
 
     try {
-      await this.serialDriver.close(false);
+      await this.runConnectOperation(
+        () => this.serialDriver.close(false),
+        connectGeneration,
+      );
     } catch (error) {
+      if (this.isConnectCancelled(connectGeneration)) {
+        throw error;
+      }
+
       logger.debug(`Failed to close serial driver after connect failure: ${error}`, NS);
     }
   }
