@@ -492,8 +492,12 @@ Future BLZ refactors should follow these rules:
   broadcast, propagation wait, leave, security updates, re-form, and settle wait
   run as one serialized job. A second channel-change request no longer overlaps
   the first long-running network rebuild.
+- Cleared cached BLZ coordinator and network snapshots during driver stop, and
+  cleared cached network parameters after successful fresh network formation, so
+  stop/restart and re-form paths do not expose stale coordinator or network
+  state to adapter callers.
 
 ## Next Steps
 
-1. Continue auditing BLZ driver startup/network cache state that should be reset
-   across fresh network formation or coordinator restart.
+1. Continue auditing remaining BLZ direct lower-transport calls and lifecycle
+   edge cases for the same stop/reset cancellation and stale-state patterns.

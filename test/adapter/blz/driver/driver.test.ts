@@ -14,7 +14,7 @@ vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
 import type {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
 import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
-import {BlzApsFrame} from "../../../../src/adapter/blz/driver/types/struct";
+import {BlzApsFrame, BlzNetworkParameters} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
 
 describe("BLZ high-level driver lifecycle", () => {
@@ -71,6 +71,16 @@ describe("BLZ high-level driver lifecycle", () => {
         } as BLZFrameData;
     }
 
+    function seedNetworkSnapshot(driver: Driver): void {
+        const networkParams = new BlzNetworkParameters();
+        networkParams.panId = 0x1234;
+        networkParams.extendedPanId = Buffer.from("0102030405060708", "hex");
+        networkParams.Channel = 11;
+        networkParams.nwkUpdateId = 0;
+        (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams = networkParams;
+        (driver as unknown as {ieee: BlzEUI64}).ieee = new BlzEUI64("0102030405060708");
+    }
+
     it("clears pending waiters even when BLZ close rejects", async () => {
         vi.useFakeTimers();
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
@@ -118,6 +128,21 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
         expect(eui64.toString()).toBe("0000000000003344");
+    });
+
+    it("clears cached coordinator and network snapshot when stopping", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+        driver.blz = {
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        } as unknown as Driver["blz"];
+
+        await driver.stop(false);
+
+        expect((driver as unknown as {networkParams?: BlzNetworkParameters}).networkParams).toBeUndefined();
+        expect((driver as unknown as {ieee?: BlzEUI64}).ieee).toBeUndefined();
     });
 
     it("cancels network ID to EUI64 lookup when stopping", async () => {
@@ -1472,9 +1497,11 @@ describe("BLZ high-level driver lifecycle", () => {
         driver.blz = {formNetwork, execCommand} as unknown as Driver["blz"];
 
         driver.handleNodeJoined(0x3344, 0x1111);
+        seedNetworkSnapshot(driver);
         await (driver as unknown as {formNetwork: (restore: boolean) => Promise<void>}).formNetwork(false);
         const eui64 = await driver.networkIdToEUI64(0x3344);
 
+        expect((driver as unknown as {networkParams?: BlzNetworkParameters}).networkParams).toBeUndefined();
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
         expect(eui64.toString()).toBe("0000000000003344");
     });

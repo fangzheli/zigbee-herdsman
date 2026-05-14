@@ -78,13 +78,11 @@ const REQUEST_ATTEMPT_DELAYS = [500, 1000, 1500];
 export class Driver extends EventEmitter {
   public blz?: Blz;
   private nwkOpt: TsType.NetworkOptions;
-  // @ts-expect-error XXX: init in startup
-  public networkParams: BlzNetworkParameters;
+  public networkParams?: BlzNetworkParameters;
   //// @ts-expect-error XXX: init in startup
   private eui64ToNodeId = new Map<string, number>();
   private nodeIdToEui64 = new Map<number, BlzEUI64>();
-  // @ts-expect-error XXX: init in startup
-  public ieee: BlzEUI64;
+  public ieee?: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
@@ -124,6 +122,31 @@ export class Driver extends EventEmitter {
     }
 
     return this.blz;
+  }
+
+  public getNetworkParametersSnapshot(): BlzNetworkParameters {
+    if (!this.networkParams) {
+      throw new Error("BLZ network parameters are not available");
+    }
+
+    return this.networkParams;
+  }
+
+  public getCoordinatorIeee(): BlzEUI64 {
+    if (!this.ieee) {
+      throw new Error("BLZ coordinator IEEE is not available");
+    }
+
+    return this.ieee;
+  }
+
+  public updateNetworkParametersSnapshot(
+    channel: number,
+    nwkUpdateId: number,
+  ): void {
+    const networkParams = this.getNetworkParametersSnapshot();
+    networkParams.Channel = channel;
+    networkParams.nwkUpdateId = nwkUpdateId;
   }
 
   /**
@@ -277,7 +300,7 @@ export class Driver extends EventEmitter {
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
       this.waitress.clear();
-      this.clearAddressCache();
+      this.clearCoordinatorAndNetworkState();
     }
   }
 
@@ -418,7 +441,7 @@ export class Driver extends EventEmitter {
       }
       logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
-      this.networkParams = new BlzNetworkParameters();
+      const networkParams = new BlzNetworkParameters();
       // Convert number/bigint to 8-byte Buffer in big-endian format
       const buf = Buffer.alloc(8);
       if (typeof netParams.extPanId === "bigint") {
@@ -426,12 +449,13 @@ export class Driver extends EventEmitter {
       } else {
         buf.writeBigUInt64BE(BigInt(netParams.extPanId));
       }
-      this.networkParams.extendedPanId = buf;
-      this.networkParams.panId = netParams.panId;
-      this.networkParams.Channel = netParams.channel;
-      this.networkParams.nwkUpdateId = netParams.nwkUpdateId;
+      networkParams.extendedPanId = buf;
+      networkParams.panId = netParams.panId;
+      networkParams.Channel = netParams.channel;
+      networkParams.nwkUpdateId = netParams.nwkUpdateId;
+      this.networkParams = networkParams;
       logger.debug(
-        `Node type: ${netParams.nodeType}, Network parameters: ${this.networkParams}`,
+        `Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`,
         NS,
       );
 
@@ -589,7 +613,7 @@ export class Driver extends EventEmitter {
       throw new Error(`Failed to form network: status ${formStatus}`);
     }
 
-    this.clearAddressCache();
+    this.clearNetworkState();
   }
 
   private handleFrame(frameName: string, frame: BLZFrameData): void {
@@ -770,6 +794,16 @@ export class Driver extends EventEmitter {
   private clearAddressCache(): void {
     this.eui64ToNodeId.clear();
     this.nodeIdToEui64.clear();
+  }
+
+  private clearNetworkState(): void {
+    this.networkParams = undefined;
+    this.clearAddressCache();
+  }
+
+  private clearCoordinatorAndNetworkState(): void {
+    this.ieee = undefined;
+    this.clearNetworkState();
   }
 
   private removeCachedNode(nwk: number, ieeeAddr: string): void {

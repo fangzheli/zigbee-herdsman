@@ -268,7 +268,7 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getCoordinatorIEEE(): Promise<string> {
-    return `0x${this.driver.ieee.toString()}`;
+    return `0x${this.driver.getCoordinatorIeee().toString()}`;
   }
 
   public async permitJoin(
@@ -672,8 +672,7 @@ export class BLZAdapter extends Adapter {
     }
 
     // 7. Update driver's network parameters
-    this.driver.networkParams.Channel = newChannel;
-    this.driver.networkParams.nwkUpdateId = nwkUpdateId;
+    this.driver.updateNetworkParametersSnapshot(newChannel, nwkUpdateId);
 
     // 8. Wait for network stabilization
     logger.info(`[BLZ] Waiting for network to stabilize (5s)...`, NS);
@@ -727,7 +726,7 @@ export class BLZAdapter extends Adapter {
   ): Promise<ZclPayload | undefined> {
     this.throwIfStopped(generation);
     if (ieeeAddr == null) {
-      ieeeAddr = `0x${this.driver.ieee.toString()}`;
+      ieeeAddr = `0x${this.driver.getCoordinatorIeee().toString()}`;
     }
     logger.debug(
       `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +
@@ -907,17 +906,18 @@ export class BLZAdapter extends Adapter {
   }
 
   public async getNetworkParameters(): Promise<NetworkParameters> {
-    const extPanId = this.driver.networkParams.extendedPanId;
+    const networkParams = this.driver.getNetworkParametersSnapshot();
+    const extPanId = networkParams.extendedPanId;
     const extendedPanID =
       extPanId instanceof Buffer
         ? "0x" + extPanId.toString("hex")
         : "0x0000000000000000";
 
     return {
-      panID: this.driver.networkParams.panId,
+      panID: networkParams.panId,
       extendedPanID,
-      channel: this.driver.networkParams.Channel,
-      nwkUpdateID: this.driver.networkParams.nwkUpdateId,
+      channel: networkParams.Channel,
+      nwkUpdateID: networkParams.nwkUpdateId,
     };
   }
 

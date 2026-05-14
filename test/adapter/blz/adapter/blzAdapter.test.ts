@@ -30,6 +30,9 @@ describe("BLZ Adapter", () => {
     on: ReturnType<typeof vi.fn>;
     off: ReturnType<typeof vi.fn>;
     getBlz: ReturnType<typeof vi.fn>;
+    getCoordinatorIeee: ReturnType<typeof vi.fn>;
+    getNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
+    updateNetworkParametersSnapshot: ReturnType<typeof vi.fn>;
     ieee: { toString: () => string };
     networkParams: {
       panId: number;
@@ -86,6 +89,9 @@ describe("BLZ Adapter", () => {
       on: vi.fn(),
       off: vi.fn(),
       getBlz: vi.fn(),
+      getCoordinatorIeee: vi.fn(),
+      getNetworkParametersSnapshot: vi.fn(),
+      updateNetworkParametersSnapshot: vi.fn(),
       ieee: { toString: () => "0102030405060708" },
       networkParams: {
         panId: 0x1234,
@@ -110,6 +116,12 @@ describe("BLZ Adapter", () => {
       handleNodeLeft: vi.fn(),
     };
     driverMock.getBlz.mockReturnValue(driverMock.blz);
+    driverMock.getCoordinatorIeee.mockImplementation(() => driverMock.ieee);
+    driverMock.getNetworkParametersSnapshot.mockImplementation(() => driverMock.networkParams);
+    driverMock.updateNetworkParametersSnapshot.mockImplementation((channel: number, nwkUpdateId: number) => {
+      driverMock.networkParams.Channel = channel;
+      driverMock.networkParams.nwkUpdateId = nwkUpdateId;
+    });
 
     vi.mocked(Driver).mockImplementation(() => driverMock as any);
     adapter = new BLZAdapter(
