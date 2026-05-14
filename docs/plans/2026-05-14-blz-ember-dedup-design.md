@@ -448,6 +448,9 @@ Future BLZ refactors should follow these rules:
 - Reused `CancellableOperation` for high-level driver reset-force operations,
   replacing the ad-hoc reset-force reject hook while preserving stop-cancelled
   reset behavior.
+- Reused `CancellableOperation` for UART open-phase serial/TCP connects and
+  guarded TCP ready-reset completion, so `close()` cannot let a pending TCP
+  connect mark the driver initialized after teardown.
 
 ## Next Steps
 

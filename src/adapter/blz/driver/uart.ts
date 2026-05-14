@@ -9,6 +9,7 @@ import { SerialPort } from "../../serialPort";
 import { isTcpPath, parseTcpPath } from "../../utils";
 import { SerialPortOptions } from "../../tstype";
 import { CancellableDelay } from "./cancellableDelay";
+import { CancellableOperation } from "./cancellableOperation";
 import { Frame } from "./frame";
 import { Parser } from "./parser";
 import { Writer } from "./writer";
@@ -39,8 +40,8 @@ export class SerialDriver extends EventEmitter {
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
+  private readonly connectOperations = new CancellableOperation();
   private detachSocketListeners?: () => void;
-  private cancelPendingConnect?: (error: Error) => void;
 
   constructor() {
     super();
@@ -93,7 +94,7 @@ export class SerialDriver extends EventEmitter {
     serialPort.pipe(this.parser);
     this.parser.on("parsed", this.onParsedHandler);
 
-    let settled = false;
+    let opened = false;
     const cleanupOpen = (): void => {
       this.initialized = false;
       this.cleanupParser();
@@ -103,30 +104,20 @@ export class SerialDriver extends EventEmitter {
       if (this.serialPort === serialPort) {
         this.serialPort = undefined;
       }
-
-      this.cancelPendingConnect = undefined;
     };
-    const cancelled = new Promise<never>((_, reject): void => {
-      this.cancelPendingConnect = (error: Error): void => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        cleanupOpen();
-        reject(error);
-      };
-    });
 
     try {
-      await Promise.race([serialPort.asyncOpen(), cancelled]);
+      await this.connectOperations.run(
+        () => serialPort.asyncOpen(),
+        () => this.serialPort === serialPort,
+        () => new Error("Connection closed"),
+      );
 
-      if (settled || this.serialPort !== serialPort) {
+      if (this.serialPort !== serialPort) {
         throw new Error("Connection closed");
       }
 
-      settled = true;
-      this.cancelPendingConnect = undefined;
+      opened = true;
       logger.debug("Serialport opened", NS);
 
       serialPort.once("close", this.onPortCloseHandler);
@@ -137,9 +128,7 @@ export class SerialDriver extends EventEmitter {
 
       this.initialized = true;
     } catch (error) {
-      if (!settled) {
-        settled = true;
-        // Clean up pipes and port on failure to prevent orphaned streams
+      if (!opened) {
         cleanupOpen();
       }
 
@@ -160,70 +149,95 @@ export class SerialDriver extends EventEmitter {
     this.socketPort.pipe(this.parser);
     this.parser.on("parsed", this.onParsedHandler);
 
-    return await new Promise((resolve, reject): void => {
-      let settled = false;
-      const socketPort = this.socketPort!;
-      const openError = (err: Error): void => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        this.initialized = false;
-        this.cleanupParser();
-        this.detachSocketPort();
-        this.socketPort?.destroy();
+    let settled = false;
+    const socketPort = this.socketPort!;
+    const cleanupOpen = (): void => {
+      this.initialized = false;
+      this.cleanupParser();
+      this.detachSocketPort();
+      socketPort.destroy();
+
+      if (this.socketPort === socketPort) {
         this.socketPort = undefined;
-        this.cancelPendingConnect = undefined;
+      }
+    };
 
-        reject(err);
-      };
-      const openClose = (): void => {
-        openError(new Error("Socket closed before ready"));
-      };
-      const onConnect = (): void => {
-        logger.debug("Socket connected", NS);
-      };
-      const onReady = async (): Promise<void> => {
-        if (settled) {
-          return;
-        }
+    const openSocket = (): Promise<void> =>
+      new Promise<void>((resolve, reject): void => {
+        const openError = (err: Error): void => {
+          if (settled) {
+            return;
+          }
 
-        logger.debug("Socket ready", NS);
-        socketPort.off("error", openError);
-        socketPort.off("close", openClose);
-        socketPort.once("close", this.onPortCloseHandler);
-        socketPort.on("error", this.onPortErrorHandler);
+          settled = true;
+          cleanupOpen();
+          reject(err);
+        };
+        const openClose = (): void => {
+          openError(new Error("Socket closed before ready"));
+        };
+        const onConnect = (): void => {
+          logger.debug("Socket connected", NS);
+        };
+        const onReady = async (): Promise<void> => {
+          if (settled) {
+            return;
+          }
 
-        try {
-          // reset
-          await this.reset();
-        } catch (error) {
-          openError(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
+          logger.debug("Socket ready", NS);
+          socketPort.off("error", openError);
+          socketPort.off("close", openClose);
+          socketPort.once("close", this.onPortCloseHandler);
+          socketPort.on("error", this.onPortErrorHandler);
 
+          try {
+            // reset
+            await this.reset();
+          } catch (error) {
+            openError(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+
+          if (settled || this.socketPort !== socketPort) {
+            openError(new Error("Connection closed"));
+            return;
+          }
+
+          settled = true;
+          this.initialized = true;
+
+          resolve();
+        };
+        this.detachSocketListeners = (): void => {
+          socketPort.off("connect", onConnect);
+          socketPort.off("ready", onReady);
+          socketPort.off("error", openError);
+          socketPort.off("close", openClose);
+          socketPort.off("close", this.onPortCloseHandler);
+          socketPort.off("error", this.onPortErrorHandler);
+        };
+        socketPort.on("connect", onConnect);
+        socketPort.on("ready", onReady);
+        socketPort.once("error", openError);
+        socketPort.once("close", openClose);
+
+        socketPort.connect(info.port, info.host);
+      });
+
+    try {
+      await this.connectOperations.run(
+        openSocket,
+        () => this.socketPort === socketPort,
+        () => new Error("Connection closed"),
+      );
+    } catch (error) {
+      if (!settled) {
         settled = true;
-        this.initialized = true;
-        this.cancelPendingConnect = undefined;
+        cleanupOpen();
+      }
 
-        resolve();
-      };
-      this.cancelPendingConnect = openError;
-      this.detachSocketListeners = (): void => {
-        socketPort.off("connect", onConnect);
-        socketPort.off("ready", onReady);
-        socketPort.off("error", openError);
-        socketPort.off("close", openClose);
-        socketPort.off("close", this.onPortCloseHandler);
-        socketPort.off("error", this.onPortErrorHandler);
-      };
-      socketPort.on("connect", onConnect);
-      socketPort.on("ready", onReady);
-      socketPort.once("error", openError);
-      socketPort.once("close", openClose);
-
-      socketPort.connect(info.port, info.host);
-    });
+      throw error;
+    }
   }
 
   private async onParsed(frame: Frame): Promise<void> {
@@ -326,7 +340,7 @@ export class SerialDriver extends EventEmitter {
 
   public async close(emitClose: boolean): Promise<void> {
     logger.debug("Closing UART", NS);
-    this.cancelPendingConnect?.(new Error("Connection closed"));
+    this.connectOperations.cancel(new Error("Connection closed"));
     this.cancelPendingOperations();
     this.cleanupParser();
 

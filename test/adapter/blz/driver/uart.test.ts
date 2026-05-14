@@ -369,6 +369,45 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should stay closed when TCP connect is closed while ready reset is pending", async () => {
+      let finishReset!: () => void;
+      vi.spyOn(driver, "reset").mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishReset = resolve;
+        }),
+      );
+
+      const connect = driver.connect(tcpPortOptions);
+      const connectResult = connect.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      const ready = socketPortMock.on.mock.calls.find(
+        (call) => call[0] === "ready",
+      )?.[1];
+
+      expect(ready).toBeDefined();
+      const readyResult = ready();
+      await Promise.resolve();
+      expect(driver.reset).toHaveBeenCalled();
+
+      await driver.close(false);
+
+      const observed = await Promise.race([
+        connectResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+      expect(observed).toBe("rejected:Connection closed");
+
+      finishReset();
+      await readyResult;
+
+      expect(driver.isInitialized()).toBe(false);
+      expect(
+        (driver as unknown as {socketPort?: unknown}).socketPort,
+      ).toBeUndefined();
+    });
+
     it("should remove TCP socket listeners when closing", async () => {
       const connect = driver.connect(tcpPortOptions);
       await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
