@@ -291,6 +291,8 @@ export class Driver extends EventEmitter {
     this.cancelRequestOperations(resetError);
     this.requestRetryDelay.cancel();
     this.waitress.clear();
+    this.startupDelay.cancel();
+    this.startupOperations.cancel(resetError);
 
     try {
       // logger.debug(`Ready to reset in 10 seconds`, NS);

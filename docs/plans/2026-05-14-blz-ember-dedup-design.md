@@ -856,6 +856,9 @@ Future BLZ refactors should follow these rules:
 - Cancelled high-level driver request operations, retry delays, and ZDO waiters
   immediately when `Driver.reset()` starts, instead of leaving old APS/ZDO
   operations alive until the delayed stop phase runs.
+- Cancelled in-flight high-level startup delays and startup operations when
+  `Driver.reset()` starts, preventing startup and reset recovery from running
+  overlapping BLZ transport flows.
 
 ## Next Steps
 
