@@ -235,11 +235,13 @@ export class Driver extends EventEmitter {
     try {
       if (this.blz) {
         const blz = this.blz;
-        this.detachBlzListeners(blz);
-        await blz.close(emitClose);
-
-        if (this.blz === blz) {
-          this.blz = undefined;
+        try {
+          this.detachBlzListeners(blz);
+          await blz.close(emitClose);
+        } finally {
+          if (this.blz === blz) {
+            this.blz = undefined;
+          }
         }
       }
     } finally {

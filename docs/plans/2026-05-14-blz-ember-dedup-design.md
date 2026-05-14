@@ -289,6 +289,9 @@ Future BLZ refactors should follow these rules:
 - Made serial UART close release the serial-port reference and destroy the port
   even when `asyncFlushAndClose()` rejects, avoiding a retained port object after
   close failure.
+- Made high-level `Driver.stop()` release its `Blz` instance reference even when
+  `blz.close()` rejects, while still clearing waiters and address caches in the
+  outer cleanup path.
 
 ## Next Steps
 

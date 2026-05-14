@@ -88,6 +88,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect(clearTimeoutSpy).toHaveBeenCalled();
         await expect(waiterResult).resolves.toEqual(new Error("Waitress cleared"));
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
     it("handles waiter cancellation before waiters start", () => {
