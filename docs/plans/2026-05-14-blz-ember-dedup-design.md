@@ -451,6 +451,9 @@ Future BLZ refactors should follow these rules:
 - Reused `CancellableOperation` for UART open-phase serial/TCP connects and
   guarded TCP ready-reset completion, so `close()` cannot let a pending TCP
   connect mark the driver initialized after teardown.
+- Delayed the high-level driver runtime reset listener until startup finishes,
+  so the expected startup force-reset event cannot recursively launch reset
+  recovery while startup owns the BLZ instance.
 
 ## Next Steps
 

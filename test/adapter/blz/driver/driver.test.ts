@@ -627,6 +627,58 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("does not start runtime reset recovery for the expected startup reset", async () => {
+        vi.useFakeTimers();
+        let resetHandler: (() => void | Promise<void>) | undefined;
+        const blzMock = {
+            on: vi.fn((event: string, handler: () => void | Promise<void>) => {
+                if (event === "reset") {
+                    resetHandler = handler;
+                }
+            }),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockImplementation(async () => {
+                resetHandler?.();
+            }),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const reset = vi.spyOn(driver, "reset").mockResolvedValue(undefined);
+        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        await vi.advanceTimersByTimeAsync(3000);
+        await startup;
+
+        expect(reset).not.toHaveBeenCalled();
+    });
+
     it("cancels startup while addEndpoint is pending", async () => {
         vi.useFakeTimers();
         const blzMock = {

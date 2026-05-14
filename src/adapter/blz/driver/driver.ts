@@ -329,8 +329,6 @@ export class Driver extends EventEmitter {
       }
       this.throwIfStartupCancelled(startupStopGeneration);
 
-      blz.on("reset", this.onBlzResetHandler);
-
       await this.runStartupOperation(
         () => blz.forceReset(),
         startupStopGeneration,
@@ -446,6 +444,7 @@ export class Driver extends EventEmitter {
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
+      blz.on("reset", this.onBlzResetHandler);
       blz.on("frame", this.handleFrameHandler);
       logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
       logger.debug("Network ready", NS);
