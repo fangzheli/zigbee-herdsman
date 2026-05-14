@@ -225,6 +225,28 @@ describe("BLZ Serial Driver", () => {
       expect((driver as unknown as {serialPort?: unknown}).serialPort).toBe(secondPort);
     });
 
+    it("should coalesce concurrent serial connect attempts", async () => {
+      let finishOpen: (() => void) | undefined;
+      serialPortMock.asyncOpen.mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishOpen = resolve;
+        }),
+      );
+
+      const firstConnect = driver.connect(serialPortOptions);
+      const secondConnect = driver.connect(serialPortOptions);
+
+      await Promise.resolve();
+
+      expect(serialPortMock.asyncOpen).toHaveBeenCalledTimes(1);
+      expect(serialPortMock.destroy).not.toHaveBeenCalled();
+
+      finishOpen?.();
+      await Promise.all([firstConnect, secondConnect]);
+
+      expect(driver.isInitialized()).toBe(true);
+    });
+
     it("should handle connection failure", async () => {
       serialPortMock.asyncOpen.mockRejectedValue(
         new Error("Connection failed"),

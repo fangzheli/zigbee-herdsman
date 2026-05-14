@@ -37,6 +37,7 @@ export class SerialDriver extends EventEmitter {
   private queue: Queue;
   private operationGeneration = 0;
   private readonly sendRetryDelay = new CancellableDelay();
+  private connectPromise?: Promise<void>;
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
@@ -55,7 +56,23 @@ export class SerialDriver extends EventEmitter {
     this.parser = new Parser();
   }
 
-  async connect(options: SerialPortOptions): Promise<void> {
+  public async connect(options: SerialPortOptions): Promise<void> {
+    if (this.connectPromise) {
+      logger.debug("UART connect already in progress.", NS);
+      return await this.connectPromise;
+    }
+
+    const connectPromise = this.performConnect(options).finally(() => {
+      if (this.connectPromise === connectPromise) {
+        this.connectPromise = undefined;
+      }
+    });
+    this.connectPromise = connectPromise;
+
+    return await connectPromise;
+  }
+
+  private async performConnect(options: SerialPortOptions): Promise<void> {
     if (this.serialPort || this.socketPort || this.initialized) {
       await this.close(false);
     }
