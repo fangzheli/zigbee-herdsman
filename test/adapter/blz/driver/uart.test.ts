@@ -55,6 +55,7 @@ describe("BLZ Serial Driver", () => {
     unpipe: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
     once: ReturnType<typeof vi.fn>;
+    off: ReturnType<typeof vi.fn>;
     removeListener: ReturnType<typeof vi.fn>;
     removeAllListeners: ReturnType<typeof vi.fn>;
     connect: ReturnType<typeof vi.fn>;
@@ -133,6 +134,7 @@ describe("BLZ Serial Driver", () => {
       unpipe: vi.fn(),
       on: vi.fn(),
       once: vi.fn(),
+      off: vi.fn(),
       removeListener: vi.fn(),
       removeAllListeners: vi.fn(),
       connect: vi.fn(),
@@ -293,7 +295,10 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
       expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
       expect(parserMock.reset).toHaveBeenCalled();
-      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
@@ -312,7 +317,10 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
       expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
       expect(parserMock.reset).toHaveBeenCalled();
-      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
@@ -324,8 +332,27 @@ describe("BLZ Serial Driver", () => {
       await driver.close(true);
 
       expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
-      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should detach owned TCP socket listeners without broad listener cleanup", async () => {
+      const connect = driver.connect(tcpPortOptions);
+      await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
+      await connect;
+      socketPortMock.off.mockClear();
+      socketPortMock.removeAllListeners.mockClear();
+
+      await driver.close(true);
+
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(socketPortMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
     it("should reject and clean listeners when TCP reset fails after socket ready", async () => {
@@ -353,7 +380,10 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
       expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
       expect(parserMock.reset).toHaveBeenCalled();
-      expect(socketPortMock.removeAllListeners).toHaveBeenCalled();
+      expect(socketPortMock.off).toHaveBeenCalledWith("connect", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("ready", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
   });

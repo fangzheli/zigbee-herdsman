@@ -304,6 +304,9 @@ Future BLZ refactors should follow these rules:
 - Replaced UART serial-port/parser listener cleanup with stable bound handlers
   and targeted `off()` calls for `parsed`, `close`, and `error`, avoiding broad
   listener removal on the serial path.
+- Replaced UART TCP socket listener cleanup with an owned detach closure and
+  targeted `off()` calls for open-time and runtime socket listeners, avoiding
+  broad listener removal on the TCP path.
 
 ## Next Steps
 

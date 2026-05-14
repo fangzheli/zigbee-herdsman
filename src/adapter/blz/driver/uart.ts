@@ -36,6 +36,7 @@ export class SerialDriver extends EventEmitter {
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
+  private detachSocketListeners?: () => void;
 
   constructor() {
     super();
@@ -120,10 +121,11 @@ export class SerialDriver extends EventEmitter {
     this.writer.pipe(this.socketPort);
 
     this.socketPort.pipe(this.parser);
-    this.parser.on("parsed", this.onParsed.bind(this));
+    this.parser.on("parsed", this.onParsedHandler);
 
     return await new Promise((resolve, reject): void => {
       let settled = false;
+      const socketPort = this.socketPort!;
       const openError = (err: Error): void => {
         if (settled) {
           return;
@@ -140,20 +142,19 @@ export class SerialDriver extends EventEmitter {
       const openClose = (): void => {
         openError(new Error("Socket closed before ready"));
       };
-
-      this.socketPort!.on("connect", () => {
+      const onConnect = (): void => {
         logger.debug("Socket connected", NS);
-      });
-      this.socketPort!.on("ready", async (): Promise<void> => {
+      };
+      const onReady = async (): Promise<void> => {
         if (settled) {
           return;
         }
 
         logger.debug("Socket ready", NS);
-        this.socketPort!.removeListener("error", openError);
-        this.socketPort!.removeListener("close", openClose);
-        this.socketPort!.once("close", this.onPortClose.bind(this));
-        this.socketPort!.on("error", this.onPortError.bind(this));
+        socketPort.off("error", openError);
+        socketPort.off("close", openClose);
+        socketPort.once("close", this.onPortCloseHandler);
+        socketPort.on("error", this.onPortErrorHandler);
 
         try {
           // reset
@@ -167,11 +168,21 @@ export class SerialDriver extends EventEmitter {
         this.initialized = true;
 
         resolve();
-      });
-      this.socketPort!.once("error", openError);
-      this.socketPort!.once("close", openClose);
+      };
+      this.detachSocketListeners = (): void => {
+        socketPort.off("connect", onConnect);
+        socketPort.off("ready", onReady);
+        socketPort.off("error", openError);
+        socketPort.off("close", openClose);
+        socketPort.off("close", this.onPortCloseHandler);
+        socketPort.off("error", this.onPortErrorHandler);
+      };
+      socketPort.on("connect", onConnect);
+      socketPort.on("ready", onReady);
+      socketPort.once("error", openError);
+      socketPort.once("close", openClose);
 
-      this.socketPort!.connect(info.port, info.host);
+      socketPort.connect(info.port, info.host);
     });
   }
 
@@ -335,10 +346,8 @@ export class SerialDriver extends EventEmitter {
 
     this.writer.unpipe(this.socketPort);
     this.socketPort.unpipe(this.parser);
-    this.socketPort.removeAllListeners("connect");
-    this.socketPort.removeAllListeners("ready");
-    this.socketPort.removeAllListeners("close");
-    this.socketPort.removeAllListeners("error");
+    this.detachSocketListeners?.();
+    this.detachSocketListeners = undefined;
   }
 
   private onPortError(error: Error): void {
