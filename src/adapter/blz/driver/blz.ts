@@ -18,6 +18,7 @@ import { BlzOutgoingMessageType, BlzStatus } from "./types/named";
 import { BlzApsFrame } from "./types/struct";
 import { SerialDriver } from "./uart";
 import { uint8_t, uint16_t, uint32_t, uint64_t, Bytes } from "./types";
+import { serializeMappedBufferSegments } from "./types/basic";
 import { BlzValueId } from "./types/named";
 
 export const NS = "zh:blz:blz";
@@ -149,24 +150,9 @@ function serializeFrameFields(
   values: Record<string, unknown>,
 ): Buffer {
   const fields = Object.getOwnPropertyNames(frameDesc);
-  const buffers: Buffer[] = [];
-  let length = 0;
-
-  for (const prop of fields) {
-    const buffer = frameDesc[prop].serialize(frameDesc[prop], values[prop]);
-    buffers.push(buffer);
-    length += buffer.length;
-  }
-
-  const result = Buffer.allocUnsafe(length);
-  let offset = 0;
-
-  for (const buffer of buffers) {
-    buffer.copy(result, offset);
-    offset += buffer.length;
-  }
-
-  return result;
+  return serializeMappedBufferSegments(fields, (prop) =>
+    frameDesc[prop].serialize(frameDesc[prop], values[prop]),
+  );
 }
 
 export class Blz extends EventEmitter {

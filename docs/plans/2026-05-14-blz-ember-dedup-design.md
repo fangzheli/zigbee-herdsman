@@ -731,6 +731,9 @@ Future BLZ refactors should follow these rules:
 - Tightened BLZ command waiter matching so string frame-name matchers use a
   direct comparison instead of allocating a single-item array and running
   `includes()` on every response-match attempt.
+- Reused the shared mapped-buffer serializer for `BLZFrameData` command-field
+  serialization, removing the duplicate local buffer-list assembly and dynamic
+  `push()` growth in the frame layer.
 
 ## Next Steps
 

@@ -40,4 +40,11 @@ describe("BLZFrameData", () => {
             concatSpy.mockRestore();
         }
     });
+
+    it("serializes command fields through the shared mapped buffer helper", () => {
+        const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+        expect(source).not.toContain("buffers.push");
+        expect(source).toContain("serializeMappedBufferSegments(fields");
+    });
 });
