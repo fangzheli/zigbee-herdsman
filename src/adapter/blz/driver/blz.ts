@@ -6,6 +6,7 @@ import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { SerialPortOptions } from "../../tstype";
 import { CancellableDelay } from "./cancellableDelay";
+import { CancellableOperation } from "./cancellableOperation";
 import {
   BLZFrameDesc,
   FRAME_NAMES_BY_ID,
@@ -276,9 +277,9 @@ export class Blz extends EventEmitter {
   private inResetingProcess = false;
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
-  private cancelPendingConnectAttempt?: (error: Error) => void;
   private watchdogGeneration = 0;
   private readonly connectRetryDelay = new CancellableDelay();
+  private readonly connectOperations = new CancellableOperation();
   private serialDriverEventBridgeAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
@@ -359,26 +360,18 @@ export class Blz extends EventEmitter {
           const resetDuringConnect = new Promise<never>((_, reject): void => {
             rejectConnectReset = reject;
           });
-          let rejectConnectClose: ((error: Error) => void) | undefined;
-          const closeDuringConnect = new Promise<never>((_, reject): void => {
-            rejectConnectClose = reject;
-            this.cancelPendingConnectAttempt = reject;
-          });
 
           try {
-            await Promise.race([
-              this.serialDriver.connect(options),
-              resetDuringConnect,
-              closeDuringConnect,
-            ]);
+            await this.runConnectOperation(
+              () =>
+                Promise.race([
+                  this.serialDriver.connect(options),
+                  resetDuringConnect,
+                ]),
+              connectGeneration,
+            );
           } finally {
             rejectConnectReset = undefined;
-            if (
-              rejectConnectClose &&
-              this.cancelPendingConnectAttempt === rejectConnectClose
-            ) {
-              this.cancelPendingConnectAttempt = undefined;
-            }
           }
 
           if (this.isConnectCancelled(connectGeneration)) {
@@ -487,28 +480,11 @@ export class Blz extends EventEmitter {
     operation: () => Promise<T>,
     connectGeneration: number,
   ): Promise<T> {
-    let rejectConnectClose: ((error: Error) => void) | undefined;
-    const closeDuringOperation = new Promise<never>((_, reject): void => {
-      rejectConnectClose = reject;
-      this.cancelPendingConnectAttempt = reject;
-    });
-
-    try {
-      const result = await Promise.race([
-        operation(),
-        closeDuringOperation,
-      ]);
-      this.throwIfConnectionChanged(connectGeneration);
-
-      return result;
-    } finally {
-      if (
-        rejectConnectClose &&
-        this.cancelPendingConnectAttempt === rejectConnectClose
-      ) {
-        this.cancelPendingConnectAttempt = undefined;
-      }
-    }
+    return await this.connectOperations.run(
+      operation,
+      () => !this.isConnectCancelled(connectGeneration),
+      () => new Error("Connection cancelled by close"),
+    );
   }
 
   private async waitForConnectRetry(
@@ -572,9 +548,7 @@ export class Blz extends EventEmitter {
     logger.debug("Closing Blz", NS);
 
     this.connectGeneration += 1;
-    this.cancelPendingConnectAttempt?.(
-      new Error("Connection cancelled by close"),
-    );
+    this.connectOperations.cancel(new Error("Connection cancelled by close"));
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
     this.queue.clear(new Error("Connection closed"));
