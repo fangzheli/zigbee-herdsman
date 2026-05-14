@@ -895,6 +895,9 @@ Future BLZ refactors should follow these rules:
 - Made the BLZ parser resynchronize on a new unescaped START delimiter before
   END, so a corrupted partial frame cannot consume the following valid frame and
   force reset recovery through a stale bad frame.
+- Corrected `LVBytes` length deserialization to treat the one-byte length as
+  unsigned, so payloads of 128-255 bytes are not truncated by signed length
+  interpretation.
 
 ## Next Steps
 

@@ -294,6 +294,17 @@ describe('BLZ Types', () => {
             expect(remaining).toEqual(Buffer.from([0xEF]));
         });
 
+        it('should deserialize unsigned length-prefixed bytes above 127 bytes', () => {
+            const valueBytes = Buffer.alloc(128, 0xab);
+            const [value, remaining] = LVBytes.deserialize(
+                LVBytes,
+                Buffer.concat([Buffer.of(0x80), valueBytes, Buffer.of(0xef)]),
+            );
+
+            expect(value).toEqual(valueBytes);
+            expect(remaining).toEqual(Buffer.from([0xef]));
+        });
+
         it('should not retain a large source buffer when deserializing length-prefixed bytes', () => {
             const chunk = Buffer.alloc(20000, 0);
             const startOffset = chunk.length - 4;
