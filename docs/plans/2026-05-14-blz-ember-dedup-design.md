@@ -454,6 +454,9 @@ Future BLZ refactors should follow these rules:
 - Delayed the high-level driver runtime reset listener until startup finishes,
   so the expected startup force-reset event cannot recursively launch reset
   recovery while startup owns the BLZ instance.
+- Made `Blz.close(true)` emit the BLZ-level `close` event itself after targeted
+  serial-listener teardown, preserving explicit close notification without
+  relying on the detached serial bridge.
 
 ## Next Steps
 

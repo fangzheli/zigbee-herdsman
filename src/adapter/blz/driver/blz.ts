@@ -555,6 +555,10 @@ export class Blz extends EventEmitter {
     this.waitress.clear();
     this.detachSerialDriverListeners();
     await this.serialDriver.close(emitClose);
+
+    if (emitClose) {
+      this.emit("close");
+    }
   }
 
   /**

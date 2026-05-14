@@ -144,6 +144,19 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledWith(true);
     });
 
+    it("should emit close when explicitly closed with emitClose", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+      const callback = vi.fn();
+
+      await blz.connect(serialPortOptions);
+      blz.on("close", callback);
+
+      await blz.close(true);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("should detach owned serial driver listeners without broad listener cleanup", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);
