@@ -792,7 +792,7 @@ export class Driver extends EventEmitter {
                 requestGeneration,
               )
             ).nodeId;
-            if (nodeId && nodeId !== 0xffff) {
+            if (nodeId !== undefined && nodeId !== 0xffff) {
               this.cacheNodeIeee(nodeId, eui64);
             } else {
               throw new Error("Unknown EUI64:" + strEui64);

@@ -465,6 +465,8 @@ Future BLZ refactors should follow these rules:
 - Removed stale EUI64-to-node cache entries by cached node ID during leave
   handling, so a leave event with a different IEEE cannot leave old send
   mappings retained.
+- Treated resolved node ID `0x0000` as a valid address lookup result, so EUI64
+  sends to the coordinator are not retried and failed as unknown.
 
 ## Next Steps
 
