@@ -690,6 +690,9 @@ Future BLZ refactors should follow these rules:
 - Collapsed the BLZ parser's retained tail state from a one-element buffer
   array into a single bounded buffer, matching the current parser behavior and
   reducing the chance of accidental multi-buffer retention growth.
+- Tightened BLZ byte unstuffing further so escape sequences must decode to one
+  of the reserved delimiter bytes, preventing malformed escaped data from being
+  silently rewritten into a different payload.
 
 ## Next Steps
 

@@ -68,7 +68,7 @@ export function unstuffFrameData(buffer: Buffer): Buffer {
 
     for (const byte of buffer) {
         if (escaped) {
-            result[offset++] = byte ^ consts.STUFF;
+            result[offset++] = decodeEscapedByte(byte);
             escaped = false;
         } else if (byte === consts.ESCAPE) {
             escaped = true;
@@ -96,6 +96,7 @@ function getUnstuffedLength(buffer: Buffer): number {
 
     for (const byte of buffer) {
         if (escaped) {
+            decodeEscapedByte(byte);
             length++;
             escaped = false;
         } else if (byte === consts.ESCAPE) {
@@ -114,6 +115,16 @@ function getUnstuffedLength(buffer: Buffer): number {
 
 function isReservedByte(byte: number): boolean {
     return byte === consts.START || byte === consts.END || byte === consts.ESCAPE;
+}
+
+function decodeEscapedByte(byte: number): number {
+    const decoded = byte ^ consts.STUFF;
+
+    if (!isReservedByte(decoded)) {
+        throw new Error(`Invalid escape sequence: 0x${byte.toString(16).padStart(2, "0")}`);
+    }
+
+    return decoded;
 }
 
 function writeFrameCrc(frame: Buffer, dataLength: number): void {

@@ -54,6 +54,10 @@ describe("BLZ frame byte stuffing", () => {
     it("rejects a dangling escape byte at the end of a frame", () => {
         expect(() => unstuffFrameData(Buffer.from([0x01, consts.ESCAPE]))).toThrow("Dangling escape byte");
     });
+
+    it("rejects escape sequences that do not decode to reserved bytes", () => {
+        expect(() => unstuffFrameData(Buffer.from([consts.ESCAPE, 0x00]))).toThrow("Invalid escape sequence");
+    });
 });
 
 describe("BLZ frame CRC helpers", () => {
