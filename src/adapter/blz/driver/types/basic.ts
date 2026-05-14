@@ -46,7 +46,7 @@ export class int_t {
             throw new TypeError(`Value must be a number, BigInt, or Buffer. Received: ${typeof value}`);
         }
     
-        const buffer = Buffer.alloc(cls._size, 0);
+        const buffer = Buffer.allocUnsafe(cls._size);
     
         if (cls._size <= 6) {
             if (cls._signed) {

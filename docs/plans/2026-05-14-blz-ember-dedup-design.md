@@ -734,6 +734,9 @@ Future BLZ refactors should follow these rules:
 - Reused the shared mapped-buffer serializer for `BLZFrameData` command-field
   serialization, removing the duplicate local buffer-list assembly and dynamic
   `push()` growth in the frame layer.
+- Changed fixed-width integer serialization to allocate with `allocUnsafe()`
+  because every integer write covers the complete target width, avoiding
+  unnecessary zero-fill work on BLZ command serialization.
 
 ## Next Steps
 

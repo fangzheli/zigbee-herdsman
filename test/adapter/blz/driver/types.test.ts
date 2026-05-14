@@ -143,6 +143,21 @@ describe('BLZ Types', () => {
                 expect(result).toEqual(Buffer.from([0x78, 0x56, 0x34, 0x12]));
             });
 
+            it('should serialize integer buffers without zero-fill allocation', () => {
+                const allocSpy = vi.spyOn(Buffer, 'alloc').mockImplementation(() => {
+                    throw new Error('Buffer.alloc used');
+                });
+
+                try {
+                    const result = uint32_t.serialize(uint32_t, 0x12345678);
+
+                    expect(result).toEqual(Buffer.from([0x78, 0x56, 0x34, 0x12]));
+                    expect(allocSpy).not.toHaveBeenCalled();
+                } finally {
+                    allocSpy.mockRestore();
+                }
+            });
+
             it('should deserialize 32-bit unsigned integer', () => {
                 const [value] = uint32_t.deserialize(uint32_t, Buffer.from([0x78, 0x56, 0x34, 0x12]));
                 expect(value).toBe(0x12345678);
