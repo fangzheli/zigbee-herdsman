@@ -652,6 +652,36 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(startup).not.toHaveBeenCalled();
     });
 
+    it("does not start reset recovery while driver stop is in progress", async () => {
+        vi.useFakeTimers();
+        let releaseClose: (() => void) | undefined;
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            setResetingProcess: vi.fn(),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockReturnValue(
+                new Promise<void>((resolve) => {
+                    releaseClose = resolve;
+                }),
+            ),
+        };
+        setDriverBlz(driver, blzMock);
+        const startup = vi.spyOn(driver, "startup").mockResolvedValue("resumed");
+
+        const stop = driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const reset = driver.reset();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(blzMock.forceReset).not.toHaveBeenCalled();
+        expect(startup).not.toHaveBeenCalled();
+
+        releaseClose?.();
+        await Promise.all([stop, reset]);
+    });
+
     it("cancels reset delay promptly when stop interrupts reset", async () => {
         vi.useFakeTimers();
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");

@@ -271,6 +271,11 @@ export class Driver extends EventEmitter {
       return await this.resetPromise;
     }
 
+    if (this.stopPromise) {
+      logger.debug("Reset ignored because driver stop is in progress.", NS);
+      return await this.stopPromise;
+    }
+
     const resetPromise = this.performReset().finally(() => {
       if (this.resetPromise === resetPromise) {
         this.resetPromise = undefined;

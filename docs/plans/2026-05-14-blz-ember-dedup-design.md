@@ -859,6 +859,9 @@ Future BLZ refactors should follow these rules:
 - Cancelled in-flight high-level startup delays and startup operations when
   `Driver.reset()` starts, preventing startup and reset recovery from running
   overlapping BLZ transport flows.
+- Ignored new high-level reset requests while an explicit `Driver.stop()` is
+  already in progress, preventing reset recovery from sending `forceReset()` or
+  restarting against a lower BLZ transport that is already closing.
 
 ## Next Steps
 
