@@ -31,8 +31,6 @@ export class SerialDriver extends EventEmitter {
   private initialized: boolean;
   private sendSeq = 0; // next frame number to send
   private recvSeq = 0; // next frame number to receive
-  private ackSeq = 0; // next number after the last accepted frame
-  private rejectCondition = false;
   private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
   private queue: Queue;
 
@@ -197,14 +195,11 @@ export class SerialDriver extends EventEmitter {
           this.handleDATA(frame);
       }
     } catch (error) {
-      this.rejectCondition = true;
       logger.error(`Error parsing frame: ${error}`, NS);
     }
   }
 
   private handleDATA(frame: Frame): void {
-    const ackSeq = (frame.control & 0x70) >> 4;
-
     // // Log frame immediately before any processing
     // logger.debug(`<-- Processed FRAME (${frame.frameId.toString(16)}): ${frame}`, NS);
 

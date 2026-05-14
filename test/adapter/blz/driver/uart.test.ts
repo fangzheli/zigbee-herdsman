@@ -344,6 +344,19 @@ describe("BLZ Serial Driver", () => {
       // The frame is handled but no ACK is sent
       expect(writerMock.sendACK).not.toHaveBeenCalled();
     });
+
+    it("should not retain unused parser reject state after malformed frames", () => {
+      const frame = createFrame(0x0000, 0x01, 0x80, Buffer.from([1]));
+      vi.mocked(frame.checkCRC).mockImplementation(() => {
+        throw new Error("bad crc");
+      });
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+
+      expect(
+        "rejectCondition" in (driver as unknown as Record<string, unknown>),
+      ).toBe(false);
+    });
   });
 
   describe("Data sending", () => {

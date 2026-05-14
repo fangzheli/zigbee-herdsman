@@ -265,6 +265,12 @@ Future BLZ refactors should follow these rules:
 - Cancelled pending ZCL response waiters when endpoint APS request throws,
   preventing unstarted adapter waiters from remaining in memory after lower
   request failures.
+- Removed dead BLZ UART parser state (`rejectCondition` and the unused stored
+  ACK sequence field), so malformed frames are logged without retaining a stale
+  error marker on the serial driver.
+- Removed the dead `dataRequestAttempt` parameter from BLZ endpoint ZCL sends
+  and changed the debug log to report only the active response retry attempt and
+  queue depth.
 
 ## Next Steps
 

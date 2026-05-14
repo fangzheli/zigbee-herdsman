@@ -8,6 +8,7 @@ import {
   NetworkOptions,
   SerialPortOptions,
 } from "../../../../src/adapter/tstype";
+import { logger } from "../../../../src/utils/logger";
 import * as Zcl from "../../../../src/zspec/zcl";
 import * as Zdo from "../../../../src/zspec/zdo";
 import * as ZSpec from "../../../../src/zspec";
@@ -392,6 +393,51 @@ describe("BLZ Adapter", () => {
         }),
         zclFrame.toBuffer(),
       );
+    });
+
+    it("should log endpoint ZCL retry state without stale data-request attempts", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      try {
+        const apsFrame = new BlzApsFrame();
+        apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
+        driverMock.makeApsFrame.mockReturnValue(apsFrame);
+        driverMock.request.mockResolvedValue(true);
+        const zclFrame = Zcl.Frame.create(
+          Zcl.FrameType.GLOBAL,
+          Zcl.Direction.CLIENT_TO_SERVER,
+          true,
+          undefined,
+          7,
+          "read",
+          Zcl.Clusters.genOnOff.ID,
+          [{attrId: 0x0000}],
+          {},
+        );
+
+        await adapter.sendZclFrameToEndpoint(
+          "0x0102030405060708",
+          0x1234,
+          1,
+          zclFrame,
+          1000,
+          true,
+          true,
+        );
+
+        const endpointLog = debug.mock.calls
+          .map(([message]) =>
+            typeof message === "function" ? message() : message,
+          )
+          .find((message) =>
+            String(message).startsWith("sendZclFrameToEndpointInternal"),
+          );
+
+        expect(endpointLog).toContain("responseAttempt=0");
+        expect(endpointLog).toContain("queue=");
+        expect(endpointLog).not.toContain("dataRequestAttempt");
+      } finally {
+        debug.mockRestore();
+      }
     });
 
     it("should use source endpoint and profile ID for group ZCL sends", async () => {

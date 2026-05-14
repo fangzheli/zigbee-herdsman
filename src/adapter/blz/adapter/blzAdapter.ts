@@ -572,7 +572,6 @@ export class BLZAdapter extends Adapter {
         disableResponse,
         disableRecovery,
         0,
-        0,
         profileId ?? ZSpec.HA_PROFILE_ID,
       );
     }, networkAddress);
@@ -588,7 +587,6 @@ export class BLZAdapter extends Adapter {
     disableResponse: boolean,
     disableRecovery: boolean,
     responseAttempt: number,
-    dataRequestAttempt: number,
     profileId: number,
   ): Promise<ZclPayload | undefined> {
     if (ieeeAddr == null) {
@@ -596,7 +594,7 @@ export class BLZAdapter extends Adapter {
     }
     logger.debug(
       `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +
-        `(${responseAttempt},${dataRequestAttempt},${this.queue.count()}), timeout=${timeout}`,
+        `(responseAttempt=${responseAttempt}, queue=${this.queue.count()}), timeout=${timeout}`,
       NS,
     );
     let response = null;
@@ -669,7 +667,6 @@ export class BLZAdapter extends Adapter {
             disableResponse,
             disableRecovery,
             responseAttempt + 1,
-            dataRequestAttempt,
             profileId,
           );
         } else {
