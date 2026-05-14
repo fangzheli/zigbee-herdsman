@@ -1,19 +1,4 @@
 /* istanbul ignore file */
-export function serializeBufferSegments(segments: Buffer[]): Buffer {
-    let length = 0;
-    for (const segment of segments) {
-        length += segment.length;
-    }
-
-    const result = Buffer.allocUnsafe(length);
-    let offset = 0;
-    for (const segment of segments) {
-        offset += segment.copy(result, offset);
-    }
-
-    return result;
-}
-
 export function serializeMappedBufferSegments<T>(items: ArrayLike<T>, serialize: (item: T, index: number) => Buffer): Buffer {
     const segments: Buffer[] = new Array(items.length);
     let length = 0;

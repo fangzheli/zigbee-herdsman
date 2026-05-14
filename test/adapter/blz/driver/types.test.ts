@@ -65,6 +65,7 @@ describe('BLZ Types', () => {
             const namedSource = fs.readFileSync('src/adapter/blz/driver/types/named.ts', 'utf8');
             const structSource = fs.readFileSync('src/adapter/blz/driver/types/struct.ts', 'utf8');
             const indexSource = fs.readFileSync('src/adapter/blz/driver/types/index.ts', 'utf8');
+            const basicSource = fs.readFileSync('src/adapter/blz/driver/types/basic.ts', 'utf8');
 
             for (const source of [namedSource, structSource, indexSource]) {
                 expect(source).not.toContain('BlzZDOCmd');
@@ -79,6 +80,7 @@ describe('BLZ Types', () => {
             expect(namedSource).not.toContain('export class Bool');
             expect(structSource).not.toContain('BlzNeighborTableEntry');
             expect(structSource).not.toContain('BlzRouteTableEntry');
+            expect(basicSource).not.toContain('serializeBufferSegments');
         });
     });
 

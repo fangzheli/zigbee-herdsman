@@ -672,6 +672,9 @@ Future BLZ refactors should follow these rules:
 - Replaced remaining `Array.map()` use in BLZ schema, struct, generic-list,
   and fixed-list serialization with a preallocating mapped-buffer helper,
   removing extra callback/intermediate-array churn from serialization paths.
+- Removed the now-unused `serializeBufferSegments()` helper from the BLZ type
+  layer after moving all local serialization call sites to the mapped-buffer
+  helper.
 
 ## Next Steps
 
