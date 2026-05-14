@@ -334,6 +334,9 @@ Future BLZ refactors should follow these rules:
 - Added high-level driver startup generation checks and cancellable startup
   delays, so `Driver.stop()` interrupts startup settle waits and prevents later
   initialization steps from running against a stopped BLZ instance.
+- Extracted repeated cancellable delay bookkeeping into a BLZ-local
+  `CancellableDelay` helper and reused it for UART send retries, BLZ connect
+  retries, high-level APS retries, reset delays, and startup delays.
 
 ## Next Steps
 

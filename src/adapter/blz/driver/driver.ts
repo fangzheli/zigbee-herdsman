@@ -2,7 +2,7 @@
 
 import { EventEmitter } from "events";
 import equals from "fast-deep-equal/es6";
-import { wait, Waitress } from "../../../utils";
+import { Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import { Clusters } from "../../../zspec/zcl/definition/cluster";
@@ -12,6 +12,7 @@ import { BLZAdapterBackup } from "../adapter/backup";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
+import { CancellableDelay } from "./cancellableDelay";
 import { uint64_t } from "./types";
 import {
   BlzApsOption,
@@ -87,9 +88,9 @@ export class Driver extends EventEmitter {
   private resetPromise?: Promise<void>;
   private stopGeneration = 0;
   private requestGeneration = 0;
-  private readonly requestRetryWaiters = new Set<() => void>();
-  private readonly resetDelayWaiters = new Set<() => void>();
-  private readonly startupDelayWaiters = new Set<() => void>();
+  private readonly requestRetryDelay = new CancellableDelay();
+  private readonly resetDelay = new CancellableDelay();
+  private readonly startupDelay = new CancellableDelay();
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -233,11 +234,11 @@ export class Driver extends EventEmitter {
   ): Promise<void> {
     logger.debug("Stopping driver", NS);
     this.requestGeneration += 1;
-    this.cancelRequestRetryWaiters();
+    this.requestRetryDelay.cancel();
     if (!internalReset) {
       this.stopGeneration += 1;
-      this.cancelResetDelayWaiters();
-      this.cancelStartupDelayWaiters();
+      this.resetDelay.cancel();
+      this.startupDelay.cancel();
     }
 
     try {
@@ -773,46 +774,14 @@ export class Driver extends EventEmitter {
     return this.requestGeneration !== requestGeneration || !this.blz;
   }
 
-  private cancelRequestRetryWaiters(): void {
-    const waiters = [...this.requestRetryWaiters];
-    this.requestRetryWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
-  }
-
   private async waitForRequestRetry(
     milliseconds: number,
     requestGeneration: number,
   ): Promise<boolean> {
-    if (this.isRequestCancelled(requestGeneration)) {
-      return false;
-    }
-
-    let cancel!: () => void;
-    return await new Promise<boolean>((resolve): void => {
-      const timer = setTimeout((): void => {
-        this.requestRetryWaiters.delete(cancel);
-        resolve(!this.isRequestCancelled(requestGeneration));
-      }, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-      this.requestRetryWaiters.add(cancel);
-    }).finally(() => {
-      this.requestRetryWaiters.delete(cancel);
-    });
-  }
-
-  private cancelResetDelayWaiters(): void {
-    const waiters = [...this.resetDelayWaiters];
-    this.resetDelayWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
+    return await this.requestRetryDelay.wait(
+      milliseconds,
+      () => !this.isRequestCancelled(requestGeneration),
+    );
   }
 
   private async waitForResetDelay(
@@ -824,20 +793,10 @@ export class Driver extends EventEmitter {
       return false;
     }
 
-    let cancel!: () => void;
-    const stillActive = await new Promise<boolean>((resolve): void => {
-      const timer = setTimeout((): void => {
-        this.resetDelayWaiters.delete(cancel);
-        resolve(this.stopGeneration === resetStopGeneration);
-      }, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-      this.resetDelayWaiters.add(cancel);
-    }).finally(() => {
-      this.resetDelayWaiters.delete(cancel);
-    });
+    const stillActive = await this.resetDelay.wait(
+      milliseconds,
+      () => this.stopGeneration === resetStopGeneration,
+    );
 
     if (!stillActive) {
       logger.debug("Reset cancelled by stop.", NS);
@@ -852,35 +811,16 @@ export class Driver extends EventEmitter {
     }
   }
 
-  private cancelStartupDelayWaiters(): void {
-    const waiters = [...this.startupDelayWaiters];
-    this.startupDelayWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
-  }
-
   private async waitForStartupDelay(
     milliseconds: number,
     startupStopGeneration: number,
   ): Promise<void> {
     this.throwIfStartupCancelled(startupStopGeneration);
 
-    let cancel!: () => void;
-    const stillActive = await new Promise<boolean>((resolve): void => {
-      const timer = setTimeout((): void => {
-        this.startupDelayWaiters.delete(cancel);
-        resolve(this.stopGeneration === startupStopGeneration);
-      }, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-      this.startupDelayWaiters.add(cancel);
-    }).finally(() => {
-      this.startupDelayWaiters.delete(cancel);
-    });
+    const stillActive = await this.startupDelay.wait(
+      milliseconds,
+      () => this.stopGeneration === startupStopGeneration,
+    );
 
     if (!stillActive) {
       throw new Error("Driver stopped");

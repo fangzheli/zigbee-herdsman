@@ -3,11 +3,12 @@
 import { EventEmitter } from "events";
 import net from "net";
 
-import { Queue, wait, Waitress } from "../../../utils";
+import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { SerialPort } from "../../serialPort";
 import { isTcpPath, parseTcpPath } from "../../utils";
 import { SerialPortOptions } from "../../tstype";
+import { CancellableDelay } from "./cancellableDelay";
 import { Frame } from "./frame";
 import { Parser } from "./parser";
 import { Writer } from "./writer";
@@ -34,7 +35,7 @@ export class SerialDriver extends EventEmitter {
   private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
   private queue: Queue;
   private operationGeneration = 0;
-  private readonly sendRetryWaiters = new Set<() => void>();
+  private readonly sendRetryDelay = new CancellableDelay();
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
@@ -330,18 +331,9 @@ export class SerialDriver extends EventEmitter {
 
   private cancelPendingOperations(): void {
     this.operationGeneration += 1;
-    this.cancelSendRetryWaiters();
+    this.sendRetryDelay.cancel();
     this.queue.clear();
     this.waitress.clear();
-  }
-
-  private cancelSendRetryWaiters(): void {
-    const waiters = [...this.sendRetryWaiters];
-    this.sendRetryWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
   }
 
   private detachSerialPort(): void {
@@ -462,24 +454,10 @@ export class SerialDriver extends EventEmitter {
     milliseconds: number,
     generation: number,
   ): Promise<boolean> {
-    if (this.operationGeneration !== generation || !this.initialized) {
-      return false;
-    }
-
-    let cancel!: () => void;
-    return await new Promise<boolean>((resolve): void => {
-      const timer = setTimeout((): void => {
-        this.sendRetryWaiters.delete(cancel);
-        resolve(this.operationGeneration === generation && this.initialized);
-      }, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-      this.sendRetryWaiters.add(cancel);
-    }).finally(() => {
-      this.sendRetryWaiters.delete(cancel);
-    });
+    return await this.sendRetryDelay.wait(
+      milliseconds,
+      () => this.operationGeneration === generation && this.initialized,
+    );
   }
 
   public waitFor(

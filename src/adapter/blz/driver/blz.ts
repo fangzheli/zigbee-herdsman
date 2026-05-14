@@ -2,9 +2,10 @@
 
 import { EventEmitter } from "events";
 
-import { Queue, wait, Waitress } from "../../../utils";
+import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { SerialPortOptions } from "../../tstype";
+import { CancellableDelay } from "./cancellableDelay";
 import {
   BLZFrameDesc,
   FRAME_NAMES_BY_ID,
@@ -274,7 +275,7 @@ export class Blz extends EventEmitter {
   private failures = 0;
   private inResetingProcess = false;
   private connectGeneration = 0;
-  private readonly connectRetryWaiters = new Set<() => void>();
+  private readonly connectRetryDelay = new CancellableDelay();
   private serialDriverEventBridgeAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
@@ -414,37 +415,14 @@ export class Blz extends EventEmitter {
     return this.connectGeneration !== connectGeneration;
   }
 
-  private cancelConnectRetryWaiters(): void {
-    const waiters = [...this.connectRetryWaiters];
-    this.connectRetryWaiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
-    }
-  }
-
   private async waitForConnectRetry(
     milliseconds: number,
     connectGeneration: number,
   ): Promise<boolean> {
-    if (this.isConnectCancelled(connectGeneration)) {
-      return false;
-    }
-
-    let cancel!: () => void;
-    return await new Promise<boolean>((resolve): void => {
-      const timer = setTimeout((): void => {
-        this.connectRetryWaiters.delete(cancel);
-        resolve(!this.isConnectCancelled(connectGeneration));
-      }, milliseconds);
-      cancel = (): void => {
-        clearTimeout(timer);
-        resolve(false);
-      };
-      this.connectRetryWaiters.add(cancel);
-    }).finally(() => {
-      this.connectRetryWaiters.delete(cancel);
-    });
+    return await this.connectRetryDelay.wait(
+      milliseconds,
+      () => !this.isConnectCancelled(connectGeneration),
+    );
   }
 
   private clearWatchdogTimer(): void {
@@ -497,7 +475,7 @@ export class Blz extends EventEmitter {
     logger.debug("Closing Blz", NS);
 
     this.connectGeneration += 1;
-    this.cancelConnectRetryWaiters();
+    this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
     this.queue.clear();
     this.waitress.clear();
