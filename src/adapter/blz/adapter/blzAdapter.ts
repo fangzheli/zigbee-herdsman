@@ -23,6 +23,7 @@ import {
   StartResult,
 } from "../../tstype";
 import { CancellableDelay } from "../driver/cancellableDelay";
+import { CancellableOperation } from "../driver/cancellableOperation";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzStatus } from "../driver/types";
 import type { BlzApsFrame } from "../driver/types/struct";
@@ -47,7 +48,7 @@ export class BLZAdapter extends Adapter {
   private stopGeneration: number;
   private readonly stopDelay = new CancellableDelay();
   private driverListenersAttached = false;
-  private readonly stopOperationRejecters = new Set<(error: Error) => void>();
+  private readonly runningOperations = new CancellableOperation();
   private startPromise?: Promise<StartResult>;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
@@ -233,36 +234,18 @@ export class BLZAdapter extends Adapter {
   }
 
   private cancelRunningOperations(error: Error): void {
-    const rejecters = [...this.stopOperationRejecters];
-    this.stopOperationRejecters.clear();
-
-    for (const reject of rejecters) {
-      reject(error);
-    }
+    this.runningOperations.cancel(error);
   }
 
   private async runOperationWhileRunning<T>(
     operation: () => Promise<T>,
     generation: number,
   ): Promise<T> {
-    this.throwIfStopped(generation);
-
-    let rejectOperation: ((error: Error) => void) | undefined;
-    const operationStopped = new Promise<never>((_, reject): void => {
-      rejectOperation = reject;
-      this.stopOperationRejecters.add(reject);
-    });
-
-    try {
-      const result = await Promise.race([operation(), operationStopped]);
-      this.throwIfStopped(generation);
-
-      return result;
-    } finally {
-      if (rejectOperation) {
-        this.stopOperationRejecters.delete(rejectOperation);
-      }
-    }
+    return await this.runningOperations.run(
+      operation,
+      () => !this.closing && generation === this.stopGeneration,
+      () => new Error("Adapter stopped"),
+    );
   }
 
   private async waitWhileRunning(

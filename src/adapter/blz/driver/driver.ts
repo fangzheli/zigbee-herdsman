@@ -13,6 +13,7 @@ import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
 import { CancellableDelay } from "./cancellableDelay";
+import { CancellableOperation } from "./cancellableOperation";
 import { uint64_t } from "./types";
 import {
   BlzApsOption,
@@ -91,7 +92,7 @@ export class Driver extends EventEmitter {
   private cancelPendingStartupOperation?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
-  private readonly requestOperationRejecters = new Set<(error: Error) => void>();
+  private readonly requestOperations = new CancellableOperation();
   private readonly requestRetryDelay = new CancellableDelay();
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
@@ -863,40 +864,18 @@ export class Driver extends EventEmitter {
   }
 
   private cancelRequestOperations(error: Error): void {
-    const rejecters = [...this.requestOperationRejecters];
-    this.requestOperationRejecters.clear();
-
-    for (const reject of rejecters) {
-      reject(error);
-    }
+    this.requestOperations.cancel(error);
   }
 
   private async runRequestOperation<T>(
     operation: () => Promise<T>,
     requestGeneration: number,
   ): Promise<T> {
-    if (this.isRequestCancelled(requestGeneration)) {
-      throw new Error("Driver stopped");
-    }
-
-    let rejectOperation: ((error: Error) => void) | undefined;
-    const operationStopped = new Promise<never>((_, reject): void => {
-      rejectOperation = reject;
-      this.requestOperationRejecters.add(reject);
-    });
-
-    try {
-      const result = await Promise.race([operation(), operationStopped]);
-      if (this.isRequestCancelled(requestGeneration)) {
-        throw new Error("Driver stopped");
-      }
-
-      return result;
-    } finally {
-      if (rejectOperation) {
-        this.requestOperationRejecters.delete(rejectOperation);
-      }
-    }
+    return await this.requestOperations.run(
+      operation,
+      () => !this.isRequestCancelled(requestGeneration),
+      () => new Error("Driver stopped"),
+    );
   }
 
   private async waitForRequestRetry(

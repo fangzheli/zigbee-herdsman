@@ -435,6 +435,10 @@ Future BLZ refactors should follow these rules:
 - Reused high-level driver request-operation cancellation for standalone
   `networkIdToEUI64()` lookups, so `Driver.stop()` rejects the lookup while the
   lower address query is still pending.
+- Extracted repeated stop/request cancellation bookkeeping into a BLZ
+  `CancellableOperation` helper and reused it from the adapter and high-level
+  driver, so operation rejecters are always cleared and late caller handlers do
+  not produce unhandled rejections.
 
 ## Next Steps
 
