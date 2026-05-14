@@ -131,9 +131,13 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ frame CRC append and verification in `framing.ts`, so
   `Writer` and `Frame` use the same CRC byte ordering and mismatch message
   behavior. Added pure tests for non-mutating CRC append and mismatch handling.
+- Extracted raw frame construction and delimiter wrapping into `framing.ts`.
+  `Writer` no longer expands payload bytes into a temporary number array before
+  CRC/stuffing, reducing allocation churn on outgoing frames.
 
 ## Next Steps
 
-1. Consider frame construction helpers now that CRC and stuffing are shared.
-2. Continue reducing transport-layer allocation churn where tests can pin the
+1. Continue reducing transport-layer allocation churn where tests can pin the
    behavior.
+2. Review high-level driver request retries for duplicated error handling and
+   waiter cancellation guarantees.

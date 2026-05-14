@@ -19,6 +19,16 @@ export function verifyFrameCrc(frame: Buffer): void {
     }
 }
 
+export function buildFrameBuffer(control: number, sequence: number, frameId: number, payload?: Buffer): Buffer {
+    const header = Buffer.from([control, sequence, frameId & 0xff, (frameId >> 8) & 0xff]);
+
+    return appendFrameCrc(payload ? Buffer.concat([header, payload]) : header);
+}
+
+export function wrapFrameBuffer(frame: Buffer): Buffer {
+    return Buffer.from([consts.START, ...stuffFrameData(frame), consts.END]);
+}
+
 export function stuffFrameData(buffer: Buffer): Buffer {
     const result: number[] = [];
 

@@ -3,7 +3,7 @@
 import * as stream from 'stream';
 import { logger } from '../../../utils/logger';
 import * as consts from './consts';
-import { appendFrameCrc, stuffFrameData } from './framing';
+import { buildFrameBuffer, wrapFrameBuffer } from './framing';
 
 const NS = 'zh:blz:uart';
 
@@ -52,17 +52,8 @@ export class Writer extends stream.Readable {
         frameId: number,
         data?: Buffer
     ): Buffer {
-        const frameBuffer = [
-            control,
-            ((ackSeq & 0x07) << 4 | (seq & 0x07)),
-            frameId & 0xFF,
-            (frameId >> 8) & 0xFF,
-            ...(data || []),
-        ];
-
-        const frameWithCrc = appendFrameCrc(Buffer.from(frameBuffer));
-
-        return Buffer.from([consts.START, ...stuffFrameData(frameWithCrc), consts.END]);
+        const sequence = (ackSeq & 0x07) << 4 | (seq & 0x07);
+        return wrapFrameBuffer(buildFrameBuffer(control, sequence, frameId, data));
     }
 
     private makeControlByte(isDebug: boolean=false, isRetransmission: boolean): number {

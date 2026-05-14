@@ -1,7 +1,14 @@
 import {describe, expect, it} from "vitest";
 
 import * as consts from "../../../../src/adapter/blz/driver/consts";
-import {appendFrameCrc, stuffFrameData, unstuffFrameData, verifyFrameCrc} from "../../../../src/adapter/blz/driver/framing";
+import {
+    appendFrameCrc,
+    buildFrameBuffer,
+    stuffFrameData,
+    unstuffFrameData,
+    verifyFrameCrc,
+    wrapFrameBuffer,
+} from "../../../../src/adapter/blz/driver/framing";
 import crc16ccitt from "../../../../src/adapter/blz/driver/utils/crc16ccitt";
 
 describe("BLZ frame byte stuffing", () => {
@@ -63,5 +70,30 @@ describe("BLZ frame CRC helpers", () => {
         withCrc[withCrc.length - 1] ^= 0xff;
 
         expect(() => verifyFrameCrc(withCrc)).toThrow("CRC mismatch: expected");
+    });
+});
+
+describe("BLZ frame construction helpers", () => {
+    it("builds raw frame buffers with header, payload, and CRC without mutating payload", () => {
+        const payload = Buffer.from([0x01, 0x02, consts.START]);
+
+        const frame = buildFrameBuffer(0x80, 0x35, 0x1234, payload);
+
+        expect(payload).toStrictEqual(Buffer.from([0x01, 0x02, consts.START]));
+        expect(frame[0]).toBe(0x80);
+        expect(frame[1]).toBe(0x35);
+        expect(frame.readUInt16LE(2)).toBe(0x1234);
+        expect(frame.subarray(4, -2)).toStrictEqual(payload);
+        expect(() => verifyFrameCrc(frame)).not.toThrow();
+    });
+
+    it("wraps raw frame buffers with delimiters and byte stuffing", () => {
+        const frame = buildFrameBuffer(0x00, 0x00, consts.START, Buffer.from([consts.END]));
+
+        const wrapped = wrapFrameBuffer(frame);
+
+        expect(wrapped[0]).toBe(consts.START);
+        expect(wrapped[wrapped.length - 1]).toBe(consts.END);
+        expect(unstuffFrameData(wrapped.subarray(1, -1))).toStrictEqual(frame);
     });
 });
