@@ -457,6 +457,8 @@ Future BLZ refactors should follow these rules:
 - Made `Blz.close(true)` emit the BLZ-level `close` event itself after targeted
   serial-listener teardown, preserving explicit close notification without
   relying on the detached serial bridge.
+- Routed BLZ incoming message type into adapter ZCL payload `wasBroadcast`, so
+  broadcast ZCL messages no longer use the old hard-coded `false` placeholder.
 
 ## Next Steps
 

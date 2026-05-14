@@ -25,7 +25,7 @@ import {
 import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
 import { Driver, BlzIncomingMessage } from "../driver";
-import { BlzEUI64, BlzStatus } from "../driver/types";
+import { BlzEUI64, BlzOutgoingMessageType, BlzStatus } from "../driver/types";
 import type { BlzApsFrame } from "../driver/types/struct";
 import { parseNwkUpdateChannelChange } from "./nwkUpdate";
 
@@ -131,7 +131,8 @@ export class BLZAdapter extends Adapter {
         endpoint: frame.apsFrame.sourceEndpoint,
         linkquality: frame.lqi,
         groupID: frame.apsFrame.groupId ?? 0,
-        wasBroadcast: false, // TODO
+        wasBroadcast:
+          frame.messageType === BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
         destinationEndpoint: frame.apsFrame.destinationEndpoint,
       };
 

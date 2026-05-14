@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { BLZAdapter } from "../../../../src/adapter/blz/adapter/blzAdapter";
 import { Driver } from "../../../../src/adapter/blz/driver/driver";
-import { BlzStatus } from "../../../../src/adapter/blz/driver/types/named";
+import { BlzOutgoingMessageType, BlzStatus } from "../../../../src/adapter/blz/driver/types/named";
 import { BlzApsFrame } from "../../../../src/adapter/blz/driver/types/struct";
 import {
   AdapterOptions,
@@ -1028,6 +1028,31 @@ describe("BLZ Adapter", () => {
       });
 
       expect(callback).toHaveBeenCalled();
+    });
+
+    it("should mark broadcast ZCL messages", () => {
+      const callback = vi.fn();
+      adapter.on("zclPayload", callback);
+
+      const apsFrame = new BlzApsFrame();
+      apsFrame.profileId = ZSpec.HA_PROFILE_ID;
+      apsFrame.clusterId = 0x0000;
+      apsFrame.sourceEndpoint = 1;
+      apsFrame.destinationEndpoint = 1;
+
+      driverMock.on.mock.calls.find(
+        (call) => call[0] === "incomingMessage",
+      )?.[1]({
+        messageType: BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+        apsFrame,
+        message: Buffer.from([0x00, 0x00, 0x00]),
+        sender: 0x1234,
+        lqi: 255,
+      });
+
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({ wasBroadcast: true }),
+      );
     });
 
     it("should resolve ZCL waiters with default responses like the shared adapter matcher", async () => {
