@@ -86,6 +86,7 @@ export class Driver extends EventEmitter {
   public ieee: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
+  private startupPromise?: Promise<TsType.StartResult>;
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestRetryDelay = new CancellableDelay();
@@ -276,6 +277,22 @@ export class Driver extends EventEmitter {
   }
 
   public async startup(): Promise<TsType.StartResult> {
+    if (this.startupPromise) {
+      logger.debug("Startup already in progress.", NS);
+      return await this.startupPromise;
+    }
+
+    const startupPromise = this.performStartup().finally(() => {
+      if (this.startupPromise === startupPromise) {
+        this.startupPromise = undefined;
+      }
+    });
+    this.startupPromise = startupPromise;
+
+    return await startupPromise;
+  }
+
+  private async performStartup(): Promise<TsType.StartResult> {
     let result: TsType.StartResult = "resumed";
     this.transactionID = 1;
 

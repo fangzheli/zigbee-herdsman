@@ -351,6 +351,9 @@ Future BLZ refactors should follow these rules:
 - Added BLZ watchdog generation checks, so an in-flight heartbeat that finishes
   after `Blz.close()` or watchdog cleanup cannot count a stale failure or emit a
   reset event after the transport has been closed.
+- Coalesced concurrent high-level `Driver.startup()` calls into one startup
+  promise, preventing overlapping startup attempts from closing or replacing
+  each other's BLZ transport instance.
 
 ## Next Steps
 

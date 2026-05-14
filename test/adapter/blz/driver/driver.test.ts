@@ -401,6 +401,34 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(addEndpoint).not.toHaveBeenCalled();
     });
 
+    it("coalesces concurrent startup attempts", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+
+        const firstStartup = driver.startup().catch((error: Error) => error);
+        await vi.advanceTimersByTimeAsync(0);
+        const secondStartup = driver.startup().catch((error: Error) => error);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(blzConstructorMock).toHaveBeenCalledTimes(1);
+
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        await Promise.all([firstStartup, secondStartup]);
+
+        expect(addEndpoint).not.toHaveBeenCalled();
+    });
+
     it("caches sender EUI64 by node ID for incoming APS messages and clears it on leave", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const incomingMessage = vi.fn();
