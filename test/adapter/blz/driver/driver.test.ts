@@ -119,6 +119,16 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(version.product).toBe(7);
     });
 
+    it("does not expose mutable coordinator IEEE state", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+
+        const coordinatorIeee = driver.getCoordinatorIeee();
+        coordinatorIeee.value[0] = 0xff;
+
+        expect(driver.getCoordinatorIeee().toString()).toBe("0102030405060708");
+    });
+
     it("routes leave network through the driver command operation path", async () => {
         const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");

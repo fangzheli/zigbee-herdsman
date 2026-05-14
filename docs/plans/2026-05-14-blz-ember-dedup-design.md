@@ -549,6 +549,9 @@ Future BLZ refactors should follow these rules:
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.
+- Changed the high-level driver coordinator IEEE getter to return a defensive
+  `BlzEUI64` copy and made the cached coordinator IEEE private, preventing
+  callers from mutating driver-owned coordinator identity state.
 - Reworked NWK update channel-change payload normalization to preallocate the
   canonical payload and write optional TSN/manager-address fields directly,
   avoiding repeated `Buffer.concat()` in the channel-change entry path.

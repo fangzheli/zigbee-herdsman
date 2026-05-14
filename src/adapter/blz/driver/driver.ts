@@ -83,7 +83,7 @@ export class Driver extends EventEmitter {
   //// @ts-expect-error XXX: init in startup
   private eui64ToNodeId = new Map<string, number>();
   private nodeIdToEui64 = new Map<number, BlzEUI64>();
-  public ieee?: BlzEUI64;
+  private ieee?: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
@@ -163,7 +163,7 @@ export class Driver extends EventEmitter {
       throw new Error("BLZ coordinator IEEE is not available");
     }
 
-    return this.ieee;
+    return new BlzEUI64(this.ieee.toString());
   }
 
   public updateNetworkParametersSnapshot(
