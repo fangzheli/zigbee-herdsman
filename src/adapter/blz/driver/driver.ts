@@ -88,6 +88,7 @@ export class Driver extends EventEmitter {
   private stopGeneration = 0;
   private requestGeneration = 0;
   private readonly requestRetryWaiters = new Set<() => void>();
+  private readonly resetDelayWaiters = new Set<() => void>();
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -178,7 +179,9 @@ export class Driver extends EventEmitter {
         await this.blz.forceReset();
       }
 
-      await wait(2000);
+      if (!(await this.waitForResetDelay(2000, resetStopGeneration))) {
+        return;
+      }
       // don't emit 'close' on stop since we don't want this to bubble back up as 'disconnected' to the controller.
       await this.stop(false, true);
     } catch (err) {
@@ -190,9 +193,7 @@ export class Driver extends EventEmitter {
         return;
       }
 
-      await wait(1000);
-      if (this.stopGeneration !== resetStopGeneration) {
-        logger.debug("Reset cancelled by stop.", NS);
+      if (!(await this.waitForResetDelay(1000, resetStopGeneration))) {
         return;
       }
 
@@ -234,6 +235,7 @@ export class Driver extends EventEmitter {
     this.cancelRequestRetryWaiters();
     if (!internalReset) {
       this.stopGeneration += 1;
+      this.cancelResetDelayWaiters();
     }
 
     try {
@@ -791,6 +793,46 @@ export class Driver extends EventEmitter {
     }).finally(() => {
       this.requestRetryWaiters.delete(cancel);
     });
+  }
+
+  private cancelResetDelayWaiters(): void {
+    const waiters = [...this.resetDelayWaiters];
+    this.resetDelayWaiters.clear();
+
+    for (const cancel of waiters) {
+      cancel();
+    }
+  }
+
+  private async waitForResetDelay(
+    milliseconds: number,
+    resetStopGeneration: number,
+  ): Promise<boolean> {
+    if (this.stopGeneration !== resetStopGeneration) {
+      logger.debug("Reset cancelled by stop.", NS);
+      return false;
+    }
+
+    let cancel!: () => void;
+    const stillActive = await new Promise<boolean>((resolve): void => {
+      const timer = setTimeout((): void => {
+        this.resetDelayWaiters.delete(cancel);
+        resolve(this.stopGeneration === resetStopGeneration);
+      }, milliseconds);
+      cancel = (): void => {
+        clearTimeout(timer);
+        resolve(false);
+      };
+      this.resetDelayWaiters.add(cancel);
+    }).finally(() => {
+      this.resetDelayWaiters.delete(cancel);
+    });
+
+    if (!stillActive) {
+      logger.debug("Reset cancelled by stop.", NS);
+    }
+
+    return stillActive;
   }
 
   public async mrequest(

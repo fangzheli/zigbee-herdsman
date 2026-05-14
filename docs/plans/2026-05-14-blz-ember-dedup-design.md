@@ -328,6 +328,9 @@ Future BLZ refactors should follow these rules:
 - Reused the adapter cancellable wait path for the startup settle delay, so
   `BLZAdapter.stop()` rejects an in-flight `start()` settle wait instead of
   allowing startup to resolve after shutdown begins.
+- Added cancellable high-level driver reset delays, so an external
+  `Driver.stop()` interrupts reset backoff waits immediately instead of leaving
+  the reset promise alive until the fixed delay expires.
 
 ## Next Steps
 
