@@ -551,6 +551,8 @@ Future BLZ refactors should follow these rules:
   transport-owned state.
 - Made the high-level driver's cached network-parameter snapshot private as
   well, keeping mutable network state behind defensive snapshot/update APIs.
+- Made the high-level driver's lower-transport getter private, so callers
+  cannot retain the BLZ transport object through a public escape hatch.
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.

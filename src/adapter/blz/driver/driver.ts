@@ -118,7 +118,7 @@ export class Driver extends EventEmitter {
     this.backupMan = new BLZAdapterBackup(this, backupPath);
   }
 
-  public getBlz(): Blz {
+  private getBlz(): Blz {
     if (!this.blz) {
       throw new Error("BLZ driver is not started");
     }
