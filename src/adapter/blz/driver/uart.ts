@@ -556,7 +556,7 @@ export class SerialDriver extends EventEmitter {
     );
   }
 
-  public waitFor(
+  private waitFor(
     frameId: number,
     timeout = 3000,
   ): { start: () => { promise: Promise<BLZPacket>; ID: number }; ID: number } {

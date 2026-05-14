@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { SerialPort } from "../../../../src/adapter/serialPort";
 import { SerialDriver } from "../../../../src/adapter/blz/driver/uart";
@@ -165,6 +167,13 @@ describe("BLZ Serial Driver", () => {
   });
 
   describe("Connection", () => {
+    it("should keep low-level UART waiters behind driver internals", () => {
+      const source = fs.readFileSync("src/adapter/blz/driver/uart.ts", "utf8");
+
+      expect(source).toContain("private waitFor(");
+      expect(source).not.toContain("public waitFor(");
+    });
+
     it("should connect successfully", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
 

@@ -878,7 +878,7 @@ export class Blz extends EventEmitter {
     return status; // Return the status of the operation
   }
 
-  public waitFor(
+  private waitFor(
     frameId: string | number,
     timeout = 10000,
   ): { start: () => { promise: Promise<BLZFrame>; ID: number }; ID: number } {

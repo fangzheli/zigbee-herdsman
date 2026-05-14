@@ -93,6 +93,8 @@ describe("BLZ Driver", () => {
 
       expect(source).toContain("private version:");
       expect(source).not.toContain("public version:");
+      expect(source).toContain("private waitFor(");
+      expect(source).not.toContain("public waitFor(");
 
       const version = blz.getVersionSnapshot();
       version.product = 99;

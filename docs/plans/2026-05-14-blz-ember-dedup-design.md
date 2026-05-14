@@ -561,6 +561,8 @@ Future BLZ refactors should follow these rules:
 - Coalesced concurrent UART `close()` calls behind one in-flight promise, so a
   second close cannot destroy a port while the first flush-close is still
   pending.
+- Made the low-level BLZ transport and UART waiter factories private, keeping
+  request waiter ownership inside their respective lifecycle cleanup paths.
 - Made the BLZ transport's cached version private and exposed it through a
   defensive snapshot, preventing callers from mutating transport-owned metadata.
 - Changed high-level driver coordinator-version and network-parameter snapshot
