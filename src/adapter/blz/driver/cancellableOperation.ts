@@ -2,11 +2,12 @@ export class CancellableOperation {
   private readonly rejecters = new Set<(error: Error) => void>();
 
   public cancel(error: Error): void {
-    const rejecters = [...this.rejecters];
-    this.rejecters.clear();
-
-    for (const reject of rejecters) {
-      reject(error);
+    try {
+      for (const reject of this.rejecters) {
+        reject(error);
+      }
+    } finally {
+      this.rejecters.clear();
     }
   }
 

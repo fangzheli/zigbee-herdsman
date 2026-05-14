@@ -2,11 +2,12 @@ export class CancellableDelay {
   private readonly waiters = new Set<() => void>();
 
   public cancel(): void {
-    const waiters = [...this.waiters];
-    this.waiters.clear();
-
-    for (const cancel of waiters) {
-      cancel();
+    try {
+      for (const cancel of this.waiters) {
+        cancel();
+      }
+    } finally {
+      this.waiters.clear();
     }
   }
 

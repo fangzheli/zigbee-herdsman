@@ -725,6 +725,9 @@ Future BLZ refactors should follow these rules:
 - Reworked backup extended-PAN-ID serialization to write directly into the
   backup buffer, avoiding an intermediate byte array and array-backed
   `Buffer.from()` during backup creation.
+- Reworked cancellable operation and delay cancellation to notify their tracked
+  pending callbacks by directly iterating the Set, avoiding per-cancel array
+  snapshots on stop/reset/close paths while still clearing retained callbacks.
 
 ## Next Steps
 

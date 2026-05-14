@@ -43,6 +43,23 @@ describe("BLZ cancellable operation", () => {
         expect(operations.count()).toBe(0);
     });
 
+    it("notifies active rejecters before clearing the tracked set", () => {
+        const operations = new CancellableOperation();
+        const rejecters = (operations as unknown as {rejecters: Set<(error: Error) => void>}).rejecters;
+        let sizeWhileRejecting = -1;
+        const rejecter = vi.fn(() => {
+            sizeWhileRejecting = rejecters.size;
+        });
+
+        rejecters.add(rejecter);
+
+        operations.cancel(new Error("cancelled"));
+
+        expect(rejecter).toHaveBeenCalledOnce();
+        expect(sizeWhileRejecting).toBe(1);
+        expect(operations.count()).toBe(0);
+    });
+
     it("removes the active rejecter when the operation rejects normally", async () => {
         const operations = new CancellableOperation();
 

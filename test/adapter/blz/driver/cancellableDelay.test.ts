@@ -34,4 +34,21 @@ describe("BLZ cancellable delay", () => {
         await expect(wait).resolves.toBe(false);
         expect(vi.getTimerCount()).toBe(0);
     });
+
+    it("notifies active waiters before clearing the tracked set", () => {
+        const delay = new CancellableDelay();
+        const waiters = (delay as unknown as {waiters: Set<() => void>}).waiters;
+        let sizeWhileCancelling = -1;
+        const waiter = vi.fn(() => {
+            sizeWhileCancelling = waiters.size;
+        });
+
+        waiters.add(waiter);
+
+        delay.cancel();
+
+        expect(waiter).toHaveBeenCalledOnce();
+        expect(sizeWhileCancelling).toBe(1);
+        expect(waiters.size).toBe(0);
+    });
 });
