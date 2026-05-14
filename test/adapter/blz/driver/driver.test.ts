@@ -1999,15 +1999,15 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(eui64.toString()).toBe("0000000000003344");
     });
 
-    it("forms a new network without cloning the configured extended PAN ID", async () => {
+    it("forms a new network without cloning configured network bytes", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
         setDriverBlz(driver, {formNetwork});
         const originalFrom = Buffer.from;
         const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
-            if (value === networkOptions.extendedPanID) {
-                throw new Error("extended PAN ID clone used");
+            if (value === networkOptions.extendedPanID || value === networkOptions.networkKey) {
+                throw new Error("configured network bytes clone used");
             }
 
             return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
@@ -2018,6 +2018,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
             expect(formNetwork).toHaveBeenCalledWith(0x0807060504030201n, networkOptions.panID, 11);
             expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.extendedPanID);
+            expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.networkKey);
         } finally {
             fromSpy.mockRestore();
         }

@@ -768,6 +768,9 @@ Future BLZ refactors should follow these rules:
 - Reworked restore compatibility checks to compare configured extended-PAN-ID
   and network-key bytes directly, avoiding temporary `Buffer.from()` clones
   while preserving the existing little-endian PAN-ID comparison.
+- Reworked new-network key setup to fill a fixed 16-byte buffer directly from
+  configured key bytes, avoiding the generic `Buffer.from()` conversion before
+  `setNetworkKeyInfo()`.
 
 ## Next Steps
 

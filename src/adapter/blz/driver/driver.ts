@@ -100,6 +100,23 @@ function bytesEqual(
   return true;
 }
 
+function fixedBufferFromBytes(
+  value: ArrayLike<number>,
+  length: number,
+  name: string,
+): Buffer {
+  if (value.length !== length) {
+    throw new Error(`${name} must be ${length} bytes.`);
+  }
+
+  const result = Buffer.allocUnsafe(length);
+  for (let i = 0; i < length; i++) {
+    result[i] = value[i] & 0xff;
+  }
+
+  return result;
+}
+
 export interface BlzIncomingMessage {
   messageType: number;
   apsFrame: BlzApsFrame;
@@ -715,8 +732,12 @@ export class Driver extends EventEmitter {
       // await this.setGlobalTcLinkKey(backup.blz!.tclk!, backup.blz!.tclkFrameCounter!);
     } else {
       if (this.nwkOpt.networkKey) {
-        const networkKey = this.nwkOpt.networkKey;
-        await run(() => this.setNetworkKeyInfo(Buffer.from(networkKey), 0, 0));
+        const networkKey = fixedBufferFromBytes(
+          this.nwkOpt.networkKey,
+          16,
+          "Network key",
+        );
+        await run(() => this.setNetworkKeyInfo(networkKey, 0, 0));
       }
     }
 
