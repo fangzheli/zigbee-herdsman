@@ -87,6 +87,7 @@ export class Driver extends EventEmitter {
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
+  private cancelPendingResetForce?: (error: Error) => void;
   private cancelPendingStartupConnect?: (error: Error) => void;
   private stopGeneration = 0;
   private requestGeneration = 0;
@@ -183,7 +184,25 @@ export class Driver extends EventEmitter {
       if (resettingBlz) {
         resettingBlz.setResetingProcess(true);
         resetStateMarked = true;
-        await resettingBlz.forceReset();
+        let rejectResetForce: ((error: Error) => void) | undefined;
+        const resetForceCancelled = new Promise<never>((_, reject): void => {
+          rejectResetForce = reject;
+          this.cancelPendingResetForce = reject;
+        });
+
+        try {
+          await Promise.race([
+            resettingBlz.forceReset(),
+            resetForceCancelled,
+          ]);
+        } finally {
+          if (
+            rejectResetForce &&
+            this.cancelPendingResetForce === rejectResetForce
+          ) {
+            this.cancelPendingResetForce = undefined;
+          }
+        }
       }
 
       if (await this.waitForResetDelay(2000, resetStopGeneration)) {
@@ -250,6 +269,7 @@ export class Driver extends EventEmitter {
       this.stopGeneration += 1;
       this.resetDelay.cancel();
       this.startupDelay.cancel();
+      this.cancelPendingResetForce?.(new Error("Driver stopped"));
       this.cancelPendingStartupConnect?.(new Error("Driver stopped"));
     }
 

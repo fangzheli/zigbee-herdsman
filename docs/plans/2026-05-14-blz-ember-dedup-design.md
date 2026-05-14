@@ -380,6 +380,9 @@ Future BLZ refactors should follow these rules:
 - Added a high-level driver startup-connect abort, so `Driver.stop()` rejects
   `Driver.startup()` while it is still awaiting `Blz.connect()` and releases the
   newly-created BLZ instance without waiting on lower-layer behavior.
+- Added a high-level driver reset-force abort, so `Driver.stop()` resolves an
+  in-flight `Driver.reset()` that is still awaiting `Blz.forceReset()` and
+  clears the BLZ reset-state flag.
 
 ## Next Steps
 
