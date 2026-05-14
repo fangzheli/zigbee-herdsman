@@ -266,6 +266,7 @@ describe("BLZ Driver", () => {
 
       expect(observed).toBe("rejected:Connection cancelled by close");
       expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
+      expect(serialDriverMock.off.mock.calls.filter((call) => call[0] === "reset")).toHaveLength(2);
     });
 
     it("should close the serial driver before retrying a resolved but uninitialized connection", async () => {

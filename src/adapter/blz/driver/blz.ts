@@ -326,53 +326,55 @@ export class Blz extends EventEmitter {
     };
     this.serialDriver.on("reset", resetForReconnect);
 
-    for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
-      try {
-        logger.debug(
-          `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
-          NS,
-        );
-        await this.serialDriver.connect(options);
-
-        if (this.isConnectCancelled(connectGeneration)) {
-          throw new Error("Connection cancelled by close");
-        }
-
-        // Verify connection is actually established
-        if (this.serialDriver.isInitialized()) {
-          connected = true;
-          break;
-        } else {
-          throw new Error("Driver reported connection but is not initialized");
-        }
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        logger.error(
-          `Connection attempt ${i} failed: ${lastError.message}`,
-          NS,
-        );
-        await this.cleanupFailedConnectAttempt();
-
-        if (this.isConnectCancelled(connectGeneration)) {
-          throw lastError;
-        }
-
-        if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
-          const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
-          logger.debug(`Waiting ${delay}ms before next attempt`, NS);
-          const continueRetry = await this.waitForConnectRetry(
-            delay,
-            connectGeneration,
+    try {
+      for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        try {
+          logger.debug(
+            `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
+            NS,
           );
+          await this.serialDriver.connect(options);
 
-          if (!continueRetry) {
+          if (this.isConnectCancelled(connectGeneration)) {
             throw new Error("Connection cancelled by close");
+          }
+
+          // Verify connection is actually established
+          if (this.serialDriver.isInitialized()) {
+            connected = true;
+            break;
+          } else {
+            throw new Error("Driver reported connection but is not initialized");
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          logger.error(
+            `Connection attempt ${i} failed: ${lastError.message}`,
+            NS,
+          );
+          await this.cleanupFailedConnectAttempt();
+
+          if (this.isConnectCancelled(connectGeneration)) {
+            throw lastError;
+          }
+
+          if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
+            const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
+            logger.debug(`Waiting ${delay}ms before next attempt`, NS);
+            const continueRetry = await this.waitForConnectRetry(
+              delay,
+              connectGeneration,
+            );
+
+            if (!continueRetry) {
+              throw new Error("Connection cancelled by close");
+            }
           }
         }
       }
+    } finally {
+      this.serialDriver.off("reset", resetForReconnect);
     }
-
-    this.serialDriver.off("reset", resetForReconnect);
 
     if (!connected) {
       const error = new Error(

@@ -337,6 +337,8 @@ Future BLZ refactors should follow these rules:
 - Extracted repeated cancellable delay bookkeeping into a BLZ-local
   `CancellableDelay` helper and reused it for UART send retries, BLZ connect
   retries, high-level APS retries, reset delays, and startup delays.
+- Wrapped BLZ transport connect attempts in `try/finally` so the temporary
+  reconnect reset listener is detached even when close cancels a retry delay.
 
 ## Next Steps
 
