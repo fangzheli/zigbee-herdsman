@@ -79,6 +79,10 @@ describe("BLZ frame CRC helpers", () => {
 
         expect(() => verifyFrameCrc(withCrc)).toThrow("CRC mismatch: expected");
     });
+
+    it("rejects undersized frames before reading CRC bytes", () => {
+        expect(() => verifyFrameCrc(Buffer.from([0x00, 0x01, 0x02]))).toThrow("Invalid frame length: 3");
+    });
 });
 
 describe("BLZ frame construction helpers", () => {

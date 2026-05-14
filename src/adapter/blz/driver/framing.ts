@@ -2,6 +2,7 @@ import * as consts from "./consts";
 import crc16ccitt from "./utils/crc16ccitt";
 
 const BLZ_CRC_INITIAL_VALUE = 0xffff;
+const BLZ_MIN_FRAME_LENGTH = 6;
 
 export function appendFrameCrc(data: Buffer): Buffer {
     const result = Buffer.allocUnsafe(data.length + 2);
@@ -12,6 +13,10 @@ export function appendFrameCrc(data: Buffer): Buffer {
 }
 
 export function verifyFrameCrc(frame: Buffer): void {
+    if (frame.length < BLZ_MIN_FRAME_LENGTH) {
+        throw new Error(`Invalid frame length: ${frame.length}`);
+    }
+
     const data = frame.subarray(0, -2);
     const expected = crc16ccitt(data, BLZ_CRC_INITIAL_VALUE);
     const actual = frame.subarray(-2);

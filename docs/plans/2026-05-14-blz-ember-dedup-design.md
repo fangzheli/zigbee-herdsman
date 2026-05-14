@@ -702,6 +702,9 @@ Future BLZ refactors should follow these rules:
 - Reworked `BlzEUI64.serialize()` to read instance backing storage directly
   from inside the class, avoiding the defensive `value` getter copy while still
   preserving public immutability.
+- Aligned the shared BLZ CRC verifier with `Frame` construction by rejecting
+  undersized raw frames before attempting CRC comparison, keeping malformed
+  receive errors specific at the helper boundary.
 
 ## Next Steps
 
