@@ -1174,7 +1174,7 @@ export class Driver extends EventEmitter {
     );
   }
 
-  public nextTransactionID(): number {
+  private nextTransactionID(): number {
     this.transactionID = (this.transactionID + 1) & 0xff;
     return this.transactionID;
   }

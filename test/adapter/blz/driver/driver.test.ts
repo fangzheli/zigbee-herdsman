@@ -42,6 +42,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public networkParams?: BlzNetworkParameters;");
         expect(source).toContain("private getBlz(): Blz");
         expect(source).not.toContain("public getBlz(): Blz");
+        expect(source).toContain("private nextTransactionID(): number");
+        expect(source).not.toContain("public nextTransactionID(): number");
     });
 
     afterEach(() => {
