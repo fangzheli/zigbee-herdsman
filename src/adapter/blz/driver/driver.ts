@@ -85,6 +85,7 @@ export class Driver extends EventEmitter {
   public ieee: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
+  private stopGeneration = 0;
   private transactionID = 1;
   private serialOpt: TsType.SerialPortOptions;
   public backupMan: BLZAdapterBackup;
@@ -161,6 +162,7 @@ export class Driver extends EventEmitter {
   }
 
   private async performReset(): Promise<void> {
+    const resetStopGeneration = this.stopGeneration;
     logger.debug(`Reset connection.`, NS);
 
     try {
@@ -173,12 +175,22 @@ export class Driver extends EventEmitter {
 
       await wait(2000);
       // don't emit 'close' on stop since we don't want this to bubble back up as 'disconnected' to the controller.
-      await this.stop(false);
+      await this.stop(false, true);
     } catch (err) {
       logger.debug(`Stop error ${err}`, NS);
     }
     try {
+      if (this.stopGeneration !== resetStopGeneration) {
+        logger.debug("Reset cancelled by stop.", NS);
+        return;
+      }
+
       await wait(1000);
+      if (this.stopGeneration !== resetStopGeneration) {
+        logger.debug("Reset cancelled by stop.", NS);
+        return;
+      }
+
       logger.debug(`Startup again.`, NS);
       await this.startup();
       // Clear reset state after successful startup
@@ -208,8 +220,14 @@ export class Driver extends EventEmitter {
     this.emit("close");
   }
 
-  public async stop(emitClose: boolean = true): Promise<void> {
+  public async stop(
+    emitClose: boolean = true,
+    internalReset: boolean = false,
+  ): Promise<void> {
     logger.debug("Stopping driver", NS);
+    if (!internalReset) {
+      this.stopGeneration += 1;
+    }
 
     try {
       if (this.blz) {

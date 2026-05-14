@@ -190,6 +190,9 @@ Future BLZ refactors should follow these rules:
 - Coalesced concurrent high-level `Driver.reset()` calls into one reset flow, so
   watchdog and UART-triggered resets cannot overlap and double-run
   stop/startup cleanup against the same BLZ resources.
+- Cancelled the startup phase of an in-flight high-level `Driver.reset()` when
+  an external `Driver.stop()` interrupts it, preventing shutdown from being
+  followed by an unexpected driver restart.
 
 ## Next Steps
 
