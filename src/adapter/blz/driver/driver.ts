@@ -360,8 +360,10 @@ export class Driver extends EventEmitter {
         startupStopGeneration,
       );
 
-      await blz.getVersion();
-      this.throwIfStartupCancelled(startupStopGeneration);
+      await this.runStartupOperation(
+        () => blz.getVersion(),
+        startupStopGeneration,
+      );
 
       if (await this.needsToBeInitialised(this.nwkOpt)) {
         logger.info("The network setup need to be initialized", NS);

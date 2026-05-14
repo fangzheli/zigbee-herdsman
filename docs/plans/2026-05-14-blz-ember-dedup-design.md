@@ -390,6 +390,9 @@ Future BLZ refactors should follow these rules:
 - Extended `runStartupOperation()` to the startup endpoint registration step,
   so `Driver.stop()` also rejects startup promptly while `addEndpoint()` is
   pending.
+- Extended `runStartupOperation()` to the startup version probe, so
+  `Driver.stop()` does not leave startup pending while `Blz.getVersion()` is
+  in flight.
 
 ## Next Steps
 
