@@ -77,7 +77,7 @@ const DEFAULT_MFG_ID = 0x1049;
 const REQUEST_ATTEMPT_DELAYS = [500, 1000, 1500];
 
 export class Driver extends EventEmitter {
-  public blz?: Blz;
+  private blz?: Blz;
   private nwkOpt: TsType.NetworkOptions;
   public networkParams?: BlzNetworkParameters;
   //// @ts-expect-error XXX: init in startup

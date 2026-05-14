@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 import {afterEach, describe, expect, it, vi} from "vitest";
 
 const blzConstructorMock = vi.hoisted(() => vi.fn());
@@ -31,6 +33,13 @@ describe("BLZ high-level driver lifecycle", () => {
         rtscts: false,
     };
 
+    it("keeps the lower BLZ transport behind driver APIs", () => {
+        const source = fs.readFileSync("src/adapter/blz/driver/driver.ts", "utf8");
+
+        expect(source).toContain("private blz?: Blz;");
+        expect(source).not.toContain("public blz?: Blz;");
+    });
+
     afterEach(() => {
         vi.useRealTimers();
         blzConstructorMock.mockReset();
@@ -39,7 +48,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
     function makeDriverWithApsSender(sendApsData: ReturnType<typeof vi.fn>): Driver {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {sendApsData} as unknown as Driver["blz"];
+        setDriverBlz(driver, {sendApsData});
 
         return driver;
     }
@@ -81,6 +90,10 @@ describe("BLZ high-level driver lifecycle", () => {
         (driver as unknown as {ieee: BlzEUI64}).ieee = new BlzEUI64("0102030405060708");
     }
 
+    function setDriverBlz(driver: Driver, blz: unknown): void {
+        (driver as unknown as {blz?: unknown}).blz = blz;
+    }
+
     function getBackupMan(driver: Driver): {
         createBackup: (assertActive?: () => void) => Promise<unknown>;
         getStoredBackup: () => Promise<unknown>;
@@ -96,7 +109,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("reports coordinator version from the active BLZ transport", () => {
         const version = {product: 7, major: "1", minor: "2", patch: "3"};
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {version} as unknown as Driver["blz"];
+        setDriverBlz(driver, {version});
 
         const coordinatorVersion = driver.getCoordinatorVersion();
 
@@ -110,7 +123,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("does not expose mutable coordinator version metadata", () => {
         const version = {product: 7, major: "1", minor: "2", patch: "3"};
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {version} as unknown as Driver["blz"];
+        setDriverBlz(driver, {version});
 
         const coordinatorVersion = driver.getCoordinatorVersion();
         coordinatorVersion.meta.product = 99;
@@ -132,7 +145,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("routes leave network through the driver command operation path", async () => {
         const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {leaveNetwork} as unknown as Driver["blz"];
+        setDriverBlz(driver, {leaveNetwork});
 
         await expect(driver.leaveNetwork()).resolves.toBe(BlzStatus.SUCCESS);
 
@@ -142,7 +155,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("routes explicit form network through the driver command operation path", async () => {
         const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {formNetwork} as unknown as Driver["blz"];
+        setDriverBlz(driver, {formNetwork});
 
         await expect(
             driver.formNetworkWithParameters(0x0102030405060708n, 0x1234, 15),
@@ -169,11 +182,11 @@ describe("BLZ high-level driver lifecycle", () => {
         const waiter = driver.waitFor(0x1234, 0x8000, 1000);
         const waiterResult = waiter.start().promise.catch((error: Error) => error);
 
-        (driver as unknown as {blz: {off: () => void; close: () => Promise<void>}}).blz = {
+        setDriverBlz(driver, {
             off: vi.fn(),
             removeAllListeners: vi.fn(),
             close: vi.fn().mockRejectedValue(new Error("close failed")),
-        };
+        });
 
         await expect(driver.stop()).rejects.toThrow("close failed");
 
@@ -192,11 +205,11 @@ describe("BLZ high-level driver lifecycle", () => {
     it("clears address cache when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         driver.handleNodeJoined(0x3344, 0x1111);
-        driver.blz = {
+        setDriverBlz(driver, {
             off: vi.fn(),
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
-        } as unknown as Driver["blz"];
+        });
 
         await driver.stop(false);
 
@@ -204,7 +217,7 @@ describe("BLZ high-level driver lifecycle", () => {
             status: BlzStatus.SUCCESS,
             eui64: Buffer.from("0000000000003344", "hex"),
         });
-        driver.blz = {execCommand} as unknown as Driver["blz"];
+        setDriverBlz(driver, {execCommand});
         const eui64 = await driver.networkIdToEUI64(0x3344);
 
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
@@ -214,11 +227,11 @@ describe("BLZ high-level driver lifecycle", () => {
     it("clears cached coordinator and network snapshot when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         seedNetworkSnapshot(driver);
-        driver.blz = {
+        setDriverBlz(driver, {
             off: vi.fn(),
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
-        } as unknown as Driver["blz"];
+        });
 
         await driver.stop(false);
 
@@ -247,12 +260,12 @@ describe("BLZ high-level driver lifecycle", () => {
         vi.useFakeTimers();
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {
+        setDriverBlz(driver, {
             execCommand,
             off: vi.fn(),
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
-        } as unknown as Driver["blz"];
+        });
         const lookup = driver.networkIdToEUI64(0x3344);
         const lookupResult = lookup.then(
             () => "resolved",
@@ -333,12 +346,12 @@ describe("BLZ high-level driver lifecycle", () => {
     }) => {
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = {
+        setDriverBlz(driver, {
             execCommand,
             off: vi.fn(),
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
-        } as unknown as Driver["blz"];
+        });
 
         const operation = invoke(driver);
         const operationResult = operation.then(
@@ -374,7 +387,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
 
         await driver.stop(false);
 
@@ -394,7 +407,7 @@ describe("BLZ high-level driver lifecycle", () => {
                 }),
             ),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
 
         const firstStop = driver.stop(false);
         await Promise.resolve();
@@ -415,7 +428,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
 
         await driver.stop(false);
 
@@ -432,7 +445,7 @@ describe("BLZ high-level driver lifecycle", () => {
             setResetingProcess: vi.fn(),
             forceReset: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const stop = vi.spyOn(driver, "stop").mockResolvedValue(undefined);
         const startup = vi.spyOn(driver, "startup").mockResolvedValue("resumed");
 
@@ -456,7 +469,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const startup = vi.spyOn(driver, "startup").mockResolvedValue("resumed");
 
         const reset = driver.reset();
@@ -478,7 +491,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const startup = vi.spyOn(driver, "startup").mockResolvedValue("resumed");
 
         const reset = driver.reset();
@@ -507,7 +520,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const startup = vi.spyOn(driver, "startup").mockResolvedValue("resumed");
 
         const reset = driver.reset();
@@ -538,7 +551,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
 
         const reset = driver.reset();
         await vi.advanceTimersByTimeAsync(1000);
@@ -606,7 +619,7 @@ describe("BLZ high-level driver lifecycle", () => {
             close: vi.fn().mockResolvedValue(undefined),
         };
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x06, 0x07]);
         const multicast = driver.mrequest(apsFrame, data);
@@ -641,7 +654,7 @@ describe("BLZ high-level driver lifecycle", () => {
             close: vi.fn().mockResolvedValue(undefined),
         };
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const request = driver.request(0x3344, makeApsFrame(), Buffer.from([0x0c]));
         const requestResult = request.then((value) => `resolved:${value}`);
 
@@ -669,7 +682,7 @@ describe("BLZ high-level driver lifecycle", () => {
             close: vi.fn().mockResolvedValue(undefined),
         };
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const request = driver.request(0x3344, makeApsFrame(), Buffer.from([0x0c]));
         const requestResult = request.then((value) => `resolved:${value}`);
 
@@ -699,7 +712,7 @@ describe("BLZ high-level driver lifecycle", () => {
             close: vi.fn().mockResolvedValue(undefined),
         };
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = blzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, blzMock);
         const request = driver.request(new BlzEUI64("0000000000003344"), makeApsFrame(), Buffer.from([0x0c]));
         const requestResult = request.then((value) => `resolved:${value}`);
 
@@ -755,7 +768,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => newBlzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        driver.blz = oldBlzMock as unknown as Driver["blz"];
+        setDriverBlz(driver, oldBlzMock);
 
         await expect(driver.startup()).rejects.toThrow("reset failed");
 
@@ -1605,7 +1618,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x5566});
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
-        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        setDriverBlz(driver, {execCommand, sendApsData});
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x08, 0x09]);
 
@@ -1634,7 +1647,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x5566});
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
-        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        setDriverBlz(driver, {execCommand, sendApsData});
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x0d, 0x0e]);
 
@@ -1664,7 +1677,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x7788});
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
         const incomingMessage = vi.fn();
-        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        setDriverBlz(driver, {execCommand, sendApsData});
         driver.on("incomingMessage", incomingMessage);
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x0a, 0x0b]);
@@ -1689,7 +1702,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const execCommand = vi.fn().mockResolvedValue({nodeId: 0x0000});
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
-        driver.blz = {execCommand, sendApsData} as unknown as Driver["blz"];
+        setDriverBlz(driver, {execCommand, sendApsData});
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x0f, 0x10]);
 
@@ -1740,7 +1753,7 @@ describe("BLZ high-level driver lifecycle", () => {
             eui64: Buffer.from("0000000000003344", "hex"),
         });
         vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
-        driver.blz = {formNetwork, execCommand} as unknown as Driver["blz"];
+        setDriverBlz(driver, {formNetwork, execCommand});
 
         driver.handleNodeJoined(0x3344, 0x1111);
         seedNetworkSnapshot(driver);

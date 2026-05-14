@@ -546,6 +546,9 @@ Future BLZ refactors should follow these rules:
 - Moved backup creation behind `Driver.createBackup()` and made the driver's
   backup manager private, so `BLZAdapter` no longer reaches into a driver-owned
   helper object during stop-cancellable backup collection.
+- Made the high-level driver's lower BLZ transport private, keeping adapter and
+  backup callers on driver-owned APIs instead of retaining access to
+  transport-owned state.
 - Changed high-level driver coordinator-version and network-parameter snapshot
   getters to return defensive copies, preventing callers from retaining and
   mutating driver-owned cached state.
