@@ -528,6 +528,24 @@ describe('BLZ Types', () => {
                 expect(value).toEqual(Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]));
                 expect(remaining).toEqual(Buffer.from([0xAB]));
             });
+
+            it('should deserialize EUI64 without copying through Buffer.from', () => {
+                const buffer = Buffer.from([0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0xAB]);
+                const expectedValue = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+                const expectedRemaining = buffer.subarray(8);
+                const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(() => {
+                    throw new Error('Buffer.from used');
+                });
+
+                try {
+                    const [value, remaining] = BlzEUI64.deserialize(BlzEUI64, buffer);
+                    expect(value).toEqual(expectedValue);
+                    expect(remaining).toEqual(expectedRemaining);
+                    expect(fromSpy).not.toHaveBeenCalled();
+                } finally {
+                    fromSpy.mockRestore();
+                }
+            });
         });
 
         describe('BlzValueId', () => {

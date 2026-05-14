@@ -705,6 +705,9 @@ Future BLZ refactors should follow these rules:
 - Aligned the shared BLZ CRC verifier with `Frame` construction by rejecting
   undersized raw frames before attempting CRC comparison, keeping malformed
   receive errors specific at the helper boundary.
+- Reworked `BlzEUI64.deserialize()` to write reversed bytes directly into the
+  result buffer, avoiding the intermediate fixed-list array-to-Buffer copy on
+  inbound EUI64 parsing.
 
 ## Next Steps
 
