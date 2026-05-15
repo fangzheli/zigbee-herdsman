@@ -167,6 +167,10 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async getCurrentNetworkParameters(");
         expect(source).toContain("private async getMacAddress(");
         expect(source).not.toContain("public async getMacAddress(");
+        expect(source).toContain("private assertBlzStatus(");
+        expect(source).toContain("errorMessage: string");
+        expect(source.match(/this\.assertBlzStatus\(/g)).toHaveLength(6);
+        expect(source.match(/if \(status !== BlzStatus\.SUCCESS\)/g)).toHaveLength(1);
         expect(source).toContain("private async networkIdToEUI64(");
         expect(source).not.toContain("public async networkIdToEUI64(");
         expect(source).toContain("private async addEndpoint(");

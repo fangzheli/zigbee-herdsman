@@ -1744,6 +1744,17 @@ export class Driver extends EventEmitter {
     );
   }
 
+  private assertBlzStatus(
+    status: BlzStatus,
+    logMessage: string,
+    errorMessage: string,
+  ): void {
+    if (status !== BlzStatus.SUCCESS) {
+      logger.error(`${logMessage}: ${status}`, NS);
+      throw new Error(`${errorMessage}: status ${status}`);
+    }
+  }
+
   private async getGlobalTcLinkKey(): Promise<BLZFrameData> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
       blz.execCommand("getGlobalTcLinkKey"),
@@ -1752,15 +1763,11 @@ export class Driver extends EventEmitter {
     const { status, linkKey, outgoingFrameCounter, trustCenterAddress } =
       frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(
-        `getGlobalTcLinkKey() returned unexpected BLZ status: ${status}`,
-        NS,
-      );
-      throw new Error(
-        `Failed to get global Trust Center key: status ${status}`,
-      );
-    }
+    this.assertBlzStatus(
+      status,
+      "getGlobalTcLinkKey() returned unexpected BLZ status",
+      "Failed to get global Trust Center key",
+    );
 
     logger.debug(
       () => `Global TC Key retrieved: Key=${linkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, TCAddress=${trustCenterAddress}`,
@@ -1785,12 +1792,11 @@ export class Driver extends EventEmitter {
 
     const { status } = frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(`setGlobalTcLinkKey() failed with status: ${status}`, NS);
-      throw new Error(
-        `Failed to set global Trust Center key: status ${status}`,
-      );
-    }
+    this.assertBlzStatus(
+      status,
+      "setGlobalTcLinkKey() failed with status",
+      "Failed to set global Trust Center key",
+    );
 
     logger.debug(
       () => `Global TC Key set successfully: Key=${linkKey}, FrameCounter=${outgoingFrameCounter}`,
@@ -1808,13 +1814,11 @@ export class Driver extends EventEmitter {
     const { status, nwkKey, outgoingFrameCounter, nwkKeySeqNum } =
       frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(
-        `getNetworkKeyInfo() returned unexpected BLZ status: ${status}`,
-        NS,
-      );
-      throw new Error(`Failed to get network key info: status ${status}`);
-    }
+    this.assertBlzStatus(
+      status,
+      "getNetworkKeyInfo() returned unexpected BLZ status",
+      "Failed to get network key info",
+    );
 
     logger.debug(
       () => `Network Key Info retrieved: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
@@ -1831,13 +1835,11 @@ export class Driver extends EventEmitter {
 
     const { status } = frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(
-        `getCurrentNetworkParameters() returned unexpected BLZ status: ${status}`,
-        NS,
-      );
-      throw new Error(`Failed to get network parameters: status ${status}`);
-    }
+    this.assertBlzStatus(
+      status,
+      "getCurrentNetworkParameters() returned unexpected BLZ status",
+      "Failed to get network parameters",
+    );
 
     return frameResponse;
   }
@@ -1851,13 +1853,11 @@ export class Driver extends EventEmitter {
 
     const { status, value } = frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(
-        `getMacAddress() returned unexpected BLZ status: ${status}`,
-        NS,
-      );
-      throw new Error(`Failed to get MAC address: status ${status}`);
-    }
+    this.assertBlzStatus(
+      status,
+      "getMacAddress() returned unexpected BLZ status",
+      "Failed to get MAC address",
+    );
 
     return value;
   }
@@ -1888,10 +1888,11 @@ export class Driver extends EventEmitter {
 
     const { status } = frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
-      logger.error(`setNwkSecurityInfos() failed with status: ${status}`, NS);
-      throw new Error(`Failed to set network security infos: status ${status}`);
-    }
+    this.assertBlzStatus(
+      status,
+      "setNwkSecurityInfos() failed with status",
+      "Failed to set network security infos",
+    );
 
     logger.debug(
       () => `Network Security Infos set successfully: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
