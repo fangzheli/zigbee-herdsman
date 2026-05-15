@@ -451,13 +451,44 @@ export class Driver extends EventEmitter {
   private onBlzClose(): void {
     logger.debug("onBlzClose()", NS);
     const closeError = new Error("Driver closed");
-    this.cancelDriverRequests(closeError);
-    this.cancelDriverLifecycle(closeError);
-    if (this.blz) {
-      this.detachBlzListeners(this.blz);
-      this.blz = undefined;
-    }
+    this.cleanupAfterBlzClose(closeError);
     this.enterStoppedState(closeError, true);
+  }
+
+  private cleanupAfterBlzClose(closeError: Error): void {
+    try {
+      runCleanupSteps([
+        () => {
+          this.cancelDriverRequests(closeError);
+        },
+        () => {
+          this.cancelDriverLifecycle(closeError);
+        },
+        () => {
+          this.releaseBlzAfterClose();
+        },
+      ]);
+    } catch (cleanupError) {
+      logger.debug(
+        () => `Failed to cleanup after BLZ close ${formatUnknownError(cleanupError)}`,
+        NS,
+      );
+    }
+  }
+
+  private releaseBlzAfterClose(): void {
+    if (!this.blz) {
+      return;
+    }
+
+    const blz = this.blz;
+    try {
+      this.detachBlzListeners(blz);
+    } finally {
+      if (this.blz === blz) {
+        this.blz = undefined;
+      }
+    }
   }
 
   public async stop(
@@ -559,8 +590,11 @@ export class Driver extends EventEmitter {
       return;
     }
 
-    blz.off("close", this.onBlzCloseHandler);
-    this.blzCloseListener = undefined;
+    try {
+      blz.off("close", this.onBlzCloseHandler);
+    } finally {
+      this.blzCloseListener = undefined;
+    }
   }
 
   private detachBlzRuntimeListeners(blz: Blz): void {
@@ -568,8 +602,11 @@ export class Driver extends EventEmitter {
       return;
     }
 
-    detachListeners(blz, this.blzRuntimeListenerRegistrations);
-    this.blzRuntimeListeners = undefined;
+    try {
+      detachListeners(blz, this.blzRuntimeListenerRegistrations);
+    } finally {
+      this.blzRuntimeListeners = undefined;
+    }
   }
 
   private detachBlzListeners(blz: Blz): void {

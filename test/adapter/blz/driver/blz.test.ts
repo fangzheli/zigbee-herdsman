@@ -345,6 +345,8 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
       expect(serialDriverMock.close).toHaveBeenCalledWith(false);
       expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+      expect((blz as unknown as {serialDriverEventBridgeAttached: boolean}).serialDriverEventBridgeAttached).toBe(false);
+      expect((blz as unknown as {serialDriverResetListenerAttached: boolean}).serialDriverResetListenerAttached).toBe(false);
     });
 
     it("should restore serial driver event bridge when reconnecting after close", async () => {

@@ -360,11 +360,14 @@ export class Blz extends EventEmitter {
       return;
     }
 
-    detachListeners(
-      this.serialDriver,
-      this.serialDriverEventBridgeRegistrations,
-    );
-    this.serialDriverEventBridgeAttached = false;
+    try {
+      detachListeners(
+        this.serialDriver,
+        this.serialDriverEventBridgeRegistrations,
+      );
+    } finally {
+      this.serialDriverEventBridgeAttached = false;
+    }
   }
 
   private detachSerialDriverResetListener(): void {
@@ -372,8 +375,11 @@ export class Blz extends EventEmitter {
       return;
     }
 
-    this.serialDriver.off("reset", this.onSerialResetHandler);
-    this.serialDriverResetListenerAttached = false;
+    try {
+      this.serialDriver.off("reset", this.onSerialResetHandler);
+    } finally {
+      this.serialDriverResetListenerAttached = false;
+    }
   }
 
   private detachSerialDriverListeners(): void {

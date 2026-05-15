@@ -702,6 +702,36 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
         expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+        expect((driver as unknown as {blzCloseListener?: unknown}).blzCloseListener).toBeUndefined();
+        expect((driver as unknown as {blzRuntimeListeners?: unknown}).blzRuntimeListeners).toBeUndefined();
+        expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it("releases BLZ and emits close when unexpected close listener cleanup fails", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const callback = vi.fn();
+        const detachError = new Error("close listener detach failed");
+        const blzMock = {
+            off: vi.fn((event: string) => {
+                if (event === "close") {
+                    throw detachError;
+                }
+            }),
+            close: vi.fn(),
+        };
+        setActiveDriverBlz(driver, blzMock);
+        driver.on("close", callback);
+
+        expect(() => {
+            (driver as unknown as {onBlzClose: () => void}).onBlzClose();
+        }).not.toThrow();
+
+        expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+        expect((driver as unknown as {blzCloseListener?: unknown}).blzCloseListener).toBeUndefined();
+        expect((driver as unknown as {blzRuntimeListeners?: unknown}).blzRuntimeListeners).toBeUndefined();
         expect(callback).toHaveBeenCalledTimes(1);
     });
 
