@@ -1267,6 +1267,9 @@ Future BLZ refactors should follow these rules:
   the original non-success status failure.
 - Deferred low-level BLZ get/set value status failure logging so unprintable
   command result objects cannot mask the status-specific value errors.
+- Routed incoming UART RESET frames through the reset lifecycle path, so pending
+  UART waiters are rejected, the active port is released, and upper layers are
+  notified immediately instead of waiting for send timeouts.
 
 ## Next Steps
 

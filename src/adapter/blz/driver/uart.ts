@@ -393,6 +393,10 @@ export class SerialDriver extends EventEmitter {
 
   private handleReset(frame: Frame): void {
     logger.warning(() => `<-- RST:  ${frame}`, NS);
+    const resetError = this.createConnectionResetError();
+    this.enterClosedState(resetError);
+    this.destroyActivePort();
+    this.emit("reset");
   }
 
   public async close(emitClose: boolean): Promise<void> {
