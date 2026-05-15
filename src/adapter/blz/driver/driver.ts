@@ -498,8 +498,28 @@ export class Driver extends EventEmitter {
       if (this.blz) {
         const blz = this.blz;
         try {
-          this.detachBlzListeners(blz);
-          await blz.close(emitClose);
+          let firstError: unknown;
+          let hasError = false;
+
+          try {
+            this.detachBlzListeners(blz);
+          } catch (error) {
+            firstError = error;
+            hasError = true;
+          }
+
+          try {
+            await blz.close(emitClose);
+          } catch (error) {
+            if (!hasError) {
+              firstError = error;
+              hasError = true;
+            }
+          }
+
+          if (hasError) {
+            throw firstError;
+          }
         } finally {
           if (this.blz === blz) {
             this.blz = undefined;
@@ -565,8 +585,28 @@ export class Driver extends EventEmitter {
   }
 
   private detachBlzListeners(blz: Blz): void {
-    this.detachBlzCloseListener(blz);
-    this.detachBlzRuntimeListeners(blz);
+    let firstError: unknown;
+    let hasError = false;
+
+    try {
+      this.detachBlzCloseListener(blz);
+    } catch (error) {
+      firstError = error;
+      hasError = true;
+    }
+
+    try {
+      this.detachBlzRuntimeListeners(blz);
+    } catch (error) {
+      if (!hasError) {
+        firstError = error;
+        hasError = true;
+      }
+    }
+
+    if (hasError) {
+      throw firstError;
+    }
   }
 
   public async startup(): Promise<TsType.StartResult> {

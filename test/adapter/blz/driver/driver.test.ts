@@ -1483,6 +1483,30 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
+    it("continues BLZ stop cleanup when close listener detach fails", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const detachError = new Error("close listener detach failed");
+        const blzMock = {
+            off: vi.fn((event: string) => {
+                if (event === "close") {
+                    throw detachError;
+                }
+            }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        setActiveDriverBlz(driver, blzMock);
+
+        await expect(driver.stop(false)).rejects.toThrow("close listener detach failed");
+
+        expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect(blzMock.removeAllListeners).not.toHaveBeenCalled();
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("coalesces concurrent reset attempts", async () => {
         vi.useFakeTimers();
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
