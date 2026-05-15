@@ -38,6 +38,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
     it("keeps the lower BLZ transport behind driver APIs", () => {
         const source = fs.readFileSync("src/adapter/blz/driver/driver.ts", "utf8");
+        const waiterSource = fs.readFileSync("src/adapter/blz/driver/zdoResponseWaiters.ts", "utf8");
 
         expect(source).toContain("private blz?: Blz;");
         expect(source).not.toContain("public blz?: Blz;");
@@ -65,16 +66,24 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("addressIndex: number | null;");
         expect(source).toContain("public async sendZdo(");
         expect(source).toContain("private async sendZdoFrame(");
-        expect(source).toContain("private waitFor(");
+        expect(source).toContain("private readonly zdoResponseWaiters = new ZdoResponseWaiters();");
+        expect(source).not.toContain("private waitress:");
+        expect(source).not.toContain("new Waitress<BlzFrame, BlzWaitressMatcher>");
+        expect(source).not.toContain("private waitFor(");
         expect(source).not.toContain("public waitFor(");
-        expect(source).toContain("private cancelZdoResponseWaiter(");
-        expect(source).toContain("this.cancelZdoResponseWaiter(waiter);");
+        expect(source).not.toContain("private cancelZdoResponseWaiter(");
+        expect(source).toContain("this.zdoResponseWaiters.waitFor(");
+        expect(source).toContain("this.zdoResponseWaiters.cancel(waiter);");
         expect(source).toContain("private clearZdoResponseWaiters(error: Error): void");
         expect(source).toContain("private enterStoppedState(error: Error, emitClose: boolean): void");
         expect(source).toContain("this.enterStoppedState(closeError, true);");
         expect(source).toContain("this.enterStoppedState(stopError, this.emitCloseWhenStopCompletes);");
         expect(source.match(/this\.clearZdoResponseWaiters\(/g)).toHaveLength(2);
-        expect(source.match(/this\.waitress\.clear\(error\);/g)).toHaveLength(1);
+        expect(source.match(/this\.zdoResponseWaiters\.clear\(error\);/g)).toHaveLength(1);
+        expect(source.match(/this\.zdoResponseWaiters\.resolve\(/g)).toHaveLength(3);
+        expect(waiterSource).toContain("export class ZdoResponseWaiters");
+        expect(waiterSource).toContain("private readonly waitress = new Waitress");
+        expect(waiterSource).toContain("public cancel(waiter: ZdoResponseWaiter | undefined): void");
         expect(source).toContain("private async mrequest(");
         expect(source).not.toContain("public async mrequest(");
         expect(source).toContain("private async brequest(");
@@ -479,7 +488,8 @@ describe("BLZ high-level driver lifecycle", () => {
         timeout?: number,
     ) {
         return (driver as unknown as {
-            waitFor: (
+            zdoResponseWaiters: {
+                waitFor: (
                 address: number | string,
                 clusterId: number,
                 timeout?: number,
@@ -487,7 +497,8 @@ describe("BLZ high-level driver lifecycle", () => {
                 start: () => {promise: Promise<{zdoResponse?: unknown}>};
                 cancel: () => void;
             };
-        }).waitFor(address, clusterId, timeout);
+            };
+        }).zdoResponseWaiters.waitFor(address, clusterId, timeout);
     }
 
     function driverMrequest(
@@ -758,11 +769,13 @@ describe("BLZ high-level driver lifecycle", () => {
 
         try {
             const matched = (driver as unknown as {
-                waitressValidator: (
+                zdoResponseWaiters: {
+                    matches: (
                     payload: unknown,
                     matcher: {address: number; clusterId: number},
                 ) => boolean;
-            }).waitressValidator(
+                };
+            }).zdoResponseWaiters.matches(
                 {
                     address: 0x1234,
                     frame: {clusterId},
@@ -867,7 +880,7 @@ describe("BLZ high-level driver lifecycle", () => {
             ),
         ).rejects.toThrow("driver send failed");
 
-        expect((driver as unknown as {waitress: {count: () => number}}).waitress.count()).toBe(0);
+        expect((driver as unknown as {zdoResponseWaiters: {count: () => number}}).zdoResponseWaiters.count()).toBe(0);
     });
 
     it("does not mutate or clone caller-owned ZDO payload buffers through Buffer.from when assigning TSN", async () => {

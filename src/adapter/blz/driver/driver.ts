@@ -2,7 +2,6 @@
 
 import { EventEmitter } from "events";
 import type * as Models from "../../../models";
-import { Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import { Clusters } from "../../../zspec/zcl/definition/cluster";
@@ -27,7 +26,6 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
-import { normalizeIeeeAddress } from "../ieee";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
@@ -45,6 +43,10 @@ import {
 import { BlzEUI64, BlzOutgoingMessageType, BlzValueId } from "./types/named";
 import { BlzApsFrame, BlzNetworkParameters } from "./types/struct";
 import { AddressCache, type AddressCacheInput } from "./addressCache";
+import {
+  ZdoResponseWaiters,
+  type ZdoResponseWaiter,
+} from "./zdoResponseWaiters";
 
 const NS = "zh:blz:driv";
 
@@ -56,18 +58,6 @@ interface AddEndpointParameters {
   inputClusters?: number[];
   outputClusters?: number[];
 }
-
-type BlzFrame = {
-  address: number | string;
-  payload: Buffer;
-  frame: BlzApsFrame;
-  zdoResponse?: GenericZdoResponse;
-};
-
-type BlzWaitressMatcher = {
-  address: number | string;
-  clusterId: number;
-};
 
 type IeeeMfg = {
   mfgId: number;
@@ -89,17 +79,6 @@ function formatUnknownError(error: unknown): string {
 
 function channelToMask(channel: number): number {
   return 2 ** channel;
-}
-
-function addressesMatch(
-  left: number | string,
-  right: number | string,
-): boolean {
-  if (typeof left === "string" && typeof right === "string") {
-    return normalizeIeeeAddress(left) === normalizeIeeeAddress(right);
-  }
-
-  return left === right;
 }
 
 function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
@@ -135,7 +114,7 @@ export class Driver extends EventEmitter {
   private networkParams?: BlzNetworkParameters;
   private readonly addressCache = new AddressCache();
   private ieee?: BlzEUI64;
-  private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
+  private readonly zdoResponseWaiters = new ZdoResponseWaiters();
   private resetPromise?: Promise<void>;
   private startupPromise?: Promise<TsType.StartResult>;
   private stopPromise?: Promise<void>;
@@ -172,10 +151,6 @@ export class Driver extends EventEmitter {
     super();
     this.nwkOpt = nwkOpt;
     this.serialOpt = serialOpt;
-    this.waitress = new Waitress<BlzFrame, BlzWaitressMatcher>(
-      this.waitressValidator,
-      this.waitressTimeoutFormatter,
-    );
     this.backupMan = new BLZAdapterBackup(
       {
         getCoordinatorVersion: () => this.getCoordinatorVersion(),
@@ -1046,7 +1021,7 @@ export class Driver extends EventEmitter {
             // update cache with new network address
             this.cacheNodeIeee(frame.srcShortAddr, eui64);
 
-            this.waitress.resolve({
+            this.zdoResponseWaiters.resolve({
               address: eui64,
               payload: frame.message,
               frame: apsFrame,
@@ -1054,7 +1029,7 @@ export class Driver extends EventEmitter {
             });
           }
         } else {
-          this.waitress.resolve({
+          this.zdoResponseWaiters.resolve({
             address: frame.srcShortAddr,
             payload: frame.message,
             frame: apsFrame,
@@ -1068,7 +1043,7 @@ export class Driver extends EventEmitter {
       return;
     }
 
-    const handled = this.waitress.resolve({
+    const handled = this.zdoResponseWaiters.resolve({
       address: frame.srcShortAddr,
       payload: frame.message,
       frame: apsFrame,
@@ -1541,14 +1516,14 @@ export class Driver extends EventEmitter {
     const clusterName = Zdo.ClusterId[clusterId];
     const frame = this.makeApsFrame(clusterId);
     const requestPayload = clonePayloadWithSequence(payload, frame.sequence);
-    let waiter: ReturnType<typeof this.waitFor> | undefined;
+    let waiter: ZdoResponseWaiter | undefined;
     let responseClusterId: number | undefined;
 
     if (!disableResponse) {
       responseClusterId = Zdo.Utils.getResponseClusterId(clusterId);
 
       if (responseClusterId) {
-        waiter = this.waitFor(
+        waiter = this.zdoResponseWaiters.waitFor(
           responseClusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE
             ? ieeeAddress
             : networkAddress,
@@ -1594,7 +1569,7 @@ export class Driver extends EventEmitter {
     clusterName: string,
     frame: BlzApsFrame,
     payload: Buffer,
-    waiter: { cancel: () => void } | undefined,
+    waiter: ZdoResponseWaiter | undefined,
     requestGeneration: number,
   ): Promise<void> {
     const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
@@ -1622,7 +1597,7 @@ export class Driver extends EventEmitter {
         throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
       }
     } catch (error) {
-      this.cancelZdoResponseWaiter(waiter);
+      this.zdoResponseWaiters.cancel(waiter);
 
       if (this.isRequestCancelled(requestGeneration)) {
         throw this.createDriverStoppedError();
@@ -1765,43 +1740,8 @@ export class Driver extends EventEmitter {
     logger.debug(() => `Blz adding endpoint: ${JSON.stringify(res)}`, NS);
   }
 
-  private waitFor(
-    address: number | string,
-    clusterId: number,
-    timeout = 10000,
-  ): ReturnType<typeof this.waitress.waitFor> & { cancel: () => void } {
-    const waiter = this.waitress.waitFor({ address, clusterId }, timeout);
-    return { ...waiter, cancel: () => this.waitress.remove(waiter.ID) };
-  }
-
-  private cancelZdoResponseWaiter(waiter: { cancel: () => void } | undefined): void {
-    waiter?.cancel();
-  }
-
   private clearZdoResponseWaiters(error: Error): void {
-    this.waitress.clear(error);
-  }
-
-  private waitressTimeoutFormatter(
-    matcher: BlzWaitressMatcher,
-    timeout: number,
-  ): string {
-    return `${JSON.stringify(matcher)} after ${timeout}ms`;
-  }
-
-  private waitressValidator(
-    payload: BlzFrame,
-    matcher: BlzWaitressMatcher,
-  ): boolean {
-    logger.debug(
-      () =>
-        `waitressValidator: payload.address=${payload.address}, matcher.address=${matcher.address}, payload.frame.clusterId=${payload.frame?.clusterId}, matcher.clusterId=${matcher.clusterId}`,
-      NS,
-    );
-    return (
-      addressesMatch(payload.address, matcher.address) &&
-      (!payload.frame || payload.frame.clusterId === matcher.clusterId)
-    );
+    this.zdoResponseWaiters.clear(error);
   }
 
   private assertBlzStatus(
