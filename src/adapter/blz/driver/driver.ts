@@ -1686,8 +1686,8 @@ export class Driver extends EventEmitter {
     }
   }
 
-  public async permitJoining(seconds: number): Promise<BLZFrameData> {
-    return await this.runCheckedBlzCommand(
+  public async permitJoining(seconds: number): Promise<void> {
+    await this.runCheckedBlzCommand(
       "permitJoining",
       {
         duration: seconds,

@@ -1173,6 +1173,9 @@ Future BLZ refactors should follow these rules:
 - Removed the adapter's redundant coordinator permit-join BLZ status inspection,
   so the adapter now treats `Driver.permitJoining()` as the ownership boundary
   for command success or failure.
+- Narrowed `Driver.permitJoining()` to return `void` after checking the lower
+  command status, avoiding unnecessary exposure of BLZ command-frame payloads
+  through the public driver API.
 
 ## Next Steps
 

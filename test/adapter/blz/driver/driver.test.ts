@@ -173,6 +173,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source.match(/this\.runCheckedBlzCommand\(/g)).toHaveLength(8);
         expect(source.match(/this\.assertBlzStatus\(/g)).toHaveLength(1);
         expect(source.match(/if \(status !== BlzStatus\.SUCCESS\)/g)).toHaveLength(1);
+        expect(source).toContain("public async permitJoining(seconds: number): Promise<void>");
+        expect(source).not.toContain("public async permitJoining(seconds: number): Promise<BLZFrameData>");
         expect(source).toContain("private async networkIdToEUI64(");
         expect(source).not.toContain("public async networkIdToEUI64(");
         expect(source).toContain("private async addEndpoint(");
