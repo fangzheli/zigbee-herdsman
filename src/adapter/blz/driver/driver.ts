@@ -565,11 +565,19 @@ export class Driver extends EventEmitter {
   }
 
   private enterStoppedState(error: Error, emitClose: boolean): void {
-    this.clearZdoResponseWaiters(error);
-    this.clearCoordinatorAndNetworkState();
-    if (emitClose) {
-      this.emit("close");
-    }
+    runCleanupSteps([
+      () => {
+        this.clearZdoResponseWaiters(error);
+      },
+      () => {
+        this.clearCoordinatorAndNetworkState();
+      },
+      () => {
+        if (emitClose) {
+          this.emit("close");
+        }
+      },
+    ]);
   }
 
   private attachBlzCloseListener(blz: Blz): void {

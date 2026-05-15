@@ -1042,6 +1042,38 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {ieee?: BlzEUI64}).ieee).toBeUndefined();
     });
 
+    it("clears cached network state and emits close when stopped-state cleanup fails", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cleanupError = new Error("zdo waiter cleanup failed");
+        const close = vi.fn().mockResolvedValue(undefined);
+        const closeCallback = vi.fn();
+        seedNetworkSnapshot(driver);
+        setDriverBlz(driver, {
+            off: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close,
+        });
+        driver.on("close", closeCallback);
+        const zdoResponseWaiters = (
+            driver as unknown as {
+                zdoResponseWaiters: {clear: (error: Error) => void};
+            }
+        ).zdoResponseWaiters;
+        const originalClear = zdoResponseWaiters.clear.bind(zdoResponseWaiters);
+        zdoResponseWaiters.clear = vi.fn((error: Error): void => {
+            originalClear(error);
+            throw cleanupError;
+        });
+
+        const error = await driver.stop(true).catch((caught: unknown) => caught);
+
+        expect(error).toBe(cleanupError);
+        expect(close).toHaveBeenCalledWith(true);
+        expect((driver as unknown as {networkParams?: BlzNetworkParameters}).networkParams).toBeUndefined();
+        expect((driver as unknown as {ieee?: BlzEUI64}).ieee).toBeUndefined();
+        expect(closeCallback).toHaveBeenCalledTimes(1);
+    });
+
     it("does not expose mutable network parameter snapshots", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         seedNetworkSnapshot(driver);
