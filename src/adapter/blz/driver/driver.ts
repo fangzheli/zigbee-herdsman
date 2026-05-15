@@ -185,7 +185,16 @@ export class Driver extends EventEmitter {
       this.waitressValidator,
       this.waitressTimeoutFormatter,
     );
-    this.backupMan = new BLZAdapterBackup(this, backupPath);
+    this.backupMan = new BLZAdapterBackup(
+      {
+        getCoordinatorVersion: () => this.getCoordinatorVersion(),
+        getGlobalTcLinkKey: () => this.getGlobalTcLinkKey(),
+        getCurrentNetworkParameters: () => this.getCurrentNetworkParameters(),
+        getNetworkKeyInfo: () => this.getNetworkKeyInfo(),
+        getMacAddress: () => this.getMacAddress(),
+      },
+      backupPath,
+    );
   }
 
   private getBlz(): Blz {
@@ -1694,7 +1703,7 @@ export class Driver extends EventEmitter {
     );
   }
 
-  public async getGlobalTcLinkKey(): Promise<BLZFrameData> {
+  private async getGlobalTcLinkKey(): Promise<BLZFrameData> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
       blz.execCommand("getGlobalTcLinkKey"),
     );
@@ -1750,7 +1759,7 @@ export class Driver extends EventEmitter {
     return status;
   }
 
-  public async getNetworkKeyInfo(): Promise<BLZFrameData> {
+  private async getNetworkKeyInfo(): Promise<BLZFrameData> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
       blz.execCommand("getNwkSecurityInfos"),
     );
@@ -1774,7 +1783,7 @@ export class Driver extends EventEmitter {
     return frameResponse;
   }
 
-  public async getCurrentNetworkParameters(): Promise<BLZFrameData> {
+  private async getCurrentNetworkParameters(): Promise<BLZFrameData> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
       blz.execCommand("getNetworkParameters"),
     );
@@ -1792,7 +1801,7 @@ export class Driver extends EventEmitter {
     return frameResponse;
   }
 
-  public async getMacAddress(): Promise<Buffer> {
+  private async getMacAddress(): Promise<Buffer> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
       blz.execCommand("getValue", {
         valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,

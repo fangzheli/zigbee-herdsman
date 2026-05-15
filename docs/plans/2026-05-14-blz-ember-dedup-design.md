@@ -953,6 +953,9 @@ Future BLZ refactors should follow these rules:
 - Made the driver network mutation helpers used by startup/restore/channel
   change private: direct leave, explicit form, network-parameter snapshot update,
   and security-key write helpers are no longer public driver API.
+- Narrowed backup creation to a `BlzBackupProvider` interface. The backup helper
+  no longer depends on concrete `Driver` public wrappers, allowing the driver
+  command wrappers used only for backup collection to stay private.
 
 ## Next Steps
 

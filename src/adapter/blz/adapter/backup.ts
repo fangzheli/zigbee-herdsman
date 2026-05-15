@@ -6,10 +6,19 @@ import type * as Models from "../../../models";
 import { BackupUtils } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { uint32MaskToChannels } from "../../../zspec/utils";
+import type { CoordinatorVersion } from "../../tstype";
 import { fixedBufferFromBytes } from "../byteUtils";
-import type { Driver } from "../driver";
+import type { BLZFrameData } from "../driver/blz";
 
 const NS = "zh:blz:backup";
+
+export interface BlzBackupProvider {
+  getCoordinatorVersion: () => CoordinatorVersion;
+  getGlobalTcLinkKey: () => Promise<BLZFrameData>;
+  getCurrentNetworkParameters: () => Promise<BLZFrameData>;
+  getNetworkKeyInfo: () => Promise<BLZFrameData>;
+  getMacAddress: () => Promise<Buffer>;
+}
 
 function extendedPanIdToBackupBuffer(value: bigint): Buffer {
   const result = Buffer.allocUnsafe(8);
@@ -24,11 +33,11 @@ function extendedPanIdToBackupBuffer(value: bigint): Buffer {
 }
 
 export class BLZAdapterBackup {
-  private driver: Driver;
+  private provider: BlzBackupProvider;
   private defaultPath: string;
 
-  public constructor(driver: Driver, path: string) {
-    this.driver = driver;
+  public constructor(provider: BlzBackupProvider, path: string) {
+    this.provider = provider;
     this.defaultPath = path;
   }
 
@@ -37,12 +46,12 @@ export class BLZAdapterBackup {
   ): Promise<Models.Backup> {
     logger.debug("creating backup", NS);
     assertActive();
-    const version = Number(this.driver.getCoordinatorVersion().meta.product);
-    const linkResult = await this.driver.getGlobalTcLinkKey();
+    const version = Number(this.provider.getCoordinatorVersion().meta.product);
+    const linkResult = await this.provider.getGlobalTcLinkKey();
     assertActive();
-    const netParams = await this.driver.getCurrentNetworkParameters();
+    const netParams = await this.provider.getCurrentNetworkParameters();
     assertActive();
-    const netResult = await this.driver.getNetworkKeyInfo();
+    const netResult = await this.provider.getNetworkKeyInfo();
     assertActive();
     const tclKey = fixedBufferFromBytes(
       linkResult.linkKey,
@@ -59,7 +68,7 @@ export class BLZAdapterBackup {
     netKeySequenceNumber = netResult.nwkKeySeqNum;
     netKeyFrameCounter = netResult.outgoingFrameCounter;
 
-    const ieee = await this.driver.getMacAddress();
+    const ieee = await this.provider.getMacAddress();
     assertActive();
     /* return backup structure */
     /* istanbul ignore next */

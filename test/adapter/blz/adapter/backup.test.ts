@@ -1,7 +1,6 @@
 import {vi, describe, it, expect, beforeEach} from 'vitest';
 import * as fs from 'fs';
-import {BLZAdapterBackup} from '../../../../src/adapter/blz/adapter/backup';
-import {Driver} from '../../../../src/adapter/blz/driver/driver';
+import {BLZAdapterBackup, type BlzBackupProvider} from '../../../../src/adapter/blz/adapter/backup';
 import * as BackupUtils from '../../../../src/utils/backup';
 
 vi.mock('fs', async (importOriginal) => ({
@@ -11,17 +10,11 @@ vi.mock('fs', async (importOriginal) => ({
         readFile: vi.fn(),
     },
 }));
-vi.mock('../../../../src/adapter/blz/driver/driver');
 vi.mock('../../../../src/utils/backup');
 
 describe('BLZ Adapter Backup', () => {
     let backup: BLZAdapterBackup;
-    let driverMock: {
-        blz: {
-            version: {product: number};
-            execCommand: ReturnType<typeof vi.fn>;
-        };
-        getBlz: ReturnType<typeof vi.fn>;
+    let providerMock: BlzBackupProvider & {
         getCoordinatorVersion: ReturnType<typeof vi.fn>;
         getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
         getNetworkKeyInfo: ReturnType<typeof vi.fn>;
@@ -33,55 +26,49 @@ describe('BLZ Adapter Backup', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        driverMock = {
-            blz: {
-                version: {product: 1},
-                execCommand: vi.fn(),
-            },
-            getBlz: vi.fn(),
+        providerMock = {
             getCoordinatorVersion: vi.fn(),
             getGlobalTcLinkKey: vi.fn(),
             getNetworkKeyInfo: vi.fn(),
             getCurrentNetworkParameters: vi.fn(),
             getMacAddress: vi.fn(),
         };
-        driverMock.getBlz.mockReturnValue(driverMock.blz);
-        driverMock.getCoordinatorVersion.mockReturnValue({
+        providerMock.getCoordinatorVersion.mockReturnValue({
             type: 'BLZ v1',
-            meta: driverMock.blz.version,
+            meta: {product: 1},
         });
 
-        vi.mocked(Driver).mockImplementation(() => driverMock as any);
-        backup = new BLZAdapterBackup(driverMock as any, backupPath);
+        backup = new BLZAdapterBackup(providerMock, backupPath);
     });
 
     describe('Creating backup', () => {
+        it('uses a narrow backup provider instead of concrete driver wrappers', () => {
+            const source = fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8');
+
+            expect(source).toContain('interface BlzBackupProvider');
+            expect(source).toContain('private provider: BlzBackupProvider;');
+            expect(source).not.toContain('import type { Driver }');
+            expect(source).not.toContain('private driver: Driver;');
+        });
+
         it('should create backup successfully', async () => {
-            // Mock network parameters response
-            driverMock.blz.execCommand.mockRejectedValue(
-                new Error('backup should use driver command wrappers'),
-            );
-            driverMock.getBlz.mockImplementation(() => {
-                throw new Error('transport leaked');
-            });
-            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+            providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
                 extPanId: BigInt('0x0102030405060708'),
                 channel: 11,
                 channelMask: 0x800, // Channel 11
                 nwkUpdateId: 0,
             });
-            driverMock.getMacAddress.mockResolvedValue(
+            providerMock.getMacAddress.mockResolvedValue(
                 Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
             );
 
-            // Mock key responses
-            driverMock.getGlobalTcLinkKey.mockResolvedValue({
+            providerMock.getGlobalTcLinkKey.mockResolvedValue({
                 linkKey: Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
                 outgoingFrameCounter: 1234,
             });
 
-            driverMock.getNetworkKeyInfo.mockResolvedValue({
+            providerMock.getNetworkKeyInfo.mockResolvedValue({
                 nwkKey: Buffer.from([16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
                 nwkKeySeqNum: 5,
                 outgoingFrameCounter: 5678,
@@ -114,23 +101,22 @@ describe('BLZ Adapter Backup', () => {
                 coordinatorIeeeAddress: Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
                 devices: [],
             });
-            expect(driverMock.blz.execCommand).not.toHaveBeenCalled();
         });
 
         it('should serialize the extended PAN ID without an intermediate byte array', async () => {
-            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+            providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
                 extPanId: BigInt('0x0102030405060708'),
                 channel: 11,
                 channelMask: 0,
                 nwkUpdateId: 0,
             });
-            driverMock.getMacAddress.mockResolvedValue(Buffer.alloc(8));
-            driverMock.getGlobalTcLinkKey.mockResolvedValue({
+            providerMock.getMacAddress.mockResolvedValue(Buffer.alloc(8));
+            providerMock.getGlobalTcLinkKey.mockResolvedValue({
                 linkKey: Buffer.alloc(16),
                 outgoingFrameCounter: 1234,
             });
-            driverMock.getNetworkKeyInfo.mockResolvedValue({
+            providerMock.getNetworkKeyInfo.mockResolvedValue({
                 nwkKey: Buffer.alloc(16),
                 nwkKeySeqNum: 5,
                 outgoingFrameCounter: 5678,
@@ -159,19 +145,19 @@ describe('BLZ Adapter Backup', () => {
             const linkKey = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
             const networkKey = Buffer.of(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
             const ieee = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8);
-            driverMock.getCurrentNetworkParameters.mockResolvedValue({
+            providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
                 extPanId: BigInt('0x0102030405060708'),
                 channel: 11,
                 channelMask: 0,
                 nwkUpdateId: 0,
             });
-            driverMock.getMacAddress.mockResolvedValue(ieee);
-            driverMock.getGlobalTcLinkKey.mockResolvedValue({
+            providerMock.getMacAddress.mockResolvedValue(ieee);
+            providerMock.getGlobalTcLinkKey.mockResolvedValue({
                 linkKey,
                 outgoingFrameCounter: 1234,
             });
-            driverMock.getNetworkKeyInfo.mockResolvedValue({
+            providerMock.getNetworkKeyInfo.mockResolvedValue({
                 nwkKey: networkKey,
                 nwkKeySeqNum: 5,
                 outgoingFrameCounter: 5678,
@@ -205,7 +191,7 @@ describe('BLZ Adapter Backup', () => {
         it('should not continue collecting backup data after the active guard fails', async () => {
             let finishLinkKeyRead: (() => void) | undefined;
             let active = true;
-            driverMock.getGlobalTcLinkKey.mockReturnValue(
+            providerMock.getGlobalTcLinkKey.mockReturnValue(
                 new Promise((resolve) => {
                     finishLinkKeyRead = () =>
                         resolve({
@@ -214,7 +200,7 @@ describe('BLZ Adapter Backup', () => {
                         });
                 }),
             );
-            driverMock.getCurrentNetworkParameters.mockReturnValue(new Promise(() => {}));
+            providerMock.getCurrentNetworkParameters.mockReturnValue(new Promise(() => {}));
 
             const result = (backup as unknown as {
                 createBackup: (assertActive: () => void) => Promise<unknown>;
@@ -229,7 +215,7 @@ describe('BLZ Adapter Backup', () => {
             finishLinkKeyRead?.();
             await Promise.resolve();
 
-            expect(driverMock.getCurrentNetworkParameters).not.toHaveBeenCalled();
+            expect(providerMock.getCurrentNetworkParameters).not.toHaveBeenCalled();
             await expect(result).resolves.toBe('backup stopped');
         });
     });

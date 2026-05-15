@@ -81,6 +81,14 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async setGlobalTcLinkKey(");
         expect(source).toContain("private async setNetworkKeyInfo(");
         expect(source).not.toContain("public async setNetworkKeyInfo(");
+        expect(source).toContain("private async getGlobalTcLinkKey(");
+        expect(source).not.toContain("public async getGlobalTcLinkKey(");
+        expect(source).toContain("private async getNetworkKeyInfo(");
+        expect(source).not.toContain("public async getNetworkKeyInfo(");
+        expect(source).toContain("private async getCurrentNetworkParameters(");
+        expect(source).not.toContain("public async getCurrentNetworkParameters(");
+        expect(source).toContain("private async getMacAddress(");
+        expect(source).not.toContain("public async getMacAddress(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -263,6 +271,30 @@ describe("BLZ high-level driver lifecycle", () => {
                 nwkKeySeqNum: number,
             ) => Promise<BlzStatus>;
         }).setNetworkKeyInfo(nwkKey, outgoingFrameCounter, nwkKeySeqNum);
+    }
+
+    function driverGetGlobalTcLinkKey(driver: Driver): Promise<BLZFrameData> {
+        return (driver as unknown as {
+            getGlobalTcLinkKey: () => Promise<BLZFrameData>;
+        }).getGlobalTcLinkKey();
+    }
+
+    function driverGetNetworkKeyInfo(driver: Driver): Promise<BLZFrameData> {
+        return (driver as unknown as {
+            getNetworkKeyInfo: () => Promise<BLZFrameData>;
+        }).getNetworkKeyInfo();
+    }
+
+    function driverGetCurrentNetworkParameters(driver: Driver): Promise<BLZFrameData> {
+        return (driver as unknown as {
+            getCurrentNetworkParameters: () => Promise<BLZFrameData>;
+        }).getCurrentNetworkParameters();
+    }
+
+    function driverGetMacAddress(driver: Driver): Promise<Buffer> {
+        return (driver as unknown as {
+            getMacAddress: () => Promise<Buffer>;
+        }).getMacAddress();
     }
 
     function spyOnDriverSetNetworkKeyInfo(
@@ -969,7 +1001,7 @@ describe("BLZ high-level driver lifecycle", () => {
         },
         {
             name: "getGlobalTcLinkKey",
-            invoke: (driver: Driver) => driver.getGlobalTcLinkKey(),
+            invoke: (driver: Driver) => driverGetGlobalTcLinkKey(driver),
             expectedCommand: "getGlobalTcLinkKey",
             hasParameters: false,
         },
@@ -982,21 +1014,19 @@ describe("BLZ high-level driver lifecycle", () => {
         },
         {
             name: "getNetworkKeyInfo",
-            invoke: (driver: Driver) => driver.getNetworkKeyInfo(),
+            invoke: (driver: Driver) => driverGetNetworkKeyInfo(driver),
             expectedCommand: "getNwkSecurityInfos",
             hasParameters: false,
         },
         {
             name: "getCurrentNetworkParameters",
-            invoke: (driver: Driver & {getCurrentNetworkParameters: () => Promise<unknown>}) =>
-                driver.getCurrentNetworkParameters(),
+            invoke: (driver: Driver) => driverGetCurrentNetworkParameters(driver),
             expectedCommand: "getNetworkParameters",
             hasParameters: false,
         },
         {
             name: "getMacAddress",
-            invoke: (driver: Driver & {getMacAddress: () => Promise<unknown>}) =>
-                driver.getMacAddress(),
+            invoke: (driver: Driver) => driverGetMacAddress(driver),
             expectedCommand: "getValue",
             hasParameters: true,
         },
@@ -2976,7 +3006,7 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, {execCommand});
 
         try {
-            await expect(driver.getGlobalTcLinkKey()).resolves.toEqual(
+            await expect(driverGetGlobalTcLinkKey(driver)).resolves.toEqual(
                 expect.objectContaining({linkKey}),
             );
             await expect(driverSetGlobalTcLinkKey(driver, linkKey, 7)).resolves.toBe(BlzStatus.SUCCESS);
@@ -3008,7 +3038,7 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, {execCommand});
 
         try {
-            await expect(driver.getNetworkKeyInfo()).resolves.toEqual(
+            await expect(driverGetNetworkKeyInfo(driver)).resolves.toEqual(
                 expect.objectContaining({nwkKey}),
             );
             await expect(driverSetNetworkKeyInfo(driver, nwkKey, 9, 2)).resolves.toBe(BlzStatus.SUCCESS);
