@@ -10,10 +10,12 @@ describe("BLZ cancellable delay", () => {
         vi.useFakeTimers();
         const delay = new CancellableDelay();
         const wait = delay.wait(1000, () => true);
+        expect(delay.count()).toBe(1);
 
         await vi.advanceTimersByTimeAsync(1000);
 
         await expect(wait).resolves.toBe(true);
+        expect(delay.count()).toBe(0);
     });
 
     it("resolves false immediately when inactive", async () => {
@@ -22,6 +24,7 @@ describe("BLZ cancellable delay", () => {
 
         await expect(delay.wait(1000, () => false)).resolves.toBe(false);
         expect(vi.getTimerCount()).toBe(0);
+        expect(delay.count()).toBe(0);
     });
 
     it("resolves false when cancelled before the delay expires", async () => {
@@ -33,6 +36,7 @@ describe("BLZ cancellable delay", () => {
 
         await expect(wait).resolves.toBe(false);
         expect(vi.getTimerCount()).toBe(0);
+        expect(delay.count()).toBe(0);
     });
 
     it("notifies active waiters before clearing the tracked set", () => {

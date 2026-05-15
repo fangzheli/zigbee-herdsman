@@ -34,4 +34,8 @@ export class CancellableDelay {
       this.waiters.delete(cancel);
     });
   }
+
+  public count(): number {
+    return this.waiters.size;
+  }
 }

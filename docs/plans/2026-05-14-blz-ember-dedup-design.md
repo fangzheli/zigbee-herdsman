@@ -1047,6 +1047,9 @@ Future BLZ refactors should follow these rules:
 - Reused the BLZ serial reset detach helper when attaching the runtime reset
   listener, keeping reset listener de-duplication and cleanup on the same helper
   path.
+- Added a read-only active-waiter count to `CancellableDelay`, matching
+  `CancellableOperation` so delay cleanup tests can assert leaked retry/startup
+  waits without reaching into private state.
 
 ## Next Steps
 
