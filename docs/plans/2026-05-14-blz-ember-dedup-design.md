@@ -1273,6 +1273,9 @@ Future BLZ refactors should follow these rules:
 - Reused full serial-driver listener cleanup when a reconnect attempt fails,
   and tracked the BLZ runtime reset listener attachment state so stale reset
   handlers are removed without redundant `off()` calls.
+- Tracked high-level Driver BLZ close/runtime listener ownership per BLZ
+  instance, so startup failure before runtime listeners attach only detaches the
+  close listener that actually exists.
 
 ## Next Steps
 

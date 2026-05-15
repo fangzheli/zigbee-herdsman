@@ -284,6 +284,18 @@ describe("BLZ high-level driver lifecycle", () => {
         (driver as unknown as {blz?: unknown}).blz = blz;
     }
 
+    function setActiveDriverBlz(driver: Driver, blz: unknown): void {
+        setDriverBlz(driver, blz);
+        (driver as unknown as {
+            blzCloseListener?: unknown;
+            blzRuntimeListeners?: unknown;
+        }).blzCloseListener = blz;
+        (driver as unknown as {
+            blzCloseListener?: unknown;
+            blzRuntimeListeners?: unknown;
+        }).blzRuntimeListeners = blz;
+    }
+
     function cacheDriverNode(
         driver: Driver,
         nwk: number,
@@ -655,7 +667,7 @@ describe("BLZ high-level driver lifecycle", () => {
             off: vi.fn(),
             close: vi.fn(),
         };
-        setDriverBlz(driver, blzMock);
+        setActiveDriverBlz(driver, blzMock);
         handleDriverNodeJoined(driver, 0x3344, 0x1111);
         driver.on("close", callback);
 
@@ -1339,7 +1351,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        setDriverBlz(driver, blzMock);
+        setActiveDriverBlz(driver, blzMock);
 
         await driver.stop(false);
 
@@ -1355,7 +1367,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        setDriverBlz(driver, blzMock);
+        setActiveDriverBlz(driver, blzMock);
         driver.on("close", callback);
 
         await driver.stop(true);
@@ -1426,7 +1438,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        setDriverBlz(driver, blzMock);
+        setActiveDriverBlz(driver, blzMock);
 
         await driver.stop(false);
 
@@ -1963,10 +1975,29 @@ describe("BLZ high-level driver lifecycle", () => {
         await expect(driver.startup()).rejects.toThrow("reset failed");
 
         expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
-        expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
-        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect(blzMock.off).not.toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).not.toHaveBeenCalledWith("frame", expect.any(Function));
         expect(blzMock.removeAllListeners).not.toHaveBeenCalled();
         expect(blzMock.close).toHaveBeenCalledWith(false);
+    });
+
+    it("does not detach BLZ runtime listeners that were never attached during failed startup", async () => {
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockRejectedValue(new Error("reset failed")),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        await expect(driver.startup()).rejects.toThrow("reset failed");
+
+        expect(blzMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+        expect(blzMock.off).not.toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).not.toHaveBeenCalledWith("frame", expect.any(Function));
     });
 
     it("preserves startup connect failures that cannot be stringified", async () => {
@@ -2048,7 +2079,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => newBlzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        setDriverBlz(driver, oldBlzMock);
+        setActiveDriverBlz(driver, oldBlzMock);
 
         await expect(driver.startup()).rejects.toThrow("reset failed");
 

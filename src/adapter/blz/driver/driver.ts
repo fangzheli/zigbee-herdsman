@@ -146,6 +146,8 @@ export class Driver extends EventEmitter {
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
   private readonly channelChangeDelay = new CancellableDelay();
+  private blzCloseListener?: Blz;
+  private blzRuntimeListeners?: Blz;
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -535,21 +537,49 @@ export class Driver extends EventEmitter {
   }
 
   private attachBlzCloseListener(blz: Blz): void {
+    if (this.blzCloseListener === blz) {
+      return;
+    }
+
+    if (this.blzCloseListener) {
+      this.detachBlzCloseListener(this.blzCloseListener);
+    }
+
     blz.on("close", this.onBlzCloseHandler);
+    this.blzCloseListener = blz;
   }
 
   private attachBlzRuntimeListeners(blz: Blz): void {
+    if (this.blzRuntimeListeners === blz) {
+      return;
+    }
+
+    if (this.blzRuntimeListeners) {
+      this.detachBlzRuntimeListeners(this.blzRuntimeListeners);
+    }
+
     blz.on("reset", this.onBlzResetHandler);
     blz.on("frame", this.handleFrameHandler);
+    this.blzRuntimeListeners = blz;
   }
 
   private detachBlzCloseListener(blz: Blz): void {
+    if (this.blzCloseListener !== blz) {
+      return;
+    }
+
     blz.off("close", this.onBlzCloseHandler);
+    this.blzCloseListener = undefined;
   }
 
   private detachBlzRuntimeListeners(blz: Blz): void {
+    if (this.blzRuntimeListeners !== blz) {
+      return;
+    }
+
     blz.off("reset", this.onBlzResetHandler);
     blz.off("frame", this.handleFrameHandler);
+    this.blzRuntimeListeners = undefined;
   }
 
   private detachBlzListeners(blz: Blz): void {
