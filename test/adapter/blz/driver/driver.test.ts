@@ -132,6 +132,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");
         expect(source).toContain("private setNetworkParametersSnapshot(netParams: BLZFrameData): BlzNetworkParameters");
         expect(source).toContain("const networkParams = this.setNetworkParametersSnapshot(netParams);");
+        expect(source).toContain("uint64ToBigEndianBuffer(netParams.extPanId)");
+        expect(source).toContain("uint64FromBigEndianBytes(currentParams.extendedPanId)");
+        expect(source).not.toContain("BigInt(`0x${currentParams.extendedPanId.toString(\"hex\")}`)");
         expect(source).toContain("private async leaveNetwork(");
         expect(source).not.toContain("public async leaveNetwork(");
         expect(source).toContain("private async formNetworkWithParameters(");

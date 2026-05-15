@@ -1121,6 +1121,8 @@ Future BLZ refactors should follow these rules:
   separate conversion loops.
 - Moved byte equality and lazy hex formatting helpers into shared byte
   utilities so driver restore checks no longer own generic byte loops.
+- Added shared big-endian uint64 helpers so network snapshots and channel
+  reforming avoid local conversion logic and hex-string round trips.
 
 ## Next Steps
 

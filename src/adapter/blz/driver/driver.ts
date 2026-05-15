@@ -17,7 +17,9 @@ import {
   bytesToHex,
   fixedBufferFromBytes,
   fixedBufferFromHex,
+  uint64FromBigEndianBytes,
   uint64FromLittleEndianBytes,
+  uint64ToBigEndianBuffer,
   uint64ToLittleEndianBuffer,
 } from "../byteUtils";
 import { normalizeIeeeAddress } from "../ieee";
@@ -230,14 +232,7 @@ export class Driver extends EventEmitter {
 
   private setNetworkParametersSnapshot(netParams: BLZFrameData): BlzNetworkParameters {
     const networkParams = new BlzNetworkParameters();
-    const extendedPanId = Buffer.allocUnsafe(8);
-    const rawExtendedPanId =
-      typeof netParams.extPanId === "bigint"
-        ? netParams.extPanId
-        : BigInt(netParams.extPanId);
-
-    extendedPanId.writeBigUInt64BE(rawExtendedPanId);
-    networkParams.extendedPanId = extendedPanId;
+    networkParams.extendedPanId = uint64ToBigEndianBuffer(netParams.extPanId);
     networkParams.panId = netParams.panId;
     networkParams.Channel = netParams.channel;
     networkParams.nwkUpdateId = netParams.nwkUpdateId;
@@ -304,7 +299,7 @@ export class Driver extends EventEmitter {
 
     logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
     const formStatus = await this.formNetworkWithParameters(
-      BigInt(`0x${currentParams.extendedPanId.toString("hex")}`),
+      uint64FromBigEndianBytes(currentParams.extendedPanId),
       currentParams.panId,
       newChannel,
     );

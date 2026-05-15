@@ -3,7 +3,9 @@ import {describe, expect, it} from "vitest";
 import {
     bytesEqual,
     bytesToHex,
+    uint64FromBigEndianBytes,
     uint64FromLittleEndianBytes,
+    uint64ToBigEndianBuffer,
     uint64ToLittleEndianBuffer,
 } from "../../../src/adapter/blz/byteUtils";
 
@@ -16,6 +18,18 @@ describe("BLZ byte utilities", () => {
 
     it("converts little-endian bytes back to uint64 values", () => {
         expect(uint64FromLittleEndianBytes([8, 7, 6, 5, 4, 3, 2, 1])).toBe(
+            0x0102030405060708n,
+        );
+    });
+
+    it("converts uint64 values to big-endian buffers", () => {
+        expect(uint64ToBigEndianBuffer(0x0102030405060708n)).toEqual(
+            Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
+        );
+    });
+
+    it("converts big-endian bytes back to uint64 values", () => {
+        expect(uint64FromBigEndianBytes([1, 2, 3, 4, 5, 6, 7, 8])).toBe(
             0x0102030405060708n,
         );
     });
