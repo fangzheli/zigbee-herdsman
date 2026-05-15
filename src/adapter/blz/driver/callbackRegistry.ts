@@ -11,8 +11,7 @@ export class CallbackRegistry<T> {
 
     public notify(callback: (item: T) => void): void {
         const items = [...this.items];
-        let firstError: unknown;
-        let hasError = false;
+        const errors: unknown[] = [];
 
         try {
             for (const item of items) {
@@ -23,10 +22,7 @@ export class CallbackRegistry<T> {
                 try {
                     callback(item);
                 } catch (error) {
-                    if (!hasError) {
-                        firstError = error;
-                        hasError = true;
-                    }
+                    errors.push(error);
                 }
             }
         } finally {
@@ -35,8 +31,12 @@ export class CallbackRegistry<T> {
             }
         }
 
-        if (hasError) {
-            throw firstError;
+        if (errors.length === 1) {
+            throw errors[0];
+        }
+
+        if (errors.length > 1) {
+            throw new AggregateError(errors, "Multiple callback notifications failed");
         }
     }
 

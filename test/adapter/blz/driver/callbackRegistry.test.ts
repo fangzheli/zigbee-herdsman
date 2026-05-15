@@ -56,4 +56,37 @@ describe("BLZ callback registry", () => {
         expect(second).toHaveBeenCalledOnce();
         expect(registry.count()).toBe(0);
     });
+
+    it("reports all callback failures from one notification pass", () => {
+        const registry = new CallbackRegistry<() => void>();
+        const firstError = new Error("first failed");
+        const secondError = new Error("second failed");
+        const first = vi.fn(() => {
+            throw firstError;
+        });
+        const second = vi.fn(() => {
+            throw secondError;
+        });
+
+        registry.add(first);
+        registry.add(second);
+
+        const error = captureThrown(() => registry.notify((callback) => callback()));
+
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).errors).toEqual([firstError, secondError]);
+        expect(first).toHaveBeenCalledOnce();
+        expect(second).toHaveBeenCalledOnce();
+        expect(registry.count()).toBe(0);
+    });
 });
+
+function captureThrown(operation: () => void): unknown {
+    try {
+        operation();
+    } catch (error) {
+        return error;
+    }
+
+    return undefined;
+}
