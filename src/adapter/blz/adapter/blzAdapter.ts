@@ -53,6 +53,18 @@ function parseZclHeader(message: Buffer): Zcl.Header | undefined {
   return header;
 }
 
+function errorFromUnknown(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  try {
+    return new Error(String(error), { cause: error });
+  } catch {
+    return new Error("<unprintable error>", { cause: error });
+  }
+}
+
 export class BLZAdapter extends Adapter {
   private driver: Driver;
   private waitress: Waitress<ZclWaitressPayload, ClusterWaitressMatcher>;
@@ -218,8 +230,12 @@ export class BLZAdapter extends Adapter {
       await this.waitWhileRunning(1000, generation);
       return result;
     } catch (error) {
+      const startError = errorFromUnknown(error);
+      if (!this.closing) {
+        this.enterStoppedState(startError);
+      }
       this.detachDriverListeners();
-      throw error;
+      throw startError;
     }
   }
 

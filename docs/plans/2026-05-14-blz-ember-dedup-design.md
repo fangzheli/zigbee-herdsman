@@ -1278,6 +1278,9 @@ Future BLZ refactors should follow these rules:
 - Tracked high-level Driver BLZ close/runtime listener ownership per BLZ
   instance, so startup failure before runtime listeners attach only detaches the
   close listener that actually exists.
+- Routed high-level Adapter startup failures through the stopped-state cleanup
+  path, so pre-existing ZCL waiters are rejected with the startup failure
+  instead of waiting for timeout.
 
 ## Next Steps
 

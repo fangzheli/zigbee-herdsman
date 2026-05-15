@@ -282,6 +282,32 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
+    it("should reject adapter waiters with the startup failure when startup fails", async () => {
+      const waiter = adapter.waitFor(
+        0x1234,
+        1,
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.SERVER_TO_CLIENT,
+        7,
+        Zcl.Clusters.genOnOff.ID,
+        Zcl.Foundation.defaultRsp.ID,
+        1000,
+      );
+      const waiterResult = waiter.promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      driverMock.startup.mockRejectedValue(new Error("startup failed"));
+
+      await expect(adapter.start()).rejects.toThrow("startup failed");
+      const observed = await Promise.race([
+        waiterResult,
+        Promise.resolve("pending"),
+      ]);
+
+      expect(observed).toBe("rejected:startup failed");
+    });
+
     it("should cancel the startup settle delay when stopping", async () => {
       driverMock.startup.mockResolvedValue("resumed");
       driverMock.stop.mockResolvedValue(undefined);
