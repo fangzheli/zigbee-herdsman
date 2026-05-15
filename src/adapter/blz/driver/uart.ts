@@ -206,7 +206,13 @@ export class SerialDriver extends EventEmitter {
           }
 
           settled = true;
-          this.cleanupFailedOpenPort(socketPort);
+          try {
+            this.cleanupFailedOpenPort(socketPort);
+          } catch (cleanupError) {
+            reject(new AggregateError([err, cleanupError], "Failed to open TCP socket and cleanup failed"));
+            return;
+          }
+
           reject(err);
         };
         const openClose = (): void => {

@@ -620,6 +620,26 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should reject TCP socket open when cleanup after socket error fails", async () => {
+      const socketError = new Error("Socket failed");
+      const cleanupError = new Error("parser cleanup failed");
+      parserMock.off.mockImplementation(() => {
+        throw cleanupError;
+      });
+      const connect = driver.connect(tcpPortOptions).catch((error: unknown) => error);
+      const socketErrorHandler = socketPortMock.once.mock.calls.find((call) => call[0] === "error")?.[1];
+
+      expect(socketErrorHandler).toBeDefined();
+      expect(() => socketErrorHandler(socketError)).not.toThrow();
+
+      const error = await connect;
+
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([socketError, cleanupError]);
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {socketPort?: unknown}).socketPort).toBeUndefined();
+    });
+
     it("should reject and clean listeners when TCP socket closes before ready", async () => {
       const connect = driver.connect(tcpPortOptions);
       const closeBeforeReady = socketPortMock.once.mock.calls.find(
