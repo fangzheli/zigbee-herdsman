@@ -595,7 +595,7 @@ export class SerialDriver extends EventEmitter {
     const generation = this.operationGeneration;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      if (this.operationGeneration !== generation || !this.initialized) {
+      if (!this.isOperationGenerationActive(generation)) {
         throw new Error("Send cancelled by driver reset or close");
       }
 
@@ -625,7 +625,7 @@ export class SerialDriver extends EventEmitter {
         this.cancelWaiter(waiter);
         logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
 
-        if (this.operationGeneration !== generation || !this.initialized) {
+        if (!this.isOperationGenerationActive(generation)) {
           throw new Error("Send cancelled by driver reset or close");
         }
 
@@ -650,8 +650,12 @@ export class SerialDriver extends EventEmitter {
   ): Promise<boolean> {
     return await this.sendRetryDelay.wait(
       milliseconds,
-      () => this.operationGeneration === generation && this.initialized,
+      () => this.isOperationGenerationActive(generation),
     );
+  }
+
+  private isOperationGenerationActive(generation: number): boolean {
+    return this.operationGeneration === generation && this.initialized;
   }
 
   private waitFor(

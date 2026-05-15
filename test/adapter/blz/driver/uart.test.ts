@@ -183,6 +183,9 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("private cancelConnectOperations(error: Error): void");
       expect(source).toContain("this.cancelConnectOperations(closeError);");
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
+      expect(source).toContain("private isOperationGenerationActive(generation: number): boolean");
+      expect(source.match(/this\.isOperationGenerationActive\(generation\)/g)).toHaveLength(3);
+      expect(source.match(/this\.operationGeneration === generation && this\.initialized/g)).toHaveLength(1);
       expect(source).toContain("private onParsed(frame: Frame): void");
       expect(source).not.toContain("private async onParsed");
       expect(source).toContain("private handleError(frame: Frame): void");

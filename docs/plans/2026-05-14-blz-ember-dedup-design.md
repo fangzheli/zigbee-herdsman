@@ -1123,6 +1123,8 @@ Future BLZ refactors should follow these rules:
   utilities so driver restore checks no longer own generic byte loops.
 - Added shared big-endian uint64 helpers so network snapshots and channel
   reforming avoid local conversion logic and hex-string round trips.
+- Centralized UART send operation generation checks so send attempts and retry
+  delays use one active-operation predicate.
 
 ## Next Steps
 
