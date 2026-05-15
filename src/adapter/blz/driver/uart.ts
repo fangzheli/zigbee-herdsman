@@ -381,7 +381,7 @@ export class SerialDriver extends EventEmitter {
   private async performClose(): Promise<void> {
     logger.debug("Closing UART", NS);
     const closeError = new Error("Connection closed");
-    this.connectOperations.cancel(closeError);
+    this.cancelConnectOperations(closeError);
     this.cancelPendingOperations(closeError);
     this.cleanupParser();
 
@@ -480,6 +480,10 @@ export class SerialDriver extends EventEmitter {
     this.sendRetryDelay.cancel();
     this.queue.clear(error);
     this.waitress.clear(error);
+  }
+
+  private cancelConnectOperations(error: Error): void {
+    this.connectOperations.cancel(error);
   }
 
   private detachSerialPort(): void {

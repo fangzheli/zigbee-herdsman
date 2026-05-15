@@ -1053,6 +1053,9 @@ Future BLZ refactors should follow these rules:
 - Centralized adapter ZCL response-waiter clearing so adapter stop and driver
   close paths reject pending ZCL waiters through one helper while preserving
   their existing error reasons.
+- Centralized UART connect-operation cancellation so close interrupts pending
+  serial/TCP opens through an explicit helper before clearing runtime send
+  queues and waiters.
 
 ## Next Steps
 
