@@ -915,6 +915,8 @@ Future BLZ refactors should follow these rules:
   per-frame allocation churn when those debug messages are not emitted.
 - Deferred BLZ NWK update raw/canonical payload hex formatting in the adapter
   channel-change path until debug logging evaluates the message.
+- Deferred BLZ network-key and trust-center-key debug formatting until debug
+  logging evaluates the message.
 
 ## Next Steps
 

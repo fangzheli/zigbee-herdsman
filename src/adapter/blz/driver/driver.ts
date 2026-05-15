@@ -1442,7 +1442,7 @@ export class Driver extends EventEmitter {
     }
 
     logger.debug(
-      `Global TC Key retrieved: Key=${linkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, TCAddress=${trustCenterAddress}`,
+      () => `Global TC Key retrieved: Key=${linkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, TCAddress=${trustCenterAddress}`,
       NS,
     );
 
@@ -1472,7 +1472,7 @@ export class Driver extends EventEmitter {
     }
 
     logger.debug(
-      `Global TC Key set successfully: Key=${linkKey}, FrameCounter=${outgoingFrameCounter}`,
+      () => `Global TC Key set successfully: Key=${linkKey}, FrameCounter=${outgoingFrameCounter}`,
       NS,
     );
 
@@ -1496,7 +1496,7 @@ export class Driver extends EventEmitter {
     }
 
     logger.debug(
-      `Network Key Info retrieved: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
+      () => `Network Key Info retrieved: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
       NS,
     );
 
@@ -1551,7 +1551,7 @@ export class Driver extends EventEmitter {
       throw new Error(`Invalid network key format - must be 16 byte Buffer`);
     }
 
-    logger.debug(`Setting network key: ${nwkKey.toString("hex")}`, NS);
+    logger.debug(() => `Setting network key: ${nwkKey.toString("hex")}`, NS);
     logger.debug(`Frame counter: ${outgoingFrameCounter}`, NS);
     logger.debug(`Key seq num: ${nwkKeySeqNum}`, NS);
 
@@ -1573,7 +1573,7 @@ export class Driver extends EventEmitter {
     }
 
     logger.debug(
-      `Network Security Infos set successfully: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
+      () => `Network Security Infos set successfully: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
       NS,
     );
 

@@ -18,6 +18,7 @@ import {Driver} from "../../../../src/adapter/blz/driver/driver";
 import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame, BlzNetworkParameters} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
+import {logger} from "../../../../src/utils/logger";
 import * as Zdo from "../../../../src/zspec/zdo";
 
 describe("BLZ high-level driver lifecycle", () => {
@@ -2353,6 +2354,70 @@ describe("BLZ high-level driver lifecycle", () => {
             expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.networkKey);
         } finally {
             fromSpy.mockRestore();
+        }
+    });
+
+    it("does not stringify trust-center link keys unless debug logging evaluates the message", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const linkKey = Buffer.alloc(16, 0x5a);
+        const toStringSpy = vi.spyOn(linkKey, "toString").mockImplementation(() => {
+            throw new Error("eager trust-center key string");
+        });
+        const execCommand = vi.fn()
+            .mockResolvedValueOnce({
+                status: BlzStatus.SUCCESS,
+                linkKey,
+                outgoingFrameCounter: 7,
+                trustCenterAddress: 0,
+            })
+            .mockResolvedValueOnce({
+                status: BlzStatus.SUCCESS,
+            });
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {execCommand});
+
+        try {
+            await expect(driver.getGlobalTcLinkKey()).resolves.toEqual(
+                expect.objectContaining({linkKey}),
+            );
+            await expect(driver.setGlobalTcLinkKey(linkKey, 7)).resolves.toBe(BlzStatus.SUCCESS);
+
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            toStringSpy.mockRestore();
+            debug.mockRestore();
+        }
+    });
+
+    it("does not stringify network keys unless debug logging evaluates the message", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const nwkKey = Buffer.alloc(16, 0xa5);
+        const toStringSpy = vi.spyOn(nwkKey, "toString").mockImplementation(() => {
+            throw new Error("eager network key string");
+        });
+        const execCommand = vi.fn()
+            .mockResolvedValueOnce({
+                status: BlzStatus.SUCCESS,
+                nwkKey,
+                outgoingFrameCounter: 9,
+                nwkKeySeqNum: 2,
+            })
+            .mockResolvedValueOnce({
+                status: BlzStatus.SUCCESS,
+            });
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {execCommand});
+
+        try {
+            await expect(driver.getNetworkKeyInfo()).resolves.toEqual(
+                expect.objectContaining({nwkKey}),
+            );
+            await expect(driver.setNetworkKeyInfo(nwkKey, 9, 2)).resolves.toBe(BlzStatus.SUCCESS);
+
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            toStringSpy.mockRestore();
+            debug.mockRestore();
         }
     });
 });
