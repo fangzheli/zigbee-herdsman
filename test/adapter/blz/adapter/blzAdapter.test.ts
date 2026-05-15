@@ -30,6 +30,7 @@ describe("BLZ Adapter", () => {
     sendZdo: ReturnType<typeof vi.fn>;
     sendZclMulticast: ReturnType<typeof vi.fn>;
     sendZclBroadcast: ReturnType<typeof vi.fn>;
+    sendZclEndpoint: ReturnType<typeof vi.fn>;
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
@@ -94,6 +95,7 @@ describe("BLZ Adapter", () => {
       sendZdo: vi.fn(),
       sendZclMulticast: vi.fn(),
       sendZclBroadcast: vi.fn(),
+      sendZclEndpoint: vi.fn(),
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
@@ -181,6 +183,15 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain("this.driver.brequest(");
       expect(source).toContain("this.driver.sendZclMulticast(");
       expect(source).toContain("this.driver.sendZclBroadcast(");
+    });
+
+    it("keeps endpoint ZCL APS frame ownership inside the driver API", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).not.toContain("this.driver.request(");
+      expect(source).not.toContain("this.driver.makeApsFrame(");
+      expect(source).not.toContain("private makeZclApsFrame(");
+      expect(source).toContain("this.driver.sendZclEndpoint(");
     });
 
     it("should stop successfully", async () => {
@@ -369,12 +380,7 @@ describe("BLZ Adapter", () => {
       const firstRequest = new Promise<boolean>((resolve) => {
         releaseRequest = () => resolve(true);
       });
-      driverMock.request.mockReturnValueOnce(firstRequest).mockResolvedValue(true);
-      driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
-        const apsFrame = new BlzApsFrame();
-        apsFrame.clusterId = clusterId;
-        return apsFrame;
-      });
+      driverMock.sendZclEndpoint.mockReturnValueOnce(firstRequest).mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -410,7 +416,7 @@ describe("BLZ Adapter", () => {
         (error: Error) => `rejected:${error.message}`,
       );
 
-      expect(driverMock.request).toHaveBeenCalledTimes(1);
+      expect(driverMock.sendZclEndpoint).toHaveBeenCalledTimes(1);
       await adapter.stop();
       const observed = await Promise.race([
         secondResult,
@@ -779,10 +785,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should use explicit profile ID for endpoint ZCL sends", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockResolvedValue(true);
+      driverMock.sendZclEndpoint.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -809,22 +812,19 @@ describe("BLZ Adapter", () => {
         ) => Promise<unknown>
       )("0x0102030405060708", 0x1234, 3, zclFrame, 1000, true, true, 2, 0x0105);
 
-      expect(driverMock.request).toHaveBeenCalledWith(
+      expect(driverMock.sendZclEndpoint).toHaveBeenCalledWith(
+        "0x0102030405060708",
         0x1234,
-        expect.objectContaining({
-          profileId: 0x0105,
-          sourceEndpoint: 2,
-          destinationEndpoint: 3,
-        }),
+        Zcl.Clusters.genOnOff.ID,
+        0x0105,
+        2,
+        3,
         zclFrame.toBuffer(),
       );
     });
 
     it("should preserve explicit source endpoint zero for endpoint ZCL sends", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockResolvedValue(true);
+      driverMock.sendZclEndpoint.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -851,22 +851,20 @@ describe("BLZ Adapter", () => {
         ) => Promise<unknown>
       )("0x0102030405060708", 0x1234, 3, zclFrame, 1000, true, true, 0);
 
-      expect(driverMock.request).toHaveBeenCalledWith(
+      expect(driverMock.sendZclEndpoint).toHaveBeenCalledWith(
+        "0x0102030405060708",
         0x1234,
-        expect.objectContaining({
-          sourceEndpoint: 0,
-          destinationEndpoint: 3,
-        }),
+        Zcl.Clusters.genOnOff.ID,
+        ZSpec.HA_PROFILE_ID,
+        0,
+        3,
         zclFrame.toBuffer(),
       );
     });
 
     it("should normalize uppercase coordinator IEEE prefixes for endpoint ZCL fallbacks", async () => {
       driverMock.ieee = { toString: () => "0X0102030405060708" };
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockResolvedValue(true);
+      driverMock.sendZclEndpoint.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -891,23 +889,19 @@ describe("BLZ Adapter", () => {
         ) => Promise<unknown>
       )(undefined, 0x1234, 3, zclFrame, 1000, true, true);
 
-      expect(driverMock.setNode).toHaveBeenCalledTimes(1);
-      expect(driverMock.setNode.mock.calls[0][0]).toBe(0x1234);
-      expect(driverMock.setNode.mock.calls[0][1].toString()).toBe(
-        "0102030405060708",
-      );
-      expect(driverMock.request).toHaveBeenCalledWith(
+      expect(driverMock.sendZclEndpoint).toHaveBeenCalledWith(
+        "0x0102030405060708",
         0x1234,
-        apsFrame,
+        Zcl.Clusters.genOnOff.ID,
+        ZSpec.HA_PROFILE_ID,
+        1,
+        3,
         zclFrame.toBuffer(),
       );
     });
 
     it("should not retry endpoint ZCL response waits after stop clears waiters", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockResolvedValue(true);
+      driverMock.sendZclEndpoint.mockResolvedValue(true);
       driverMock.stop.mockResolvedValue(undefined);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
@@ -946,16 +940,11 @@ describe("BLZ Adapter", () => {
       await send.catch(() => {});
 
       expect(observed).toBe("rejected:Adapter stopped");
-      expect(driverMock.request).toHaveBeenCalledTimes(1);
+      expect(driverMock.sendZclEndpoint).toHaveBeenCalledTimes(1);
     });
 
-    it("should cancel endpoint ZCL response waiters when node caching throws", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.setNode.mockImplementation(() => {
-        throw new Error("set node failed");
-      });
+    it("should cancel endpoint ZCL response waiters when the driver endpoint send throws", async () => {
+      driverMock.sendZclEndpoint.mockRejectedValue(new Error("driver endpoint send failed"));
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -978,7 +967,7 @@ describe("BLZ Adapter", () => {
           false,
           true,
         ),
-      ).rejects.toThrow("set node failed");
+      ).rejects.toThrow("driver endpoint send failed");
 
       expect(
         (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
@@ -986,10 +975,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should register active endpoint lower sends as cancellable adapter operations", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.sendZclEndpoint.mockReturnValue(new Promise<boolean>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
@@ -1034,10 +1020,7 @@ describe("BLZ Adapter", () => {
     it("should log endpoint ZCL retry state without stale data-request attempts", async () => {
       const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
       try {
-        const apsFrame = new BlzApsFrame();
-        apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-        driverMock.makeApsFrame.mockReturnValue(apsFrame);
-        driverMock.request.mockResolvedValue(true);
+        driverMock.sendZclEndpoint.mockResolvedValue(true);
         const zclFrame = Zcl.Frame.create(
           Zcl.FrameType.GLOBAL,
           Zcl.Direction.CLIENT_TO_SERVER,
@@ -2000,12 +1983,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should handle ZCL send failures before response waiters start", async () => {
-      driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
-        const apsFrame = new BlzApsFrame();
-        apsFrame.clusterId = clusterId;
-        return apsFrame;
-      });
-      driverMock.request.mockResolvedValue(false);
+      driverMock.sendZclEndpoint.mockResolvedValue(false);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -2032,12 +2010,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should cancel ZCL response waiters when endpoint request rejects", async () => {
-      driverMock.makeApsFrame.mockImplementation((clusterId: number) => {
-        const apsFrame = new BlzApsFrame();
-        apsFrame.clusterId = clusterId;
-        return apsFrame;
-      });
-      driverMock.request.mockRejectedValue(new Error("driver request failed"));
+      driverMock.sendZclEndpoint.mockRejectedValue(new Error("driver request failed"));
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,

@@ -1030,7 +1030,7 @@ export class Driver extends EventEmitter {
     this.cacheNodeIeee(nwk, ieee);
   }
 
-  public async request(
+  private async request(
     nwk: number | BlzEUI64,
     apsFrame: BlzApsFrame,
     data: Buffer,
@@ -1306,6 +1306,26 @@ export class Driver extends EventEmitter {
     return await this.brequest(destination, frame, data);
   }
 
+  public async sendZclEndpoint(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterId: number,
+    profileId: number,
+    sourceEndpoint: number,
+    destinationEndpoint: number,
+    data: Buffer,
+  ): Promise<boolean> {
+    this.setNode(networkAddress, new BlzEUI64(ieeeAddress));
+
+    const frame = this.makeApsFrame(clusterId);
+    frame.profileId = profileId;
+    frame.sourceEndpoint = sourceEndpoint;
+    frame.destinationEndpoint = destinationEndpoint;
+    frame.groupId = 0;
+
+    return await this.request(networkAddress, frame, data);
+  }
+
   public async sendZdo(
     ieeeAddress: string,
     networkAddress: number,
@@ -1473,7 +1493,7 @@ export class Driver extends EventEmitter {
     return this.transactionID;
   }
 
-  public makeApsFrame(clusterId: number): BlzApsFrame {
+  private makeApsFrame(clusterId: number): BlzApsFrame {
     const frame = new BlzApsFrame();
     frame.clusterId = clusterId;
     frame.profileId = 0;

@@ -26,7 +26,6 @@ import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType, BlzStatus } from "../driver/types";
-import type { BlzApsFrame } from "../driver/types/struct";
 import { formatIeeeAddress } from "../ieee";
 import { parseNwkUpdateChannelChange } from "./nwkUpdate";
 
@@ -722,19 +721,19 @@ export class BLZAdapter extends Adapter {
       );
     }
 
-    const frame = this.makeZclApsFrame(
-      zclFrame.cluster.ID,
-      profileId,
-      sourceEndpoint,
-      endpoint,
-      0,
-    );
-
     let dataConfirmResult: boolean;
     try {
-      this.driver.setNode(networkAddress, new BlzEUI64(ieeeAddr));
       dataConfirmResult = await this.runOperationWhileRunning(
-        () => this.driver.request(networkAddress, frame, zclFrame.toBuffer()),
+        () =>
+          this.driver.sendZclEndpoint(
+            ieeeAddr,
+            networkAddress,
+            zclFrame.cluster.ID,
+            profileId,
+            sourceEndpoint,
+            endpoint,
+            zclFrame.toBuffer(),
+          ),
         generation,
       );
     } catch (error) {
@@ -855,22 +854,6 @@ export class BLZAdapter extends Adapter {
        */
       await this.waitWhileRunning(200, generation);
     });
-  }
-
-  private makeZclApsFrame(
-    clusterId: number,
-    profileId: number,
-    sourceEndpoint: number,
-    destinationEndpoint: number,
-    groupId: number,
-  ): BlzApsFrame {
-    const frame = this.driver.makeApsFrame(clusterId);
-    frame.profileId = profileId;
-    frame.sourceEndpoint = sourceEndpoint;
-    frame.destinationEndpoint = destinationEndpoint;
-    frame.groupId = groupId;
-
-    return frame;
   }
 
   public async getNetworkParameters(): Promise<NetworkParameters> {

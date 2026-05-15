@@ -935,6 +935,11 @@ Future BLZ refactors should follow these rules:
   guards, and settle-delay behavior.
 - Made the low-level multicast/broadcast APS send helpers private after moving
   production callers behind the high-level ZCL/ZDO driver APIs.
+- Moved endpoint ZCL APS frame construction and destination address-cache
+  updates into the high-level driver endpoint send API, leaving the adapter to
+  own response waiters, retries, queueing, and stop guards.
+- Made the low-level unicast APS send helper and APS frame builder private after
+  moving production endpoint ZCL sends behind the high-level driver API.
 
 ## Next Steps
 
