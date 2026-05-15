@@ -203,6 +203,8 @@ Future BLZ refactors should follow these rules:
   is only evaluated when debug logging consumes the message.
 - Made startup coordinator IEEE logging lazy so `BlzEUI64.toString()` is not
   called on the debug-disabled startup path.
+- Centralized checked high-level BLZ command execution so backup/security/network
+  helper commands share the same request cancellation and status assertion path.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

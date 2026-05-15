@@ -1763,19 +1763,35 @@ export class Driver extends EventEmitter {
     }
   }
 
-  private async getGlobalTcLinkKey(): Promise<BLZFrameData> {
+  private async runCheckedBlzCommand(
+    command: string,
+    params: ParamsDesc | undefined,
+    logMessage: string,
+    errorMessage: string,
+  ): Promise<BLZFrameData> {
     const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("getGlobalTcLinkKey"),
+      params === undefined
+        ? blz.execCommand(command)
+        : blz.execCommand(command, params),
     );
 
-    const { status, linkKey, outgoingFrameCounter, trustCenterAddress } =
-      frameResponse;
-
     this.assertBlzStatus(
-      status,
+      frameResponse.status,
+      logMessage,
+      errorMessage,
+    );
+
+    return frameResponse;
+  }
+
+  private async getGlobalTcLinkKey(): Promise<BLZFrameData> {
+    const frameResponse = await this.runCheckedBlzCommand(
+      "getGlobalTcLinkKey",
+      undefined,
       "getGlobalTcLinkKey() returned unexpected BLZ status",
       "Failed to get global Trust Center key",
     );
+    const { linkKey, outgoingFrameCounter, trustCenterAddress } = frameResponse;
 
     logger.debug(
       () => `Global TC Key retrieved: Key=${linkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, TCAddress=${trustCenterAddress}`,
@@ -1794,17 +1810,13 @@ export class Driver extends EventEmitter {
       outgoingFrameCounter,
     };
 
-    const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("setGlobalTcLinkKey", frameRequest),
-    );
-
-    const { status } = frameResponse;
-
-    this.assertBlzStatus(
-      status,
+    const frameResponse = await this.runCheckedBlzCommand(
+      "setGlobalTcLinkKey",
+      frameRequest,
       "setGlobalTcLinkKey() failed with status",
       "Failed to set global Trust Center key",
     );
+    const { status } = frameResponse;
 
     logger.debug(
       () => `Global TC Key set successfully: Key=${linkKey}, FrameCounter=${outgoingFrameCounter}`,
@@ -1815,18 +1827,13 @@ export class Driver extends EventEmitter {
   }
 
   private async getNetworkKeyInfo(): Promise<BLZFrameData> {
-    const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("getNwkSecurityInfos"),
-    );
-
-    const { status, nwkKey, outgoingFrameCounter, nwkKeySeqNum } =
-      frameResponse;
-
-    this.assertBlzStatus(
-      status,
+    const frameResponse = await this.runCheckedBlzCommand(
+      "getNwkSecurityInfos",
+      undefined,
       "getNetworkKeyInfo() returned unexpected BLZ status",
       "Failed to get network key info",
     );
+    const { nwkKey, outgoingFrameCounter, nwkKeySeqNum } = frameResponse;
 
     logger.debug(
       () => `Network Key Info retrieved: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
@@ -1837,35 +1844,24 @@ export class Driver extends EventEmitter {
   }
 
   private async getCurrentNetworkParameters(): Promise<BLZFrameData> {
-    const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("getNetworkParameters"),
-    );
-
-    const { status } = frameResponse;
-
-    this.assertBlzStatus(
-      status,
+    return await this.runCheckedBlzCommand(
+      "getNetworkParameters",
+      undefined,
       "getCurrentNetworkParameters() returned unexpected BLZ status",
       "Failed to get network parameters",
     );
-
-    return frameResponse;
   }
 
   private async getMacAddress(): Promise<Buffer> {
-    const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("getValue", {
+    const frameResponse = await this.runCheckedBlzCommand(
+      "getValue",
+      {
         valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
-      }),
-    );
-
-    const { status, value } = frameResponse;
-
-    this.assertBlzStatus(
-      status,
+      },
       "getMacAddress() returned unexpected BLZ status",
       "Failed to get MAC address",
     );
+    const { value } = frameResponse;
 
     return value;
   }
@@ -1890,17 +1886,13 @@ export class Driver extends EventEmitter {
       nwkKeySeqNum,
     };
 
-    const frameResponse = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("setNwkSecurityInfos", frameRequest),
-    );
-
-    const { status } = frameResponse;
-
-    this.assertBlzStatus(
-      status,
+    const frameResponse = await this.runCheckedBlzCommand(
+      "setNwkSecurityInfos",
+      frameRequest,
       "setNwkSecurityInfos() failed with status",
       "Failed to set network security infos",
     );
+    const { status } = frameResponse;
 
     logger.debug(
       () => `Network Security Infos set successfully: Key=${nwkKey.toString("hex")}, FrameCounter=${outgoingFrameCounter}, SeqNum=${nwkKeySeqNum}`,
