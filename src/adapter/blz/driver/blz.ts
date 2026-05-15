@@ -58,6 +58,14 @@ function errorFromUnknown(error: unknown): Error {
   }
 }
 
+function formatUnknownError(error: unknown): string {
+  try {
+    return String(error);
+  } catch {
+    return "<unprintable error>";
+  }
+}
+
 type ForceResetOptions = {
   holdResetState?: boolean;
 };
@@ -400,13 +408,13 @@ export class Blz extends EventEmitter {
   private onSerialReset(): void {
     logger.debug("onSerialReset()", NS);
     this.inResetingProcess = true;
-    this.enterDisconnectedState(this.createConnectionResetError());
+    this.cleanupAfterSerialDriverEvent(this.createConnectionResetError());
     this.emit("reset");
   }
 
   private onSerialClose(): void {
     logger.debug("onSerialClose()", NS);
-    this.enterDisconnectedState(this.createConnectionClosedError());
+    this.cleanupAfterSerialDriverEvent(this.createConnectionClosedError());
 
     if (!this.inResetingProcess) {
       this.emit("close");
@@ -463,6 +471,17 @@ export class Blz extends EventEmitter {
     this.cancelConnectionOperations(connectionError);
     this.clearPendingCommands(commandError);
     this.detachSerialDriverListeners();
+  }
+
+  private cleanupAfterSerialDriverEvent(connectionError: Error, commandError = connectionError): void {
+    try {
+      this.enterDisconnectedState(connectionError, commandError);
+    } catch (cleanupError) {
+      logger.debug(
+        () => `Failed to cleanup after serial driver event ${formatUnknownError(cleanupError)}`,
+        NS,
+      );
+    }
   }
 
   public async close(emitClose: boolean): Promise<void> {

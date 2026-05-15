@@ -204,8 +204,9 @@ describe("BLZ Driver", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
 
       expect(source).toContain("private enterDisconnectedState(connectionError: Error, commandError = connectionError): void");
-      expect(source).toContain("this.enterDisconnectedState(this.createConnectionResetError());");
-      expect(source).toContain("this.enterDisconnectedState(this.createConnectionClosedError());");
+      expect(source).toContain("private cleanupAfterSerialDriverEvent(connectionError: Error, commandError = connectionError): void");
+      expect(source).toContain("this.cleanupAfterSerialDriverEvent(this.createConnectionResetError());");
+      expect(source).toContain("this.cleanupAfterSerialDriverEvent(this.createConnectionClosedError());");
       expect(source).toContain("this.enterDisconnectedState(connectionCancelError, closeError);");
       expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(2);
       expect(source.match(/this\.cancelConnectionOperations\(connectionError\);/g)).toHaveLength(1);
@@ -1519,6 +1520,27 @@ describe("BLZ Driver", () => {
       ).toBe(0);
     });
 
+    it("should emit close and release listener ownership when serial close cleanup fails", () => {
+      const callback = vi.fn();
+      blz.on("close", callback);
+      serialDriverMock.off.mockImplementation((event: string) => {
+        if (event === "received") {
+          throw new Error("received listener detach failed");
+        }
+      });
+      const closeHandler = serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1];
+
+      expect(closeHandler).toBeDefined();
+      expect(() => closeHandler()).not.toThrow();
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+      expect((blz as unknown as {serialDriverEventBridgeAttached: boolean}).serialDriverEventBridgeAttached).toBe(false);
+      expect((blz as unknown as {serialDriverResetListenerAttached: boolean}).serialDriverResetListenerAttached).toBe(false);
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("should clear BLZ state when the serial driver requests reset recovery", async () => {
       const clearIntervalSpy = vi.spyOn(global, "clearInterval");
       const reset = vi.fn();
@@ -1553,6 +1575,29 @@ describe("BLZ Driver", () => {
       expect(
         (blz as unknown as {commandWaiters: {count: () => number}}).commandWaiters.count(),
       ).toBe(0);
+    });
+
+    it("should emit reset and release listener ownership when serial reset cleanup fails", () => {
+      const callback = vi.fn();
+      blz.on("reset", callback);
+      serialDriverMock.off.mockImplementation((event: string) => {
+        if (event === "received") {
+          throw new Error("received listener detach failed");
+        }
+      });
+      const resetHandler = serialDriverMock.on.mock.calls
+        .filter((call) => call[0] === "reset")
+        .at(-1)?.[1];
+
+      expect(resetHandler).toBeDefined();
+      expect(() => resetHandler()).not.toThrow();
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+      expect((blz as unknown as {serialDriverEventBridgeAttached: boolean}).serialDriverEventBridgeAttached).toBe(false);
+      expect((blz as unknown as {serialDriverResetListenerAttached: boolean}).serialDriverResetListenerAttached).toBe(false);
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it("should not stringify received frames unless debug logging evaluates the message", () => {
