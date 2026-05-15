@@ -148,8 +148,7 @@ export class SerialDriver extends EventEmitter {
     try {
       this.attachParserToPort(serialPort);
     } catch (error) {
-      this.cleanupFailedOpenPort(serialPort);
-      throw error;
+      this.throwAfterFailedOpenCleanup(serialPort, error, "Failed to attach serial parser and cleanup failed");
     }
 
     try {
@@ -173,7 +172,7 @@ export class SerialDriver extends EventEmitter {
       this.initialized = true;
     } catch (error) {
       if (!this.initialized) {
-        this.cleanupFailedOpenPort(serialPort);
+        this.throwAfterFailedOpenCleanup(serialPort, error, "Failed to open serial port and cleanup failed");
       }
 
       throw error;
@@ -191,8 +190,7 @@ export class SerialDriver extends EventEmitter {
       socketPort.setKeepAlive(true, 15000);
       this.attachParserToPort(socketPort);
     } catch (error) {
-      this.cleanupFailedOpenPort(socketPort);
-      throw error;
+      this.throwAfterFailedOpenCleanup(socketPort, error, "Failed to setup TCP socket and cleanup failed");
     }
 
     let settled = false;
@@ -293,7 +291,7 @@ export class SerialDriver extends EventEmitter {
     } catch (error) {
       if (!settled) {
         settled = true;
-        this.cleanupFailedOpenPort(socketPort);
+        this.throwAfterFailedOpenCleanup(socketPort, error, "Failed to open TCP socket and cleanup failed");
       }
 
       throw error;
@@ -551,6 +549,20 @@ export class SerialDriver extends EventEmitter {
         this.destroyActivePort();
       },
     ]);
+  }
+
+  private throwAfterFailedOpenCleanup(
+    port: SerialPort | net.Socket,
+    error: unknown,
+    message: string,
+  ): never {
+    try {
+      this.cleanupFailedOpenPort(port);
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], message);
+    }
+
+    throw error;
   }
 
   private attachRuntimePortListeners(port: SerialPort | net.Socket): void {

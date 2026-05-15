@@ -374,15 +374,17 @@ describe("BLZ Serial Driver", () => {
     });
 
     it("should destroy failed serial opens when parser cleanup fails", async () => {
-      serialPortMock.asyncOpen.mockRejectedValue(
-        new Error("Connection failed"),
-      );
+      const openError = new Error("Connection failed");
+      const cleanupError = new Error("parser cleanup failed");
+      serialPortMock.asyncOpen.mockRejectedValue(openError);
       parserMock.off.mockImplementation(() => {
-        throw new Error("parser cleanup failed");
+        throw cleanupError;
       });
 
-      await expect(driver.connect(serialPortOptions)).rejects.toThrow("parser cleanup failed");
+      const error = await driver.connect(serialPortOptions).catch((caught: unknown) => caught);
 
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([openError, cleanupError]);
       expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
       expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
       expect(serialPortMock.destroy).toHaveBeenCalled();
