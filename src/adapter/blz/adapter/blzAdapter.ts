@@ -26,6 +26,7 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import { runCleanupSteps } from "../lifecycleCleanup";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType } from "../driver/types";
 import { formatIeeeAddress } from "../ieee";
@@ -68,6 +69,14 @@ function errorFromUnknown(error: unknown): Error {
     return new Error(String(error), { cause: error });
   } catch {
     return new Error("<unprintable error>", { cause: error });
+  }
+}
+
+function formatUnknownError(error: unknown): string {
+  try {
+    return String(error);
+  } catch {
+    return "<unprintable error>";
   }
 }
 
@@ -136,8 +145,11 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
-    detachListeners(this.driver, this.driverListenerRegistrations);
-    this.driverListenersAttached = false;
+    try {
+      detachListeners(this.driver, this.driverListenerRegistrations);
+    } finally {
+      this.driverListenersAttached = false;
+    }
   }
 
   private processMessage(frame: BlzIncomingMessage): void {
@@ -279,8 +291,21 @@ export class BLZAdapter extends Adapter {
 
     const emitDisconnected = !this.driverStopCloseExpected;
     const closeError = new Error("Adapter disconnected");
-    this.enterStoppedState(closeError);
-    this.detachDriverListeners();
+    try {
+      runCleanupSteps([
+        () => {
+          this.enterStoppedState(closeError);
+        },
+        () => {
+          this.detachDriverListeners();
+        },
+      ]);
+    } catch (cleanupError) {
+      logger.debug(
+        () => `Failed to cleanup after driver close ${formatUnknownError(cleanupError)}`,
+        NS,
+      );
+    }
 
     if (emitDisconnected) {
       this.emit("disconnected");

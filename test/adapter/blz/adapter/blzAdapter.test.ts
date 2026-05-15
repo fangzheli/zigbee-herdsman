@@ -297,6 +297,44 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
+    it("should release driver listener ownership when stop listener cleanup fails", async () => {
+      driverMock.stop.mockResolvedValue(undefined);
+      driverMock.off.mockImplementation((event: string) => {
+        if (event === "close") {
+          throw new Error("driver listener detach failed");
+        }
+      });
+
+      await expect(adapter.stop()).rejects.toThrow("driver listener detach failed");
+
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
+    });
+
+    it("should emit disconnected when unexpected driver close listener cleanup fails", () => {
+      const disconnected = vi.fn();
+      driverMock.off.mockImplementation((event: string) => {
+        if (event === "close") {
+          throw new Error("driver listener detach failed");
+        }
+      });
+      adapter.on("disconnected", disconnected);
+
+      expect(() => {
+        driverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+      }).not.toThrow();
+
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
+      expect(disconnected).toHaveBeenCalledTimes(1);
+    });
+
     it("should detach owned driver listeners when startup fails", async () => {
       driverMock.startup.mockRejectedValue(new Error("startup failed"));
 
