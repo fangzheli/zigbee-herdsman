@@ -1189,6 +1189,9 @@ Future BLZ refactors should follow these rules:
 - Deferred startup validation network-parameter formatting until debug logging
   evaluates the message, so a discarded debug line cannot call `toString()` on
   the lower BLZ response object and interrupt startup validation.
+- Deferred shared `Waitress` timeout-message formatting until the timeout
+  actually fires, so BLZ ZCL/ZDO/transport waiters that resolve normally do not
+  allocate or stringify timeout diagnostics.
 
 ## Next Steps
 

@@ -271,6 +271,25 @@ describe("Utils", () => {
         vi.useRealTimers();
     });
 
+    it("Test waitress defers timeout formatting for waiters that resolve", async () => {
+        vi.useFakeTimers();
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const timeoutFormatter = vi.fn((_, timeout) => `Timedout '${timeout}'`);
+        const waitress = new Waitress<string, number>(validator, timeoutFormatter);
+        const waiter = waitress.waitFor(2, 5000).start();
+
+        expect(timeoutFormatter).not.toHaveBeenCalled();
+        waitress.resolve("up");
+
+        await expect(waiter.promise).resolves.toBe("up");
+        expect(timeoutFormatter).not.toHaveBeenCalled();
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
+        vi.useRealTimers();
+    });
+
     it("Test queue", async () => {
         const queue = new Queue(4);
         const finished: number[] = [];
