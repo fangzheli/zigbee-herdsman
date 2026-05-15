@@ -801,7 +801,10 @@ describe("BLZ Driver", () => {
         await expect(blz.networkInit()).resolves.toBe(true);
         await expect(blz.leaveNetwork()).resolves.toBe(BlzStatus.SUCCESS);
 
-        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(debug).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.any(String),
+        );
       } finally {
         stringify.mockRestore();
         debug.mockRestore();
@@ -832,6 +835,31 @@ describe("BLZ Driver", () => {
         expect(allocSpy).not.toHaveBeenCalledWith(4);
       } finally {
         allocSpy.mockRestore();
+      }
+    });
+
+    it("should not stringify setValue buffers unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const value = Buffer.from([0xaa, 0xbb]);
+      const toStringSpy = vi.spyOn(value, "toString").mockImplementation(() => {
+        throw new Error("eager setValue buffer string");
+      });
+      const execCommand = vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.SUCCESS,
+      } as BLZFrameData);
+
+      try {
+        await blz.setValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION, value);
+
+        expect(execCommand).toHaveBeenCalledWith("setValue", {
+          valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+          valueLength: value.length,
+          value,
+        });
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+      } finally {
+        toStringSpy.mockRestore();
+        debug.mockRestore();
       }
     });
 

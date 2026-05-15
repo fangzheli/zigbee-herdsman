@@ -193,6 +193,8 @@ Future BLZ refactors should follow these rules:
   commands so status logging and thrown failure messages share one path.
 - Centralized low-level BLZ command success checks so network init, leave,
   value, form-network, and APS-send helpers use one status predicate.
+- Made low-level `setValue()` buffer logging lazy so debug-disabled paths do not
+  stringify caller-owned buffers before sending.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

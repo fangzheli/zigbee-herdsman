@@ -821,6 +821,10 @@ export class Blz extends EventEmitter {
     return status === BlzStatus.SUCCESS;
   }
 
+  private formatSetValueForLog(value: number | Buffer): string {
+    return Buffer.isBuffer(value) ? value.toString("hex") : `${value}`;
+  }
+
   async networkInit(): Promise<boolean> {
     // logger.debug('Set up stack status handler before initial the network', NS);
     const result = await this.execCommand("networkInit");
@@ -849,7 +853,10 @@ export class Blz extends EventEmitter {
     value: number | Buffer,
   ): Promise<BLZFrameData> {
     const valueName = t.BlzValueId.valueName(t.BlzValueId, valueId);
-    logger.debug(`Set ${valueName} = ${value}`, NS);
+    logger.debug(
+      () => `Set ${valueName} = ${this.formatSetValueForLog(value)}`,
+      NS,
+    );
 
     // Convert value to Buffer if it's a number
     let valueBuffer: Buffer;
