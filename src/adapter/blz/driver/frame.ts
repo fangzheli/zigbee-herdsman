@@ -1,6 +1,7 @@
 /* istanbul ignore file */
 
-import { verifyFrameCrc } from "./framing";
+import {bufferForRetention} from "../byteUtils";
+import {verifyFrameCrc} from "./framing";
 /**
  * Class representing a BLZ protocol frame.
  */
@@ -20,7 +21,7 @@ export class Frame {
             throw new Error(`Invalid frame length: ${buffer.length}`);
         }
 
-        this.buffer = buffer;
+        this.buffer = bufferForRetention(buffer);
 
         // Parse fixed fields
         this.control = this.buffer[0]; // Control byte

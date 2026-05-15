@@ -52,6 +52,21 @@ describe('BLZ Frame', () => {
             expect(frame.payload).toEqual(payload);
         });
 
+        it('should not retain a large source buffer when constructed from a sliced frame', () => {
+            const payload = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+            const buffer = createFrameBuffer(0x80, 0x15, 0x0020, payload);
+            const chunk = Buffer.alloc(20000, 0);
+            const startOffset = chunk.length - buffer.length;
+            buffer.copy(chunk, startOffset);
+
+            const frame = new Frame(chunk.subarray(startOffset));
+
+            expect(frame.buffer).toEqual(buffer);
+            expect(frame.buffer.buffer).not.toBe(chunk.buffer);
+            expect(frame.payload).toEqual(payload);
+            expect(frame.payload.buffer).not.toBe(chunk.buffer);
+        });
+
         it('should throw error for invalid frame length', () => {
             const buffer = Buffer.from([0x00, 0x01, 0x10]); // Too short
             expect(() => new Frame(buffer)).toThrow('Invalid frame length: 3');
