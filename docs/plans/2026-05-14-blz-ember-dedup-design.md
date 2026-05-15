@@ -922,6 +922,8 @@ Future BLZ refactors should follow these rules:
 - Deferred UART parsed-frame debug/warning formatting until logging evaluates
   the message, so raw frame `toString()` cannot interrupt ACK/reset handling
   when logs are not consumed.
+- Deferred UART serial-open option JSON formatting and BLZ network init/leave
+  result JSON formatting until debug logging evaluates the message.
 
 ## Next Steps
 

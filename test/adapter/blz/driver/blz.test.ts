@@ -675,6 +675,32 @@ describe("BLZ Driver", () => {
       ).rejects.toThrow("Failed to get value BLZ_VALUE_ID_STACK_VERSION: status 1");
     });
 
+    it("should not stringify network command results unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const networkInitResult = {status: BlzStatus.SUCCESS};
+      const leaveNetworkResult = {status: BlzStatus.SUCCESS};
+      vi.spyOn(blz, "execCommand")
+        .mockResolvedValueOnce(networkInitResult as BLZFrameData)
+        .mockResolvedValueOnce(leaveNetworkResult as BLZFrameData);
+      const stringify = vi.spyOn(JSON, "stringify").mockImplementation((value: unknown) => {
+        if (value === networkInitResult || value === leaveNetworkResult) {
+          throw new Error("eager network command result stringify");
+        }
+
+        return "{}";
+      });
+
+      try {
+        await expect(blz.networkInit()).resolves.toBe(true);
+        await expect(blz.leaveNetwork()).resolves.toBe(BlzStatus.SUCCESS);
+
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+      } finally {
+        stringify.mockRestore();
+        debug.mockRestore();
+      }
+    });
+
     it("should serialize numeric setValue payloads without zero-fill allocation", async () => {
       const execCommand = vi.spyOn(blz, "execCommand").mockResolvedValue({
         status: BlzStatus.SUCCESS,

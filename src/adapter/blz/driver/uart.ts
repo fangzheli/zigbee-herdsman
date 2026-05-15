@@ -106,7 +106,7 @@ export class SerialDriver extends EventEmitter {
       xoff: false,
     } as const;
 
-    logger.debug(`Opening SerialPort with ${JSON.stringify(options)}`, NS);
+    logger.debug(() => `Opening SerialPort with ${JSON.stringify(options)}`, NS);
     this.serialPort = new SerialPort(options);
     const serialPort = this.serialPort;
 

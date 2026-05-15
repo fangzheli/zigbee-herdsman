@@ -202,6 +202,31 @@ describe("BLZ Serial Driver", () => {
       expect(driver.isInitialized()).toBe(true);
     });
 
+    it("should not stringify serial open options unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const stringify = vi.spyOn(JSON, "stringify").mockImplementation((value: unknown) => {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          (value as {path?: string}).path === serialPortOptions.path
+        ) {
+          throw new Error("eager serial open options stringify");
+        }
+
+        return "{}";
+      });
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+
+      try {
+        await expect(driver.connect(serialPortOptions)).resolves.toBeUndefined();
+
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+      } finally {
+        stringify.mockRestore();
+        debug.mockRestore();
+      }
+    });
+
     it("should close an existing serial connection before opening a replacement", async () => {
       const firstPort = {
         ...serialPortMock,

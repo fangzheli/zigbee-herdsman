@@ -742,7 +742,7 @@ export class Blz extends EventEmitter {
   async networkInit(): Promise<boolean> {
     // logger.debug('Set up stack status handler before initial the network', NS);
     const result = await this.execCommand("networkInit");
-    logger.debug(`Network init result: ${JSON.stringify(result)}`, NS);
+    logger.debug(() => `Network init result: ${JSON.stringify(result)}`, NS);
     if (result.status !== BlzStatus.SUCCESS) {
       logger.error("Failure to init network", NS);
       return false;
@@ -752,7 +752,7 @@ export class Blz extends EventEmitter {
 
   async leaveNetwork(): Promise<number> {
     const result = await this.execCommand("leaveNetwork");
-    logger.debug(`Network leave result: ${JSON.stringify(result)}`, NS);
+    logger.debug(() => `Network leave result: ${JSON.stringify(result)}`, NS);
 
     if (result.status !== BlzStatus.SUCCESS) {
       logger.debug("Failure to leave network", NS);
