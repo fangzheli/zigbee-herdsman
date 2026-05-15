@@ -26,6 +26,10 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {
+  runAsyncCleanupSteps,
+  runCleanupSteps,
+} from "../lifecycleCleanup";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
 import { Blz, BLZFrameData } from "./blz";
@@ -498,28 +502,12 @@ export class Driver extends EventEmitter {
       if (this.blz) {
         const blz = this.blz;
         try {
-          let firstError: unknown;
-          let hasError = false;
-
-          try {
-            this.detachBlzListeners(blz);
-          } catch (error) {
-            firstError = error;
-            hasError = true;
-          }
-
-          try {
-            await blz.close(emitClose);
-          } catch (error) {
-            if (!hasError) {
-              firstError = error;
-              hasError = true;
-            }
-          }
-
-          if (hasError) {
-            throw firstError;
-          }
+          await runAsyncCleanupSteps([
+            () => {
+              this.detachBlzListeners(blz);
+            },
+            () => blz.close(emitClose),
+          ]);
         } finally {
           if (this.blz === blz) {
             this.blz = undefined;
@@ -585,28 +573,14 @@ export class Driver extends EventEmitter {
   }
 
   private detachBlzListeners(blz: Blz): void {
-    let firstError: unknown;
-    let hasError = false;
-
-    try {
-      this.detachBlzCloseListener(blz);
-    } catch (error) {
-      firstError = error;
-      hasError = true;
-    }
-
-    try {
-      this.detachBlzRuntimeListeners(blz);
-    } catch (error) {
-      if (!hasError) {
-        firstError = error;
-        hasError = true;
-      }
-    }
-
-    if (hasError) {
-      throw firstError;
-    }
+    runCleanupSteps([
+      () => {
+        this.detachBlzCloseListener(blz);
+      },
+      () => {
+        this.detachBlzRuntimeListeners(blz);
+      },
+    ]);
   }
 
   public async startup(): Promise<TsType.StartResult> {

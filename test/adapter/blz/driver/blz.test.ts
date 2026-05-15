@@ -326,6 +326,27 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
+    it("should continue serial close cleanup when event bridge detach fails", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+      await blz.connect(serialPortOptions);
+      serialDriverMock.off.mockClear();
+      serialDriverMock.close.mockClear();
+      serialDriverMock.off.mockImplementation((event: string) => {
+        if (event === "received") {
+          throw new Error("received listener detach failed");
+        }
+      });
+
+      await expect(blz.close(false)).rejects.toThrow("received listener detach failed");
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+      expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+    });
+
     it("should restore serial driver event bridge when reconnecting after close", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

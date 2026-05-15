@@ -10,6 +10,10 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {
+  runAsyncCleanupSteps,
+  runCleanupSteps,
+} from "../lifecycleCleanup";
 import { SerialPortOptions } from "../../tstype";
 import {
   BlzCommandWaiters,
@@ -373,8 +377,14 @@ export class Blz extends EventEmitter {
   }
 
   private detachSerialDriverListeners(): void {
-    this.detachSerialDriverEventBridge();
-    this.detachSerialDriverResetListener();
+    runCleanupSteps([
+      () => {
+        this.detachSerialDriverEventBridge();
+      },
+      () => {
+        this.detachSerialDriverResetListener();
+      },
+    ]);
   }
 
   public isInitialized(): boolean {
@@ -475,9 +485,13 @@ export class Blz extends EventEmitter {
 
     const connectionCancelError = this.createConnectionCancelledByCloseError();
     const closeError = this.createConnectionClosedError();
-    this.enterDisconnectedState(connectionCancelError, closeError);
     try {
-      await this.serialDriver.close(emitClose);
+      await runAsyncCleanupSteps([
+        () => {
+          this.enterDisconnectedState(connectionCancelError, closeError);
+        },
+        () => this.serialDriver.close(emitClose),
+      ]);
     } finally {
       this.inResetingProcess = false;
       if (this.emitCloseWhenCloseCompletes) {
