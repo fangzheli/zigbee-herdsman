@@ -690,7 +690,10 @@ export class Driver extends EventEmitter {
   }
 
   private async cleanupFailedStartup(error: unknown): Promise<void> {
-    logger.debug(`Startup failed, cleaning up BLZ resources: ${error}`, NS);
+    logger.debug(
+      () => `Startup failed, cleaning up BLZ resources: ${error}`,
+      NS,
+    );
     const resetCancelledStartup =
       error === this.startupCancellationError &&
       error instanceof Error &&
@@ -699,7 +702,10 @@ export class Driver extends EventEmitter {
     try {
       await this.stop(false, resetCancelledStartup);
     } catch (stopError) {
-      logger.debug(`Failed to stop after failed startup ${stopError}`, NS);
+      logger.debug(
+        () => `Failed to stop after failed startup ${stopError}`,
+        NS,
+      );
     }
   }
 

@@ -1199,6 +1199,9 @@ Future BLZ refactors should follow these rules:
   `assertBlzStatus()` helper, keeping startup and runtime BLZ command failure
   checks on one status assertion path while preserving their existing error
   message formats.
+- Deferred failed-startup cleanup error formatting until debug logging evaluates
+  the message, so an error object's stringification cannot mask the original
+  startup failure or prevent BLZ close/listener cleanup from running.
 
 ## Next Steps
 

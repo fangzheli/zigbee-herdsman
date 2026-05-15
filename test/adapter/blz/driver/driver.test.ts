@@ -1883,6 +1883,37 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("cleans up failed startup without stringifying the startup error eagerly", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const startupFailure = new Error("reset failed");
+        startupFailure.toString = () => {
+            throw new Error("eager startup failure stringification");
+        };
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockRejectedValue(startupFailure),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        try {
+            const startupResult = driver.startup().then(
+                () => "resolved",
+                (error: Error) => error === startupFailure ? "startup failure" : `rejected:${error.message}`,
+            );
+
+            await expect(startupResult).resolves.toBe("startup failure");
+            expect(blzMock.close).toHaveBeenCalledWith(false);
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            debug.mockRestore();
+        }
+    });
+
     it("closes an existing BLZ instance before replacing it during startup", async () => {
         const oldBlzMock = {
             off: vi.fn(),
