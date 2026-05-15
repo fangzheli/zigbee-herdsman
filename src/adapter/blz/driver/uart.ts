@@ -442,7 +442,8 @@ export class SerialDriver extends EventEmitter {
   private async performClose(): Promise<void> {
     logger.debug("Closing UART", NS);
     const closeError = this.createConnectionClosedError();
-    this.cancelConnectOperations(closeError);
+    const connectCleanupError =
+      this.captureConnectOperationCleanup(closeError);
     const wasInitialized = this.initialized;
     const serialPort = this.serialPort;
     try {
@@ -456,10 +457,37 @@ export class SerialDriver extends EventEmitter {
       ]);
     } catch (error) {
       this.emitCloseIfRequested();
-      throw error;
+      this.throwAfterCloseCleanup(connectCleanupError, error);
     }
 
     this.emitCloseIfRequested();
+    if (connectCleanupError !== undefined) {
+      throw connectCleanupError;
+    }
+  }
+
+  private captureConnectOperationCleanup(error: Error): unknown {
+    try {
+      this.cancelConnectOperations(error);
+    } catch (cleanupError) {
+      return cleanupError;
+    }
+
+    return undefined;
+  }
+
+  private throwAfterCloseCleanup(
+    connectCleanupError: unknown,
+    closeCleanupError: unknown,
+  ): never {
+    if (connectCleanupError !== undefined) {
+      throw new AggregateError(
+        [connectCleanupError, closeCleanupError],
+        "Failed to cancel connect operations and close UART resources",
+      );
+    }
+
+    throw closeCleanupError;
   }
 
   private emitCloseIfRequested(): void {

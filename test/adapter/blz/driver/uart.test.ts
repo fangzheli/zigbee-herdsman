@@ -204,7 +204,8 @@ describe("BLZ Serial Driver", () => {
       expect(source.match(/new Error\("Connection reset"\)/g)).toHaveLength(1);
       expect(source.match(/new Error\("Send cancelled by driver reset or close"\)/g)).toHaveLength(1);
       expect(source).toContain("private cancelConnectOperations(error: Error): void");
-      expect(source).toContain("this.cancelConnectOperations(closeError);");
+      expect(source).toContain("private captureConnectOperationCleanup(error: Error): unknown");
+      expect(source).toContain("this.captureConnectOperationCleanup(closeError)");
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
       expect(source).toContain("private isOperationGenerationActive(generation: number): boolean");
       expect(source.match(/this\.isOperationGenerationActive\(generation\)/g)).toHaveLength(3);
@@ -456,6 +457,27 @@ describe("BLZ Serial Driver", () => {
 
       expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
       expect(driver.isInitialized()).toBe(false);
+    });
+
+    it("should close serial port when connect operation cleanup fails during close", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+      const cleanupError = new Error("connect operation cleanup failed");
+
+      await driver.connect(serialPortOptions);
+      const connectOperations = (
+        driver as unknown as {connectOperations: {cancel: (error: Error) => void}}
+      ).connectOperations;
+      connectOperations.cancel = vi.fn((): void => {
+        throw cleanupError;
+      });
+
+      const error = await driver.close(false).catch((caught: unknown) => caught);
+
+      expect(error).toBe(cleanupError);
+      expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
+      expect(driver.isInitialized()).toBe(false);
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
     });
 
     it("should coalesce concurrent close calls against the same serial port", async () => {
