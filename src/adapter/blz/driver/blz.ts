@@ -15,6 +15,7 @@ import {
   BlzCommandWaiters,
   type BlzCommandWaiter,
 } from "./blzCommandWaiters";
+import { BlzWatchdog } from "./blzWatchdog";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
 import { FRAMES, ParamsDesc } from "./commands";
@@ -68,16 +69,13 @@ export type BlzVersion = {
 export class Blz extends EventEmitter {
   private serialDriver: SerialDriver;
   private readonly commandWaiters = new BlzCommandWaiters();
+  private readonly watchdog: BlzWatchdog;
   private queue: Queue;
-  private watchdogTimer?: NodeJS.Timeout;
-  private failures = 0;
   private inResetingProcess = false;
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
   private closePromise?: Promise<void>;
   private emitCloseWhenCloseCompletes = false;
-  private watchdogGeneration = 0;
-  private watchdogPromise?: Promise<void>;
   private readonly connectRetryDelay = new CancellableDelay();
   private readonly connectOperations = new CancellableOperation();
   private readonly connectResetOperations = new CancellableOperation();
@@ -86,7 +84,6 @@ export class Blz extends EventEmitter {
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
   private readonly onFrameReceivedHandler = this.onFrameReceived.bind(this);
-  private readonly watchdogHandlerRef = this.watchdogHandler.bind(this);
   private readonly serialDriverEventBridgeRegistrations: readonly OwnedEventListener[] =
     [
       { event: "received", listener: this.onFrameReceivedHandler },
@@ -99,6 +96,15 @@ export class Blz extends EventEmitter {
     this.queue = new Queue();
 
     this.serialDriver = new SerialDriver();
+    this.watchdog = new BlzWatchdog({
+      periodSeconds: WATCHDOG_WAKE_PERIOD,
+      maxFailures: MAX_WATCHDOG_FAILURES,
+      heartbeat: () => this.getVersion(),
+      isResetting: () => this.inResetingProcess,
+      emitReset: () => this.emit("reset"),
+      debug: (message) => logger.debug(message, NS),
+      error: (message) => logger.error(message, NS),
+    });
     this.attachSerialDriverEventBridge();
     this.version = {
       product: 1,
@@ -160,7 +166,7 @@ export class Blz extends EventEmitter {
       }
 
       this.inResetingProcess = false;
-      this.failures = 0;
+      this.watchdog.resetFailures();
       this.attachSerialDriverResetListener();
       this.startWatchdogTimer();
       connectionEstablished = true;
@@ -312,23 +318,11 @@ export class Blz extends EventEmitter {
   }
 
   private clearWatchdogTimer(): void {
-    this.watchdogGeneration += 1;
-    this.watchdogPromise = undefined;
-    if (this.watchdogTimer) {
-      clearInterval(this.watchdogTimer);
-      this.watchdogTimer = undefined;
-    }
+    this.watchdog.clear();
   }
 
   private startWatchdogTimer(): void {
-    this.clearWatchdogTimer();
-
-    if (WATCHDOG_WAKE_PERIOD) {
-      this.watchdogTimer = setInterval(
-        this.watchdogHandlerRef,
-        WATCHDOG_WAKE_PERIOD * 1000,
-      );
-    }
+    this.watchdog.start();
   }
 
   private attachSerialDriverEventBridge(): void {
@@ -801,60 +795,5 @@ export class Blz extends EventEmitter {
     );
 
     return status; // Return the status of the operation
-  }
-
-  private async watchdogHandler(): Promise<void> {
-    if (this.watchdogPromise) {
-      logger.debug("Watchdog heartbeat already in progress", NS);
-      return;
-    }
-
-    const watchdogPromise = this.performWatchdogHeartbeat();
-    this.watchdogPromise = watchdogPromise;
-
-    try {
-      await watchdogPromise;
-    } finally {
-      if (this.watchdogPromise === watchdogPromise) {
-        this.watchdogPromise = undefined;
-      }
-    }
-  }
-
-  private async performWatchdogHeartbeat(): Promise<void> {
-    const watchdogGeneration = this.watchdogGeneration;
-    logger.debug(`Time to watchdog ... ${this.failures}`, NS);
-
-    if (this.inResetingProcess) {
-      logger.debug("The reset process is in progress...", NS);
-      return;
-    }
-
-    try {
-      await this.getVersion();
-      if (!this.isWatchdogGenerationActive(watchdogGeneration)) {
-        return;
-      }
-      this.failures = 0;
-    } catch (error) {
-      if (!this.isWatchdogGenerationActive(watchdogGeneration)) {
-        return;
-      }
-      logger.error(() => `Watchdog heartbeat timeout ${error}`, NS);
-
-      if (!this.inResetingProcess) {
-        this.failures += 1;
-
-        if (this.failures > MAX_WATCHDOG_FAILURES) {
-          this.failures = 0;
-
-          this.emit("reset");
-        }
-      }
-    }
-  }
-
-  private isWatchdogGenerationActive(watchdogGeneration: number): boolean {
-    return watchdogGeneration === this.watchdogGeneration;
   }
 }

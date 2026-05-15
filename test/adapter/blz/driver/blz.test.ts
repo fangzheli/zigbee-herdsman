@@ -89,14 +89,25 @@ describe("BLZ Driver", () => {
     vi.restoreAllMocks();
   });
 
+  const getWatchdog = (): {run: () => Promise<void>; failures: number} =>
+    (blz as unknown as {watchdog: {run: () => Promise<void>; failures: number}}).watchdog;
+
   describe("Connection", () => {
     it("should keep cached version behind defensive snapshots", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
       const waiterSource = fs.readFileSync("src/adapter/blz/driver/blzCommandWaiters.ts", "utf8");
+      const watchdogPath = "src/adapter/blz/driver/blzWatchdog.ts";
+      expect(fs.existsSync(watchdogPath)).toBe(true);
+      const watchdogSource = fs.readFileSync(watchdogPath, "utf8");
 
       expect(source).toContain("private version:");
       expect(source).not.toContain("public version:");
       expect(source).toContain("private readonly commandWaiters = new BlzCommandWaiters();");
+      expect(source).toContain("private readonly watchdog: BlzWatchdog;");
+      expect(source).not.toContain("private watchdogTimer");
+      expect(source).not.toContain("private failures");
+      expect(source).not.toContain("private watchdogGeneration");
+      expect(source).not.toContain("private watchdogPromise");
       expect(source).not.toContain("private waitress:");
       expect(source).not.toContain("new Waitress<BLZFrame, BLZWaitressMatcher>");
       expect(source).not.toContain("private waitFor(");
@@ -130,10 +141,18 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private cancelConnectResetOperations(error: Error): void");
       expect(source).toContain("this.cancelConnectResetOperations(this.createFailureToConnectError());");
       expect(source).toContain("private startWatchdogTimer(): void");
-      expect(source).toContain("this.startWatchdogTimer();");
-      expect(source).toContain("private isWatchdogGenerationActive(watchdogGeneration: number): boolean");
-      expect(source.match(/this\.isWatchdogGenerationActive\(watchdogGeneration\)/g)).toHaveLength(2);
-      expect(source.match(/watchdogGeneration !== this\.watchdogGeneration/g) ?? []).toHaveLength(0);
+      expect(source).toContain("this.watchdog.start();");
+      expect(source).toContain("this.watchdog.clear();");
+      expect(source).toContain("this.watchdog.resetFailures();");
+      expect(source).not.toContain("private async watchdogHandler");
+      expect(source).not.toContain("private async performWatchdogHeartbeat");
+      expect(source).not.toContain("private isWatchdogGenerationActive");
+      expect(watchdogSource).toContain("export class BlzWatchdog");
+      expect(watchdogSource).toContain("private timer?: NodeJS.Timeout;");
+      expect(watchdogSource).toContain("private generation = 0;");
+      expect(watchdogSource).toContain("private failures = 0;");
+      expect(watchdogSource).toContain("private heartbeatPromise?: Promise<void>;");
+      expect(watchdogSource).toContain("public async run(): Promise<void>");
       expect(source).not.toContain("private cancelWaiter(");
       expect(source).toContain("this.commandWaiters.waitFor(");
       expect(source).toContain("this.commandWaiters.cancel(waiter);");
@@ -204,7 +223,7 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private clearSerialRuntimeState(error: Error): void");
       expect(source).toContain("this.clearSerialRuntimeState(reconnectError);");
       expect(source).toContain("this.clearSerialRuntimeState(connectFailureError);");
-      expect(source.match(/this\.clearWatchdogTimer\(\);/g)).toHaveLength(3);
+      expect(source.match(/this\.clearWatchdogTimer\(\);/g)).toHaveLength(2);
     });
 
     it("should connect successfully", async () => {
@@ -821,9 +840,8 @@ describe("BLZ Driver", () => {
 
     it("should reset watchdog failures after a successful heartbeat", async () => {
       const reset = vi.fn();
-      const watchdog = (
-        blz as unknown as {watchdogHandler: () => Promise<void>}
-      ).watchdogHandler.bind(blz);
+      const watchdogState = getWatchdog();
+      const watchdog = watchdogState.run.bind(watchdogState);
       vi.spyOn(blz, "getVersion")
         .mockRejectedValueOnce(new Error("first miss"))
         .mockResolvedValueOnce(undefined)
@@ -842,9 +860,8 @@ describe("BLZ Driver", () => {
 
     it("should reset watchdog failures after a successful reconnect", async () => {
       const reset = vi.fn();
-      const watchdog = (
-        blz as unknown as {watchdogHandler: () => Promise<void>}
-      ).watchdogHandler.bind(blz);
+      const watchdogState = getWatchdog();
+      const watchdog = watchdogState.run.bind(watchdogState);
       vi.spyOn(blz, "getVersion").mockRejectedValue(new Error("heartbeat miss"));
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);
@@ -861,36 +878,34 @@ describe("BLZ Driver", () => {
 
     it("should preserve watchdog reset handling when heartbeat errors cannot be stringified", async () => {
       const reset = vi.fn();
-      const watchdog = (
-        blz as unknown as {watchdogHandler: () => Promise<void>}
-      ).watchdogHandler.bind(blz);
+      const watchdogState = getWatchdog();
+      const watchdog = watchdogState.run.bind(watchdogState);
       const heartbeatError = new Error("heartbeat miss");
       heartbeatError.toString = () => {
         throw new Error("heartbeat stringification failed");
       };
       vi.spyOn(console, "error").mockImplementation(() => {});
       vi.spyOn(blz, "getVersion").mockRejectedValue(heartbeatError);
-      (blz as unknown as {failures: number}).failures = 2;
+      watchdogState.failures = 2;
       blz.on("reset", reset);
 
       await expect(watchdog()).resolves.toBeUndefined();
 
       expect(reset).toHaveBeenCalledTimes(1);
-      expect((blz as unknown as {failures: number}).failures).toBe(0);
+      expect(watchdogState.failures).toBe(0);
     });
 
     it("should ignore watchdog failures after close interrupts an in-flight heartbeat", async () => {
       let rejectHeartbeat: ((error: Error) => void) | undefined;
       const reset = vi.fn();
-      const watchdog = (
-        blz as unknown as {watchdogHandler: () => Promise<void>}
-      ).watchdogHandler.bind(blz);
+      const watchdogState = getWatchdog();
+      const watchdog = watchdogState.run.bind(watchdogState);
       vi.spyOn(blz, "getVersion").mockReturnValue(
         new Promise((_, reject) => {
           rejectHeartbeat = reject;
         }),
       );
-      (blz as unknown as {failures: number}).failures = 2;
+      watchdogState.failures = 2;
       serialDriverMock.close.mockResolvedValue(undefined);
       blz.on("reset", reset);
 
@@ -905,9 +920,8 @@ describe("BLZ Driver", () => {
 
     it("should skip overlapping watchdog heartbeats", async () => {
       let finishHeartbeat: (() => void) | undefined;
-      const watchdog = (
-        blz as unknown as {watchdogHandler: () => Promise<void>}
-      ).watchdogHandler.bind(blz);
+      const watchdogState = getWatchdog();
+      const watchdog = watchdogState.run.bind(watchdogState);
       const getVersion = vi.spyOn(blz, "getVersion")
         .mockReturnValueOnce(
           new Promise<void>((resolve) => {
