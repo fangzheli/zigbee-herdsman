@@ -940,6 +940,9 @@ Future BLZ refactors should follow these rules:
   own response waiters, retries, queueing, and stop guards.
 - Made the low-level unicast APS send helper and APS frame builder private after
   moving production endpoint ZCL sends behind the high-level driver API.
+- Removed the public `Driver.setNode()` cache mutator; endpoint ZCL sends and
+  driver receive/lookup paths now update address caches through private driver
+  helpers only.
 
 ## Next Steps
 

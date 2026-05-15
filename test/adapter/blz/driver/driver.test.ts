@@ -66,6 +66,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async request(");
         expect(source).toContain("private makeApsFrame(");
         expect(source).not.toContain("public makeApsFrame(");
+        expect(source).not.toContain("public setNode(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -164,6 +165,19 @@ describe("BLZ high-level driver lifecycle", () => {
 
     function setDriverBlz(driver: Driver, blz: unknown): void {
         (driver as unknown as {blz?: unknown}).blz = blz;
+    }
+
+    function cacheDriverNode(
+        driver: Driver,
+        nwk: number,
+        ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
+    ): BlzEUI64 {
+        return (driver as unknown as {
+            cacheNodeIeee: (
+                nwk: number,
+                ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
+            ) => BlzEUI64;
+        }).cacheNodeIeee(nwk, ieee);
     }
 
     function waitForDriverZdo(
@@ -617,7 +631,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const source = new BlzEUI64("0000000000003344");
 
-        driver.setNode(0x3344, source);
+        cacheDriverNode(driver, 0x3344, source);
         (source as unknown as {_value: Buffer})._value[7] = 0xff;
 
         const firstLookup = await driver.networkIdToEUI64(0x3344);

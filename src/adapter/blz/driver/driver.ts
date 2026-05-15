@@ -1026,10 +1026,6 @@ export class Driver extends EventEmitter {
     this.emit("deviceLeft", nwk, ieeeAddr);
   }
 
-  public setNode(nwk: number, ieee: BlzEUI64 | number[]): void {
-    this.cacheNodeIeee(nwk, ieee);
-  }
-
   private async request(
     nwk: number | BlzEUI64,
     apsFrame: BlzApsFrame,
@@ -1315,7 +1311,7 @@ export class Driver extends EventEmitter {
     destinationEndpoint: number,
     data: Buffer,
   ): Promise<boolean> {
-    this.setNode(networkAddress, new BlzEUI64(ieeeAddress));
+    this.cacheNodeIeee(networkAddress, new BlzEUI64(ieeeAddress));
 
     const frame = this.makeApsFrame(clusterId);
     frame.profileId = profileId;
