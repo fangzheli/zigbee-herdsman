@@ -240,7 +240,7 @@ export class Driver extends EventEmitter {
     return new BlzEUI64(this.ieee);
   }
 
-  public updateNetworkParametersSnapshot(
+  private updateNetworkParametersSnapshot(
     channel: number,
     nwkUpdateId: number,
   ): void {
@@ -1627,11 +1627,11 @@ export class Driver extends EventEmitter {
     );
   }
 
-  public async leaveNetwork(): Promise<BlzStatus> {
+  private async leaveNetwork(): Promise<BlzStatus> {
     return await this.runBlzCommandOperation((blz) => blz.leaveNetwork());
   }
 
-  public async formNetworkWithParameters(
+  private async formNetworkWithParameters(
     extendedPanId: bigint,
     panId: number,
     channel: number,
@@ -1720,7 +1720,7 @@ export class Driver extends EventEmitter {
     return frameResponse;
   }
 
-  public async setGlobalTcLinkKey(
+  private async setGlobalTcLinkKey(
     linkKey: Bytes,
     outgoingFrameCounter: uint32_t,
   ): Promise<BlzStatus> {
@@ -1812,7 +1812,7 @@ export class Driver extends EventEmitter {
     return value;
   }
 
-  public async setNetworkKeyInfo(
+  private async setNetworkKeyInfo(
     nwkKey: Bytes,
     outgoingFrameCounter: uint32_t,
     nwkKeySeqNum: uint8_t,

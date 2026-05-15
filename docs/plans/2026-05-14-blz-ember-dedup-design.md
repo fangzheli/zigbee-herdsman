@@ -950,6 +950,9 @@ Future BLZ refactors should follow these rules:
   leave/key-restore/form-network/snapshot update sequencing to
   `Driver.changeChannel()`. The driver's channel-change delays are cancellable
   through the stop/reset cleanup paths.
+- Made the driver network mutation helpers used by startup/restore/channel
+  change private: direct leave, explicit form, network-parameter snapshot update,
+  and security-key write helpers are no longer public driver API.
 
 ## Next Steps
 

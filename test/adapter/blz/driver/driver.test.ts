@@ -71,6 +71,16 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public handleNodeJoined(");
         expect(source).toContain("private handleNodeLeft(");
         expect(source).not.toContain("public handleNodeLeft(");
+        expect(source).toContain("private updateNetworkParametersSnapshot(");
+        expect(source).not.toContain("public updateNetworkParametersSnapshot(");
+        expect(source).toContain("private async leaveNetwork(");
+        expect(source).not.toContain("public async leaveNetwork(");
+        expect(source).toContain("private async formNetworkWithParameters(");
+        expect(source).not.toContain("public async formNetworkWithParameters(");
+        expect(source).toContain("private async setGlobalTcLinkKey(");
+        expect(source).not.toContain("public async setGlobalTcLinkKey(");
+        expect(source).toContain("private async setNetworkKeyInfo(");
+        expect(source).not.toContain("public async setNetworkKeyInfo(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -194,6 +204,80 @@ describe("BLZ high-level driver lifecycle", () => {
         (driver as unknown as {
             handleNodeLeft: (nwk: number, ieeeAddr: string) => void;
         }).handleNodeLeft(nwk, ieeeAddr);
+    }
+
+    function updateDriverNetworkParametersSnapshot(
+        driver: Driver,
+        channel: number,
+        nwkUpdateId: number,
+    ): void {
+        (driver as unknown as {
+            updateNetworkParametersSnapshot: (channel: number, nwkUpdateId: number) => void;
+        }).updateNetworkParametersSnapshot(channel, nwkUpdateId);
+    }
+
+    function driverLeaveNetwork(driver: Driver): Promise<BlzStatus> {
+        return (driver as unknown as {
+            leaveNetwork: () => Promise<BlzStatus>;
+        }).leaveNetwork();
+    }
+
+    function driverFormNetworkWithParameters(
+        driver: Driver,
+        extendedPanId: bigint,
+        panId: number,
+        channel: number,
+    ): Promise<BlzStatus> {
+        return (driver as unknown as {
+            formNetworkWithParameters: (
+                extendedPanId: bigint,
+                panId: number,
+                channel: number,
+            ) => Promise<BlzStatus>;
+        }).formNetworkWithParameters(extendedPanId, panId, channel);
+    }
+
+    function driverSetGlobalTcLinkKey(
+        driver: Driver,
+        linkKey: Buffer,
+        outgoingFrameCounter: number,
+    ): Promise<BlzStatus> {
+        return (driver as unknown as {
+            setGlobalTcLinkKey: (
+                linkKey: Buffer,
+                outgoingFrameCounter: number,
+            ) => Promise<BlzStatus>;
+        }).setGlobalTcLinkKey(linkKey, outgoingFrameCounter);
+    }
+
+    function driverSetNetworkKeyInfo(
+        driver: Driver,
+        nwkKey: Buffer,
+        outgoingFrameCounter: number,
+        nwkKeySeqNum: number,
+    ): Promise<BlzStatus> {
+        return (driver as unknown as {
+            setNetworkKeyInfo: (
+                nwkKey: Buffer,
+                outgoingFrameCounter: number,
+                nwkKeySeqNum: number,
+            ) => Promise<BlzStatus>;
+        }).setNetworkKeyInfo(nwkKey, outgoingFrameCounter, nwkKeySeqNum);
+    }
+
+    function spyOnDriverSetNetworkKeyInfo(
+        driver: Driver,
+    ): ReturnType<typeof vi.spyOn> {
+        return vi.spyOn(
+            driver as unknown as {
+                setNetworkKeyInfo: (
+                    nwkKey: Buffer,
+                    outgoingFrameCounter: number,
+                    nwkKeySeqNum: number,
+                ) => Promise<BlzStatus>;
+            },
+            "setNetworkKeyInfo",
+        );
     }
 
     function waitForDriverZdo(
@@ -340,7 +424,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         setDriverBlz(driver, {leaveNetwork});
 
-        await expect(driver.leaveNetwork()).resolves.toBe(BlzStatus.SUCCESS);
+        await expect(driverLeaveNetwork(driver)).resolves.toBe(BlzStatus.SUCCESS);
 
         expect(leaveNetwork).toHaveBeenCalledTimes(1);
     });
@@ -351,7 +435,7 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, {formNetwork});
 
         await expect(
-            driver.formNetworkWithParameters(0x0102030405060708n, 0x1234, 15),
+            driverFormNetworkWithParameters(driver, 0x0102030405060708n, 0x1234, 15),
         ).resolves.toBe(BlzStatus.SUCCESS);
 
         expect(formNetwork).toHaveBeenCalledWith(0x0102030405060708n, 0x1234, 15);
@@ -714,7 +798,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         seedNetworkSnapshot(driver);
 
-        driver.updateNetworkParametersSnapshot(20, 3);
+        updateDriverNetworkParametersSnapshot(driver, 20, 3);
 
         const snapshot = driver.getNetworkParametersSnapshot();
         expect(snapshot.Channel).toBe(20);
@@ -892,7 +976,7 @@ describe("BLZ high-level driver lifecycle", () => {
         {
             name: "setGlobalTcLinkKey",
             invoke: (driver: Driver) =>
-                driver.setGlobalTcLinkKey(Buffer.alloc(16), 0),
+                driverSetGlobalTcLinkKey(driver, Buffer.alloc(16), 0),
             expectedCommand: "setGlobalTcLinkKey",
             hasParameters: true,
         },
@@ -919,7 +1003,7 @@ describe("BLZ high-level driver lifecycle", () => {
         {
             name: "setNetworkKeyInfo",
             invoke: (driver: Driver) =>
-                driver.setNetworkKeyInfo(Buffer.alloc(16), 0, 0),
+                driverSetNetworkKeyInfo(driver, Buffer.alloc(16), 0, 0),
             expectedCommand: "setNwkSecurityInfos",
             hasParameters: true,
         },
@@ -2101,7 +2185,7 @@ describe("BLZ high-level driver lifecycle", () => {
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
-        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(undefined);
 
         const startup = driver.startup();
@@ -2346,7 +2430,7 @@ describe("BLZ high-level driver lifecycle", () => {
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
-        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(null);
 
         const startup = driver.startup();
@@ -2398,7 +2482,7 @@ describe("BLZ high-level driver lifecycle", () => {
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
-        vi.spyOn(driver, "setNetworkKeyInfo").mockReturnValue(
+        spyOnDriverSetNetworkKeyInfo(driver).mockReturnValue(
             new Promise<BlzStatus>((resolve) => {
                 finishSetNetworkKeyInfo = () => resolve(BlzStatus.SUCCESS);
             }),
@@ -2453,7 +2537,7 @@ describe("BLZ high-level driver lifecycle", () => {
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
-        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(undefined);
 
         const startup = driver.startup();
@@ -2709,7 +2793,7 @@ describe("BLZ high-level driver lifecycle", () => {
             status: BlzStatus.SUCCESS,
             eui64: Buffer.from("0000000000003344", "hex"),
         });
-        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         setDriverBlz(driver, {formNetwork, execCommand});
 
         handleDriverNodeJoined(driver, 0x3344, 0x1111);
@@ -2725,7 +2809,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("forms a new network without cloning configured network bytes", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
-        vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         setDriverBlz(driver, {formNetwork});
         const originalFrom = Buffer.from;
         const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
@@ -2750,7 +2834,7 @@ describe("BLZ high-level driver lifecycle", () => {
     it("restores a network from a string backup key without Buffer.from hex conversion", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
-        const setNetworkKeyInfo = vi.spyOn(driver, "setNetworkKeyInfo").mockResolvedValue(BlzStatus.SUCCESS);
+        const setNetworkKeyInfo = spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         const networkKey = "0102030405060708090a0b0c0d0e0f10";
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
             networkOptions: {
@@ -2895,7 +2979,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await expect(driver.getGlobalTcLinkKey()).resolves.toEqual(
                 expect.objectContaining({linkKey}),
             );
-            await expect(driver.setGlobalTcLinkKey(linkKey, 7)).resolves.toBe(BlzStatus.SUCCESS);
+            await expect(driverSetGlobalTcLinkKey(driver, linkKey, 7)).resolves.toBe(BlzStatus.SUCCESS);
 
             expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
@@ -2927,7 +3011,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await expect(driver.getNetworkKeyInfo()).resolves.toEqual(
                 expect.objectContaining({nwkKey}),
             );
-            await expect(driver.setNetworkKeyInfo(nwkKey, 9, 2)).resolves.toBe(BlzStatus.SUCCESS);
+            await expect(driverSetNetworkKeyInfo(driver, nwkKey, 9, 2)).resolves.toBe(BlzStatus.SUCCESS);
 
             expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
