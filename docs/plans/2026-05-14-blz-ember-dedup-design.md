@@ -972,6 +972,9 @@ Future BLZ refactors should follow these rules:
   of a broad `switch (true)` block.
 - Aligned the exported BLZ incoming-message contract with actual payloads by
   declaring `bindingIndex` and `addressIndex` as nullable.
+- Centralized BLZ incoming-message event construction in a private helper so
+  nullable index fields, sender cache lookup, and ZDO response field shape stay
+  consistent across ZDO and ZCL receive paths.
 
 ## Next Steps
 

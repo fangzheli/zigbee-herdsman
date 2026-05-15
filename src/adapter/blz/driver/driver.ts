@@ -941,6 +941,30 @@ export class Driver extends EventEmitter {
     return apsFrame;
   }
 
+  private emitIncomingApsMessage(
+    frame: BLZFrameData,
+    apsFrame: BlzApsFrame,
+    options?: { zdoResponse?: GenericZdoResponse },
+  ): void {
+    const message: BlzIncomingMessage = {
+      messageType: frame.msgType,
+      apsFrame,
+      lqi: frame.lqi,
+      rssi: frame.rssi,
+      sender: frame.srcShortAddr,
+      bindingIndex: null,
+      addressIndex: null,
+      message: frame.message,
+      senderEui64: this.getCachedEui64(frame.srcShortAddr),
+    };
+
+    if (options) {
+      message.zdoResponse = options.zdoResponse;
+    }
+
+    this.emit("incomingMessage", message);
+  }
+
   private handleApsDataIndication(frame: BLZFrameData): void {
     const apsFrame = this.makeIncomingApsFrame(frame);
 
@@ -995,18 +1019,7 @@ export class Driver extends EventEmitter {
       }
 
       // always pass ZDO to bubble up to controller
-      this.emit("incomingMessage", {
-        messageType: frame.msgType,
-        apsFrame,
-        lqi: frame.lqi,
-        rssi: frame.rssi,
-        sender: frame.srcShortAddr,
-        bindingIndex: null,
-        addressIndex: null,
-        message: frame.message,
-        senderEui64: this.getCachedEui64(frame.srcShortAddr),
-        zdoResponse,
-      });
+      this.emitIncomingApsMessage(frame, apsFrame, { zdoResponse });
       return;
     }
 
@@ -1017,17 +1030,7 @@ export class Driver extends EventEmitter {
     });
 
     if (!handled) {
-      this.emit("incomingMessage", {
-        messageType: frame.msgType,
-        apsFrame,
-        lqi: frame.lqi,
-        rssi: frame.rssi,
-        sender: frame.srcShortAddr,
-        bindingIndex: null,
-        addressIndex: null,
-        message: frame.message,
-        senderEui64: this.getCachedEui64(frame.srcShortAddr),
-      });
+      this.emitIncomingApsMessage(frame, apsFrame);
     }
   }
 

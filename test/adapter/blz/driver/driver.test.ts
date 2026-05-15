@@ -75,6 +75,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public handleNodeLeft(");
         expect(source).toContain("private handleApsDataIndication(");
         expect(source).toContain("private makeIncomingApsFrame(");
+        expect(source).toContain("private emitIncomingApsMessage(");
         expect(source).not.toContain("switch (true)");
         expect(source).toContain("private updateNetworkParametersSnapshot(");
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");
