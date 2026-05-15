@@ -758,9 +758,21 @@ export class Driver extends EventEmitter {
 
       return result;
     } catch (error) {
-      await this.cleanupFailedStartup(error);
-      throw error;
+      return await this.throwAfterFailedStartupCleanup(error);
     }
+  }
+
+  private async throwAfterFailedStartupCleanup(error: unknown): Promise<never> {
+    try {
+      await this.cleanupFailedStartup(error);
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        "Failed to startup and cleanup BLZ resources",
+      );
+    }
+
+    throw error;
   }
 
   private async cleanupFailedStartup(error: unknown): Promise<void> {
@@ -780,6 +792,7 @@ export class Driver extends EventEmitter {
         () => `Failed to stop after failed startup ${stopError}`,
         NS,
       );
+      throw stopError;
     }
   }
 

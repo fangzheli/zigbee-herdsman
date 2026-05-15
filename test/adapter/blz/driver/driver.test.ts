@@ -2070,6 +2070,28 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("reports both startup failure and failed-startup cleanup failure", async () => {
+        const startupFailure = new Error("reset failed");
+        const cleanupFailure = new Error("startup cleanup close failed");
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockRejectedValue(startupFailure),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockRejectedValue(cleanupFailure),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        const error = await driver.startup().catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).errors).toEqual([startupFailure, cleanupFailure]);
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("does not detach BLZ runtime listeners that were never attached during failed startup", async () => {
         const blzMock = {
             on: vi.fn(),
