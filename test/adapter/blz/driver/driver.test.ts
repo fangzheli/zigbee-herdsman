@@ -19,6 +19,7 @@ import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../
 import {BlzApsFrame, BlzNetworkParameters} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
 import {logger} from "../../../../src/utils/logger";
+import * as ZSpec from "../../../../src/zspec";
 import * as Zdo from "../../../../src/zspec/zdo";
 
 describe("BLZ high-level driver lifecycle", () => {
@@ -1067,6 +1068,54 @@ describe("BLZ high-level driver lifecycle", () => {
             0,
             5,
             0x80,
+            data.length,
+            data,
+        );
+    });
+
+    it("builds multicast ZCL APS frames inside the driver API", async () => {
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const driver = makeDriverWithApsSender(sendApsData);
+        const data = Buffer.from([0x11, 0x12]);
+
+        await expect(
+            driver.sendZclMulticast(0x1234, 0x0006, 0x0105, 5, data),
+        ).resolves.toBe(true);
+
+        expect(sendApsData).toHaveBeenCalledWith(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
+            0x1234,
+            0x0105,
+            0x0006,
+            5,
+            0xff,
+            0,
+            5,
+            0x03,
+            data.length,
+            data,
+        );
+    });
+
+    it("builds broadcast ZCL APS frames inside the driver API", async () => {
+        const sendApsData = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const driver = makeDriverWithApsSender(sendApsData);
+        const data = Buffer.from([0x13, 0x14]);
+
+        await expect(
+            driver.sendZclBroadcast(ZSpec.BroadcastAddress.DEFAULT, 0x0006, 0x0105, 2, 3, data),
+        ).resolves.toBe(true);
+
+        expect(sendApsData).toHaveBeenCalledWith(
+            BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+            ZSpec.BroadcastAddress.DEFAULT,
+            0x0105,
+            0x0006,
+            2,
+            3,
+            0,
+            5,
+            0x03,
             data.length,
             data,
         );

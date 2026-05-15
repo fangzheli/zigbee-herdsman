@@ -1273,6 +1273,39 @@ export class Driver extends EventEmitter {
     }
   }
 
+  public async sendZclMulticast(
+    groupID: number,
+    clusterId: number,
+    profileId: number,
+    sourceEndpoint: number,
+    data: Buffer,
+  ): Promise<boolean> {
+    const frame = this.makeApsFrame(clusterId);
+    frame.profileId = profileId;
+    frame.sourceEndpoint = sourceEndpoint;
+    frame.destinationEndpoint = 0xff;
+    frame.groupId = groupID;
+
+    return await this.mrequest(frame, data);
+  }
+
+  public async sendZclBroadcast(
+    destination: ZSpec.BroadcastAddress,
+    clusterId: number,
+    profileId: number,
+    sourceEndpoint: number,
+    destinationEndpoint: number,
+    data: Buffer,
+  ): Promise<boolean> {
+    const frame = this.makeApsFrame(clusterId);
+    frame.profileId = profileId;
+    frame.sourceEndpoint = sourceEndpoint;
+    frame.destinationEndpoint = destinationEndpoint;
+    frame.groupId = destination;
+
+    return await this.brequest(destination, frame, data);
+  }
+
   public async sendZdo(
     ieeeAddress: string,
     networkAddress: number,

@@ -28,6 +28,8 @@ describe("BLZ Adapter", () => {
     brequest: ReturnType<typeof vi.fn>;
     mrequest: ReturnType<typeof vi.fn>;
     sendZdo: ReturnType<typeof vi.fn>;
+    sendZclMulticast: ReturnType<typeof vi.fn>;
+    sendZclBroadcast: ReturnType<typeof vi.fn>;
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
@@ -90,6 +92,8 @@ describe("BLZ Adapter", () => {
       brequest: vi.fn(),
       mrequest: vi.fn(),
       sendZdo: vi.fn(),
+      sendZclMulticast: vi.fn(),
+      sendZclBroadcast: vi.fn(),
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
@@ -168,6 +172,15 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain("type ZdoSendWaiter");
       expect(source).not.toContain("private async sendZdoFrame(");
       expect(source).toContain("this.driver.sendZdo(");
+    });
+
+    it("keeps group and broadcast ZCL APS sends inside the driver API", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).not.toContain("this.driver.mrequest(");
+      expect(source).not.toContain("this.driver.brequest(");
+      expect(source).toContain("this.driver.sendZclMulticast(");
+      expect(source).toContain("this.driver.sendZclBroadcast(");
     });
 
     it("should stop successfully", async () => {
@@ -574,13 +587,8 @@ describe("BLZ Adapter", () => {
       });
     });
 
-    it("should send ZCL frame to all through broadcast request", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      apsFrame.sequence = 0x33;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.brequest.mockResolvedValue(true);
-      driverMock.mrequest.mockResolvedValue(true);
+    it("should send ZCL frame to all through the broadcast driver API", async () => {
+      driverMock.sendZclBroadcast.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -603,25 +611,19 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(200);
       await send;
 
-      expect(driverMock.brequest).toHaveBeenCalledWith(
+      expect(driverMock.sendZclBroadcast).toHaveBeenCalledWith(
         ZSpec.BroadcastAddress.DEFAULT,
-        expect.objectContaining({
-          profileId: ZSpec.HA_PROFILE_ID,
-          clusterId: Zcl.Clusters.genOnOff.ID,
-          sourceEndpoint: 1,
-          destinationEndpoint: 3,
-          groupId: ZSpec.BroadcastAddress.DEFAULT,
-        }),
+        Zcl.Clusters.genOnOff.ID,
+        ZSpec.HA_PROFILE_ID,
+        1,
+        3,
         zclFrame.toBuffer(),
       );
-      expect(driverMock.mrequest).not.toHaveBeenCalled();
+      expect(driverMock.sendZclMulticast).not.toHaveBeenCalled();
     });
 
     it("should reject when group ZCL send fails", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.mrequest.mockResolvedValue(false);
+      driverMock.sendZclMulticast.mockResolvedValue(false);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -642,10 +644,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should cancel group send settle delay when stopping", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.mrequest.mockResolvedValue(true);
+      driverMock.sendZclMulticast.mockResolvedValue(true);
       driverMock.stop.mockResolvedValue(undefined);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
@@ -679,10 +678,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should register active group lower sends as cancellable adapter operations", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.mrequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.sendZclMulticast.mockReturnValue(new Promise<boolean>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
@@ -717,10 +713,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should reject when broadcast ZCL send fails", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.brequest.mockResolvedValue(false);
+      driverMock.sendZclBroadcast.mockResolvedValue(false);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -746,10 +739,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should register active broadcast lower sends as cancellable adapter operations", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.sendZclBroadcast.mockReturnValue(new Promise<boolean>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
@@ -1087,10 +1077,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should use source endpoint and profile ID for group ZCL sends", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.mrequest.mockResolvedValue(true);
+      driverMock.sendZclMulticast.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -1115,22 +1102,17 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(200);
       await send;
 
-      expect(driverMock.mrequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          profileId: 0x0105,
-          sourceEndpoint: 5,
-          destinationEndpoint: 0xff,
-          groupId: 0x1234,
-        }),
+      expect(driverMock.sendZclMulticast).toHaveBeenCalledWith(
+        0x1234,
+        Zcl.Clusters.genOnOff.ID,
+        0x0105,
+        5,
         zclFrame.toBuffer(),
       );
     });
 
     it("should use explicit profile ID for broadcast ZCL sends", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.clusterId = Zcl.Clusters.genOnOff.ID;
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.brequest.mockResolvedValue(true);
+      driverMock.sendZclBroadcast.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
         Zcl.FrameType.GLOBAL,
         Zcl.Direction.CLIENT_TO_SERVER,
@@ -1156,13 +1138,12 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(200);
       await send;
 
-      expect(driverMock.brequest).toHaveBeenCalledWith(
+      expect(driverMock.sendZclBroadcast).toHaveBeenCalledWith(
         ZSpec.BroadcastAddress.DEFAULT,
-        expect.objectContaining({
-          profileId: 0x0105,
-          sourceEndpoint: 2,
-          destinationEndpoint: 3,
-        }),
+        Zcl.Clusters.genOnOff.ID,
+        0x0105,
+        2,
+        3,
         zclFrame.toBuffer(),
       );
     });

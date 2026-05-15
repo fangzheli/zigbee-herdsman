@@ -930,6 +930,9 @@ Future BLZ refactors should follow these rules:
   and channel-change parsing/reform orchestration.
 - Made the high-level driver's ZDO waiter factory private after moving all
   production ZDO response waiting behind `Driver.sendZdo()`.
+- Moved group and broadcast ZCL APS frame construction into high-level driver
+  methods, keeping adapter group/broadcast sends focused on queueing, stop
+  guards, and settle-delay behavior.
 
 ## Next Steps
 

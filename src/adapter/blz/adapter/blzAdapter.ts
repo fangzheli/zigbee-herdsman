@@ -789,16 +789,16 @@ export class BLZAdapter extends Adapter {
     return await this.queue.execute<void>(async () => {
       const generation = this.stopGeneration;
       this.checkInterpanLock();
-      const frame = this.makeZclApsFrame(
-        zclFrame.cluster.ID,
-        profileId ?? ZSpec.HA_PROFILE_ID,
-        sourceEndpoint ?? 0x01,
-        0xff,
-        groupID,
-      );
 
       const sent = await this.runOperationWhileRunning(
-        () => this.driver.mrequest(frame, zclFrame.toBuffer()),
+        () =>
+          this.driver.sendZclMulticast(
+            groupID,
+            zclFrame.cluster.ID,
+            profileId ?? ZSpec.HA_PROFILE_ID,
+            sourceEndpoint ?? 0x01,
+            zclFrame.toBuffer(),
+          ),
         generation,
       );
       if (!sent) {
@@ -832,16 +832,16 @@ export class BLZAdapter extends Adapter {
         (sourceEndpoint === ZSpec.GP_ENDPOINT && endpoint === ZSpec.GP_ENDPOINT
           ? ZSpec.GP_PROFILE_ID
           : ZSpec.HA_PROFILE_ID);
-      const frame = this.makeZclApsFrame(
-        zclFrame.cluster.ID,
-        resolvedProfileId,
-        sourceEndpoint,
-        endpoint,
-        destination,
-      );
-
       const sent = await this.runOperationWhileRunning(
-        () => this.driver.brequest(destination, frame, zclFrame.toBuffer()),
+        () =>
+          this.driver.sendZclBroadcast(
+            destination,
+            zclFrame.cluster.ID,
+            resolvedProfileId,
+            sourceEndpoint,
+            endpoint,
+            zclFrame.toBuffer(),
+          ),
         generation,
       );
       if (!sent) {
