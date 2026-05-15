@@ -169,13 +169,10 @@ export class Blz extends EventEmitter {
       const resetForReconnect = (): void => {
         this.cancelConnectResetOperations(this.createFailureToConnectError());
       };
-      this.attachConnectResetListener(resetForReconnect);
-
-      try {
-        await this.connectWithRetries(options, connectGeneration);
-      } finally {
-        this.detachConnectResetListener(resetForReconnect);
-      }
+      await this.withConnectResetListener(
+        resetForReconnect,
+        () => this.connectWithRetries(options, connectGeneration),
+      );
 
       this.inResetingProcess = false;
       this.watchdog.resetFailures();
@@ -254,6 +251,47 @@ export class Blz extends EventEmitter {
     );
     error.cause = lastError;
     throw error;
+  }
+
+  private async withConnectResetListener(
+    listener: () => void,
+    operation: () => Promise<void>,
+  ): Promise<void> {
+    let operationError: unknown;
+    let hasOperationError = false;
+    let cleanupError: unknown;
+    let hasCleanupError = false;
+
+    this.attachConnectResetListener(listener);
+
+    try {
+      await operation();
+    } catch (error) {
+      operationError = error;
+      hasOperationError = true;
+    }
+
+    try {
+      this.detachConnectResetListener(listener);
+    } catch (error) {
+      cleanupError = error;
+      hasCleanupError = true;
+    }
+
+    if (hasOperationError && hasCleanupError) {
+      throw new AggregateError(
+        [operationError, cleanupError],
+        "Failed to connect and cleanup connect reset listener",
+      );
+    }
+
+    if (hasOperationError) {
+      throw operationError;
+    }
+
+    if (hasCleanupError) {
+      throw cleanupError;
+    }
   }
 
   private async runSerialConnectAttempt(

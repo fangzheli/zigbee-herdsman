@@ -134,10 +134,12 @@ describe("BLZ Driver", () => {
       expect(source).toContain("this.detachSerialDriverResetListener();");
       expect(source).toContain("private attachConnectResetListener(listener: () => void): void");
       expect(source).toContain("private detachConnectResetListener(listener: () => void): void");
-      expect(source).toContain("this.attachConnectResetListener(resetForReconnect);");
-      expect(source).toContain("this.detachConnectResetListener(resetForReconnect);");
+      expect(source).toContain("private async withConnectResetListener(");
+      expect(source).toContain("await this.withConnectResetListener(");
+      expect(source).toContain("this.attachConnectResetListener(listener);");
+      expect(source).toContain("this.detachConnectResetListener(listener);");
       expect(source).toContain("private async connectWithRetries(");
-      expect(source).toContain("await this.connectWithRetries(options, connectGeneration);");
+      expect(source).toContain("() => this.connectWithRetries(options, connectGeneration),");
       expect(source).toContain("private cancelConnectResetOperations(error: Error): void");
       expect(source).toContain("this.cancelConnectResetOperations(this.createFailureToConnectError());");
       expect(source).toContain("private startWatchdogTimer(): void");
@@ -467,6 +469,38 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
       expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+    });
+
+    it("should report both connect and connect-reset listener cleanup failures", async () => {
+      const detachError = new Error("connect reset detach failed");
+      serialDriverMock.connect.mockRejectedValue(new Error("Connection failed"));
+      serialDriverMock.isInitialized.mockReturnValue(false);
+      serialDriverMock.close.mockResolvedValue(undefined);
+      serialDriverMock.off.mockImplementation((event: string) => {
+        if (event === "reset") {
+          throw detachError;
+        }
+      });
+
+      const connect = blz.connect(serialPortOptions).catch((error: unknown) => error);
+
+      for (let i = 1; i < MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        await vi.advanceTimersByTimeAsync(
+          SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i,
+        );
+      }
+
+      const error = await connect;
+
+      expect(error).toBeInstanceOf(AggregateError);
+      const aggregateError = error as AggregateError;
+      expect((aggregateError.errors[0] as Error).message).toBe(
+        `Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`,
+      );
+      expect(aggregateError.errors[1]).toBe(detachError);
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
     });
 
     it("should detach the existing serial reset listener when reconnect attempts fail", async () => {
