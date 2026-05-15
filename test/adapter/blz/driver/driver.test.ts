@@ -165,6 +165,21 @@ describe("BLZ high-level driver lifecycle", () => {
         }).backupMan;
     }
 
+    function bytesThatThrowWhenHexLogged(values: number[], message: string): number[] {
+        return new Proxy(values, {
+            get(target, property, receiver) {
+                if (typeof property === "string" && /^\d+$/.test(property)) {
+                    const stack = new Error().stack ?? "";
+                    if (stack.includes("bytesToHex")) {
+                        throw new Error(message);
+                    }
+                }
+
+                return Reflect.get(target, property, receiver);
+            },
+        });
+    }
+
     it("reports coordinator version from the active BLZ transport", () => {
         const version = {product: 7, major: "1", minor: "2", patch: "3", build: "4"};
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
@@ -2354,6 +2369,57 @@ describe("BLZ high-level driver lifecycle", () => {
             expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.networkKey);
         } finally {
             fromSpy.mockRestore();
+        }
+    });
+
+    it("does not hex-format restore compatibility bytes unless debug logging evaluates the message", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const extendedPanID = bytesThatThrowWhenHexLogged(
+            [1, 2, 3, 4, 5, 6, 7, 8],
+            "eager restore extended PAN ID hex",
+        );
+        const networkKey = bytesThatThrowWhenHexLogged(
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+            "eager restore network key hex",
+        );
+        const driver = new Driver(
+            serialPortOptions,
+            {
+                ...networkOptions,
+                extendedPanID,
+                networkKey,
+            },
+            "/tmp/backup.json",
+        );
+        vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
+            networkOptions: {
+                panId: networkOptions.panID,
+                extendedPanId: bytesThatThrowWhenHexLogged(
+                    [1, 2, 3, 4, 5, 6, 7, 8],
+                    "eager backup extended PAN ID hex",
+                ),
+                networkKey: bytesThatThrowWhenHexLogged(
+                    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+                    "eager backup network key hex",
+                ),
+            },
+            logicalChannel: 11,
+        } as any);
+
+        try {
+            await expect(
+                (
+                    driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}
+                ).needsToBeRestore({
+                    ...networkOptions,
+                    extendedPanID,
+                    networkKey,
+                }),
+            ).resolves.toBe(true);
+
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            debug.mockRestore();
         }
     });
 

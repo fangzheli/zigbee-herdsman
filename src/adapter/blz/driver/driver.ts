@@ -1597,11 +1597,11 @@ export class Driver extends EventEmitter {
     const currentExtendedPanID = options.extendedPanID!;
     const backupExtendedPanID = backup.networkOptions.extendedPanId;
     logger.debug(
-      `Configured extendedPanID (raw): ${bytesToHex(currentExtendedPanID)}`,
+      () => `Configured extendedPanID (raw): ${bytesToHex(currentExtendedPanID)}`,
       NS,
     );
     logger.debug(
-      `Backup extendedPanID (raw): ${bytesToHex(backupExtendedPanID)}`,
+      () => `Backup extendedPanID (raw): ${bytesToHex(backupExtendedPanID)}`,
       NS,
     );
 
@@ -1609,11 +1609,11 @@ export class Driver extends EventEmitter {
     const currentPanID = uint64FromLittleEndianBytes(currentExtendedPanID);
     const backupPanID = uint64FromLittleEndianBytes(backupExtendedPanID);
     logger.debug(
-      `Configured extendedPanID (uint64): ${currentPanID.toString(16)}`,
+      () => `Configured extendedPanID (uint64): ${currentPanID.toString(16)}`,
       NS,
     );
     logger.debug(
-      `Backup extendedPanID (uint64): ${backupPanID.toString(16)}`,
+      () => `Backup extendedPanID (uint64): ${backupPanID.toString(16)}`,
       NS,
     );
     valid = valid && currentPanID === backupPanID;
@@ -1621,11 +1621,11 @@ export class Driver extends EventEmitter {
     const currentNetworkKey = options.networkKey!;
     const backupNetworkKey = backup.networkOptions.networkKey;
     logger.debug(
-      `Configured networkKey (raw): ${bytesToHex(currentNetworkKey)}`,
+      () => `Configured networkKey (raw): ${bytesToHex(currentNetworkKey)}`,
       NS,
     );
     logger.debug(
-      `Backup networkKey (raw): ${bytesToHex(backupNetworkKey)}`,
+      () => `Backup networkKey (raw): ${bytesToHex(backupNetworkKey)}`,
       NS,
     );
     valid = valid && bytesEqual(currentNetworkKey, backupNetworkKey);

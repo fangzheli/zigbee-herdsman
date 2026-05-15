@@ -917,6 +917,8 @@ Future BLZ refactors should follow these rules:
   channel-change path until debug logging evaluates the message.
 - Deferred BLZ network-key and trust-center-key debug formatting until debug
   logging evaluates the message.
+- Deferred BLZ restore-compatibility raw PAN ID and network-key hex formatting
+  until debug logging evaluates the message.
 
 ## Next Steps
 
