@@ -558,9 +558,15 @@ export class Driver extends EventEmitter {
       this.detachBlzRuntimeListeners(this.blzRuntimeListeners);
     }
 
-    blz.on("reset", this.onBlzResetHandler);
-    blz.on("frame", this.handleFrameHandler);
-    this.blzRuntimeListeners = blz;
+    try {
+      blz.on("reset", this.onBlzResetHandler);
+      blz.on("frame", this.handleFrameHandler);
+      this.blzRuntimeListeners = blz;
+    } catch (error) {
+      blz.off("reset", this.onBlzResetHandler);
+      blz.off("frame", this.handleFrameHandler);
+      throw error;
+    }
   }
 
   private detachBlzCloseListener(blz: Blz): void {

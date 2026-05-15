@@ -2347,6 +2347,61 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(reset).not.toHaveBeenCalled();
     });
 
+    it("detaches partially attached BLZ runtime listeners when startup listener attach fails", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn((event: string) => {
+                if (event === "frame") {
+                    throw new Error("frame listener failed");
+                }
+            }),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
+
+        const startupResult = driver.startup().then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(3000);
+
+        await expect(startupResult).resolves.toBe("rejected:frame listener failed");
+
+        expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
+        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect(blzMock.close).toHaveBeenCalledWith(false);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("stores startup extended PAN ID without zero-fill allocation", async () => {
         vi.useFakeTimers();
         const blzMock = {
