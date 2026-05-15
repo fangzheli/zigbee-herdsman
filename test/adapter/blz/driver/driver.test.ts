@@ -756,6 +756,24 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(observed).toEqual(new Error("Driver reset"));
     });
 
+    it("continues reset startup cleanup when ZDO waiter cleanup fails", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cleanupError = new Error("zdo waiter cleanup failed");
+        const zdoResponseWaiters = (driver as unknown as {zdoResponseWaiters: {clear: (error: Error) => void}}).zdoResponseWaiters;
+        const startupDelay = (driver as unknown as {startupDelay: {cancel: () => void}}).startupDelay;
+        const startupOperations = (driver as unknown as {startupOperations: {cancel: (error: Error) => void}}).startupOperations;
+        const startupDelayCancel = vi.spyOn(startupDelay, "cancel");
+        const startupOperationsCancel = vi.spyOn(startupOperations, "cancel");
+        zdoResponseWaiters.clear = vi.fn((): void => {
+            throw cleanupError;
+        });
+
+        await expect(driver.reset()).rejects.toThrow(cleanupError);
+
+        expect(startupDelayCancel).toHaveBeenCalledTimes(1);
+        expect(startupOperationsCancel).toHaveBeenCalledTimes(1);
+    });
+
     it("handles waiter cancellation before waiters start", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const waiter = waitForDriverZdo(driver, 0x1234, 0x8000, 1000);

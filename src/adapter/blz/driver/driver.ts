@@ -391,9 +391,7 @@ export class Driver extends EventEmitter {
     const resettingBlz = this.blz;
     logger.debug(`Reset connection.`, NS);
     const resetError = new Error("Driver reset");
-    this.cancelDriverRequests(resetError);
-    this.clearZdoResponseWaiters(resetError);
-    this.cancelStartupOperations(resetError);
+    this.prepareReset(resetError);
 
     try {
       // logger.debug(`Ready to reset in 10 seconds`, NS);
@@ -434,6 +432,20 @@ export class Driver extends EventEmitter {
 
       return await this.throwAfterFailedResetCleanup(err);
     }
+  }
+
+  private prepareReset(resetError: Error): void {
+    runCleanupSteps([
+      () => {
+        this.cancelDriverRequests(resetError);
+      },
+      () => {
+        this.clearZdoResponseWaiters(resetError);
+      },
+      () => {
+        this.cancelStartupOperations(resetError);
+      },
+    ]);
   }
 
   private async throwAfterFailedResetCleanup(error: unknown): Promise<never> {
