@@ -1326,6 +1326,46 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(channelChangeCancel).toHaveBeenCalledTimes(1);
     });
 
+    it("continues driver lifecycle cleanup when reset delay cancellation fails", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cancelError = new Error("reset delay cancel failed");
+        const resetDelay = (driver as unknown as {resetDelay: {cancel: () => void}}).resetDelay;
+        const resetForceOperations = (driver as unknown as {resetForceOperations: {cancel: (error: Error) => void}}).resetForceOperations;
+        const startupDelay = (driver as unknown as {startupDelay: {cancel: () => void}}).startupDelay;
+        const startupOperations = (driver as unknown as {startupOperations: {cancel: (error: Error) => void}}).startupOperations;
+        const resetForceCancel = vi.spyOn(resetForceOperations, "cancel");
+        const startupDelayCancel = vi.spyOn(startupDelay, "cancel");
+        const startupOperationsCancel = vi.spyOn(startupOperations, "cancel");
+        resetDelay.cancel = vi.fn((): void => {
+            throw cancelError;
+        });
+
+        expect(() => {
+            (driver as unknown as {cancelDriverLifecycle: (error: Error) => void}).cancelDriverLifecycle(new Error("Driver stopped"));
+        }).toThrow(cancelError);
+
+        expect(resetForceCancel).toHaveBeenCalledTimes(1);
+        expect(startupDelayCancel).toHaveBeenCalledTimes(1);
+        expect(startupOperationsCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it("continues startup operation cleanup when startup delay cancellation fails", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cancelError = new Error("startup delay cancel failed");
+        const startupDelay = (driver as unknown as {startupDelay: {cancel: () => void}}).startupDelay;
+        const startupOperations = (driver as unknown as {startupOperations: {cancel: (error: Error) => void}}).startupOperations;
+        const startupOperationsCancel = vi.spyOn(startupOperations, "cancel");
+        startupDelay.cancel = vi.fn((): void => {
+            throw cancelError;
+        });
+
+        expect(() => {
+            (driver as unknown as {cancelStartupOperations: (error: Error) => void}).cancelStartupOperations(new Error("Driver stopped"));
+        }).toThrow(cancelError);
+
+        expect(startupOperationsCancel).toHaveBeenCalledTimes(1);
+    });
+
     it("cancels network ID to EUI64 lookup when stopping", async () => {
         vi.useFakeTimers();
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));

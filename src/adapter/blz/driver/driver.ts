@@ -1296,13 +1296,25 @@ export class Driver extends EventEmitter {
 
   private cancelDriverLifecycle(error: Error): void {
     this.stopGeneration += 1;
-    this.cancelResetRecovery(error);
-    this.cancelStartupOperations(error);
+    runCleanupSteps([
+      () => {
+        this.cancelResetRecovery(error);
+      },
+      () => {
+        this.cancelStartupOperations(error);
+      },
+    ]);
   }
 
   private cancelResetRecovery(error: Error): void {
-    this.resetDelay.cancel();
-    this.resetForceOperations.cancel(error);
+    runCleanupSteps([
+      () => {
+        this.resetDelay.cancel();
+      },
+      () => {
+        this.resetForceOperations.cancel(error);
+      },
+    ]);
   }
 
   private cancelRequestOperations(error: Error): void {
@@ -1415,8 +1427,14 @@ export class Driver extends EventEmitter {
 
   private cancelStartupOperations(error: Error): void {
     this.startupCancellationError = error;
-    this.cancelStartupDelay();
-    this.cancelStartupRunningOperations(error);
+    runCleanupSteps([
+      () => {
+        this.cancelStartupDelay();
+      },
+      () => {
+        this.cancelStartupRunningOperations(error);
+      },
+    ]);
   }
 
   private cancelStartupDelay(): void {
