@@ -1237,6 +1237,8 @@ Future BLZ refactors should follow these rules:
   payloads with unprintable errors still fall through to `undefined`/fallback.
 - Deferred high-level startup connect failure formatting so unprintable connect
   errors do not mask the original startup failure or cleanup path.
+- Deferred low-level BLZ connect-attempt failure formatting so an unprintable
+  connect error cannot skip failed-attempt close cleanup and retry handling.
 
 ## Next Steps
 

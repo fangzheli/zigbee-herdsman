@@ -408,9 +408,11 @@ export class Blz extends EventEmitter {
 
         throw new Error("Driver reported connection but is not initialized");
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+        const attemptError =
+          error instanceof Error ? error : new Error(String(error));
+        lastError = attemptError;
         logger.error(
-          `Connection attempt ${i} failed: ${lastError.message}`,
+          () => `Connection attempt ${i} failed: ${attemptError.message}`,
           NS,
         );
 
