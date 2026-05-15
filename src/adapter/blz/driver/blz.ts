@@ -5,6 +5,11 @@ import { EventEmitter } from "events";
 import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { bufferFromBytes, bytesToHex } from "../byteUtils";
+import {
+  attachListenersOrRollback,
+  detachListeners,
+  type OwnedEventListener,
+} from "../eventListeners";
 import { SerialPortOptions } from "../../tstype";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
@@ -310,6 +315,11 @@ export class Blz extends EventEmitter {
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
   private readonly onFrameReceivedHandler = this.onFrameReceived.bind(this);
   private readonly watchdogHandlerRef = this.watchdogHandler.bind(this);
+  private readonly serialDriverEventBridgeRegistrations: readonly OwnedEventListener[] =
+    [
+      { event: "received", listener: this.onFrameReceivedHandler },
+      { event: "close", listener: this.onSerialCloseHandler },
+    ];
   private version: BlzVersion;
 
   constructor() {
@@ -558,16 +568,11 @@ export class Blz extends EventEmitter {
       return;
     }
 
-    try {
-      this.serialDriver.on("received", this.onFrameReceivedHandler);
-      this.serialDriver.on("close", this.onSerialCloseHandler);
-      this.serialDriverEventBridgeAttached = true;
-    } catch (error) {
-      this.serialDriver.off("received", this.onFrameReceivedHandler);
-      this.serialDriver.off("close", this.onSerialCloseHandler);
-      this.serialDriverEventBridgeAttached = false;
-      throw error;
-    }
+    attachListenersOrRollback(
+      this.serialDriver,
+      this.serialDriverEventBridgeRegistrations,
+    );
+    this.serialDriverEventBridgeAttached = true;
   }
 
   private attachSerialDriverResetListener(): void {
@@ -589,8 +594,10 @@ export class Blz extends EventEmitter {
       return;
     }
 
-    this.serialDriver.off("received", this.onFrameReceivedHandler);
-    this.serialDriver.off("close", this.onSerialCloseHandler);
+    detachListeners(
+      this.serialDriver,
+      this.serialDriverEventBridgeRegistrations,
+    );
     this.serialDriverEventBridgeAttached = false;
   }
 

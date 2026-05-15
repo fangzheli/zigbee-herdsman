@@ -22,6 +22,11 @@ import {
   uint64ToBigEndianBuffer,
   uint64ToLittleEndianBuffer,
 } from "../byteUtils";
+import {
+  attachListenersOrRollback,
+  detachListeners,
+  type OwnedEventListener,
+} from "../eventListeners";
 import { normalizeIeeeAddress } from "../ieee";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
@@ -152,6 +157,11 @@ export class Driver extends EventEmitter {
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
   private readonly handleFrameHandler = this.handleFrame.bind(this);
+  private readonly blzRuntimeListenerRegistrations: readonly OwnedEventListener[] =
+    [
+      { event: "reset", listener: this.onBlzResetHandler },
+      { event: "frame", listener: this.handleFrameHandler },
+    ];
   private serialOpt: TsType.SerialPortOptions;
   private readonly backupMan: BLZAdapterBackup;
 
@@ -558,15 +568,8 @@ export class Driver extends EventEmitter {
       this.detachBlzRuntimeListeners(this.blzRuntimeListeners);
     }
 
-    try {
-      blz.on("reset", this.onBlzResetHandler);
-      blz.on("frame", this.handleFrameHandler);
-      this.blzRuntimeListeners = blz;
-    } catch (error) {
-      blz.off("reset", this.onBlzResetHandler);
-      blz.off("frame", this.handleFrameHandler);
-      throw error;
-    }
+    attachListenersOrRollback(blz, this.blzRuntimeListenerRegistrations);
+    this.blzRuntimeListeners = blz;
   }
 
   private detachBlzCloseListener(blz: Blz): void {
@@ -583,8 +586,7 @@ export class Driver extends EventEmitter {
       return;
     }
 
-    blz.off("reset", this.onBlzResetHandler);
-    blz.off("frame", this.handleFrameHandler);
+    detachListeners(blz, this.blzRuntimeListenerRegistrations);
     this.blzRuntimeListeners = undefined;
   }
 

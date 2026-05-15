@@ -8,6 +8,11 @@ import { logger } from "../../../utils/logger";
 import { SerialPort } from "../../serialPort";
 import { isTcpPath, parseTcpPath } from "../../utils";
 import { SerialPortOptions } from "../../tstype";
+import {
+  attachListenersOrRollback,
+  detachListeners,
+  type OwnedEventListener,
+} from "../eventListeners";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
 import { Frame } from "./frame";
@@ -72,6 +77,11 @@ export class SerialDriver extends EventEmitter {
   private readonly onParsedHandler = this.onParsed.bind(this);
   private readonly onPortCloseHandler = this.onPortClose.bind(this);
   private readonly onPortErrorHandler = this.onPortError.bind(this);
+  private readonly runtimePortListenerRegistrations: readonly OwnedEventListener[] =
+    [
+      { event: "close", listener: this.onPortCloseHandler, once: true },
+      { event: "error", listener: this.onPortErrorHandler },
+    ];
   private readonly connectOperations = new CancellableOperation();
   private detachSocketListeners?: () => void;
 
@@ -489,13 +499,11 @@ export class SerialDriver extends EventEmitter {
   }
 
   private attachRuntimePortListeners(port: SerialPort | net.Socket): void {
-    port.once("close", this.onPortCloseHandler);
-    port.on("error", this.onPortErrorHandler);
+    attachListenersOrRollback(port, this.runtimePortListenerRegistrations);
   }
 
   private detachRuntimePortListeners(port: SerialPort | net.Socket): void {
-    port.off("close", this.onPortCloseHandler);
-    port.off("error", this.onPortErrorHandler);
+    detachListeners(port, this.runtimePortListenerRegistrations);
   }
 
   private attachSocketOpenListeners(
@@ -505,10 +513,15 @@ export class SerialDriver extends EventEmitter {
     onError: (error: Error) => void,
     onClose: () => void,
   ): void {
-    port.on("connect", onConnect);
-    port.on("ready", onReady);
-    port.once("error", onError);
-    port.once("close", onClose);
+    attachListenersOrRollback(
+      port,
+      this.socketOpenListenerRegistrations(
+        onConnect,
+        onReady,
+        onError,
+        onClose,
+      ),
+    );
   }
 
   private detachSocketOpenListeners(
@@ -518,10 +531,29 @@ export class SerialDriver extends EventEmitter {
     onError: (error: Error) => void,
     onClose: () => void,
   ): void {
-    port.off("connect", onConnect);
-    port.off("ready", onReady);
-    port.off("error", onError);
-    port.off("close", onClose);
+    detachListeners(
+      port,
+      this.socketOpenListenerRegistrations(
+        onConnect,
+        onReady,
+        onError,
+        onClose,
+      ),
+    );
+  }
+
+  private socketOpenListenerRegistrations(
+    onConnect: () => void,
+    onReady: () => void,
+    onError: (error: Error) => void,
+    onClose: () => void,
+  ): readonly OwnedEventListener[] {
+    return [
+      { event: "connect", listener: onConnect },
+      { event: "ready", listener: onReady },
+      { event: "error", listener: onError, once: true },
+      { event: "close", listener: onClose, once: true },
+    ];
   }
 
   private cancelPendingOperations(error: Error): void {

@@ -219,8 +219,10 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("this.detachSocketOpenListeners(");
       expect(source).toContain("private attachRuntimePortListeners(port: SerialPort | net.Socket): void");
       expect(source).toContain("private detachRuntimePortListeners(port: SerialPort | net.Socket): void");
-      expect(source.match(/port\.once\("close", this\.onPortCloseHandler\);/g)).toHaveLength(1);
-      expect(source.match(/port\.off\("close", this\.onPortCloseHandler\);/g)).toHaveLength(1);
+      expect(source).toContain("private readonly runtimePortListenerRegistrations");
+      expect(source).toContain('{ event: "close", listener: this.onPortCloseHandler, once: true }');
+      expect(source).toContain("attachListenersOrRollback(port, this.runtimePortListenerRegistrations);");
+      expect(source).toContain("detachListeners(port, this.runtimePortListenerRegistrations);");
     });
 
     it("should connect successfully", async () => {

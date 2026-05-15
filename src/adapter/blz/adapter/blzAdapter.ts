@@ -24,6 +24,11 @@ import {
 } from "../../tstype";
 import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
+import {
+  attachListenersOrRollback,
+  detachListeners,
+  type OwnedEventListener,
+} from "../eventListeners";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType } from "../driver/types";
 import { formatIeeeAddress } from "../ieee";
@@ -83,6 +88,12 @@ export class BLZAdapter extends Adapter {
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
   private readonly onIncomingMessageHandler = this.processMessage.bind(this);
+  private readonly driverListenerRegistrations: readonly OwnedEventListener[] = [
+    { event: "close", listener: this.onDriverCloseHandler },
+    { event: "deviceJoined", listener: this.onDeviceJoinedHandler },
+    { event: "deviceLeft", listener: this.onDeviceLeftHandler },
+    { event: "incomingMessage", listener: this.onIncomingMessageHandler },
+  ];
 
   public constructor(
     networkOptions: NetworkOptions,
@@ -119,20 +130,8 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
-    try {
-      this.driver.on("close", this.onDriverCloseHandler);
-      this.driver.on("deviceJoined", this.onDeviceJoinedHandler);
-      this.driver.on("deviceLeft", this.onDeviceLeftHandler);
-      this.driver.on("incomingMessage", this.onIncomingMessageHandler);
-      this.driverListenersAttached = true;
-    } catch (error) {
-      this.driver.off("close", this.onDriverCloseHandler);
-      this.driver.off("deviceJoined", this.onDeviceJoinedHandler);
-      this.driver.off("deviceLeft", this.onDeviceLeftHandler);
-      this.driver.off("incomingMessage", this.onIncomingMessageHandler);
-      this.driverListenersAttached = false;
-      throw error;
-    }
+    attachListenersOrRollback(this.driver, this.driverListenerRegistrations);
+    this.driverListenersAttached = true;
   }
 
   private detachDriverListeners(): void {
@@ -140,10 +139,7 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
-    this.driver.off("close", this.onDriverCloseHandler);
-    this.driver.off("deviceJoined", this.onDeviceJoinedHandler);
-    this.driver.off("deviceLeft", this.onDeviceLeftHandler);
-    this.driver.off("incomingMessage", this.onIncomingMessageHandler);
+    detachListeners(this.driver, this.driverListenerRegistrations);
     this.driverListenersAttached = false;
   }
 
