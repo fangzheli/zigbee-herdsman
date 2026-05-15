@@ -1245,6 +1245,8 @@ Future BLZ refactors should follow these rules:
   throw, preserving reset notification and retry cleanup paths.
 - Wrapped non-`Error` UART TCP ready/open failures with safe fallback text so
   failed ready-reset cleanup is not replaced by stringification errors.
+- Hardened shared `CancellableDelay` expiry handling so guard exceptions reject
+  the delay and release tracked waiters instead of leaving hung lifecycle waits.
 
 ## Next Steps
 

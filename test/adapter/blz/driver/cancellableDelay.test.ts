@@ -39,6 +39,25 @@ describe("BLZ cancellable delay", () => {
         expect(delay.count()).toBe(0);
     });
 
+    it("rejects and releases waiters when the active guard throws at expiry", async () => {
+        vi.useFakeTimers();
+        const delay = new CancellableDelay();
+        let activeChecks = 0;
+        const wait = delay.wait(1000, () => {
+            activeChecks += 1;
+            if (activeChecks === 1) {
+                return true;
+            }
+            throw new Error("guard failed");
+        });
+        const rejection = expect(wait).rejects.toThrow("guard failed");
+
+        await vi.advanceTimersByTimeAsync(1000);
+
+        await rejection;
+        expect(delay.count()).toBe(0);
+    });
+
     it("notifies active waiters before clearing the tracked set", () => {
         const delay = new CancellableDelay();
         const waiters = (delay as unknown as {waiters: Set<() => void>}).waiters;

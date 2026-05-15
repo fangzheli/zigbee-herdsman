@@ -20,10 +20,14 @@ export class CancellableDelay {
     }
 
     let cancel!: () => void;
-    return await new Promise<boolean>((resolve): void => {
+    return await new Promise<boolean>((resolve, reject): void => {
       const timer = setTimeout((): void => {
         this.waiters.delete(cancel);
-        resolve(isActive());
+        try {
+          resolve(isActive());
+        } catch (error) {
+          reject(error);
+        }
       }, milliseconds);
       cancel = (): void => {
         clearTimeout(timer);
