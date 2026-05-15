@@ -1038,6 +1038,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver ZDO response-waiter clearing so reset, lower
   transport close, and stop paths reject pending response waiters through one
   helper while preserving their existing error reasons.
+- Split BLZ serial-driver listener teardown so the received/close event bridge
+  and runtime reset listener each have paired detach helpers under the existing
+  serial cleanup path.
 
 ## Next Steps
 

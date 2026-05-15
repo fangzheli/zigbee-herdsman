@@ -544,11 +544,23 @@ export class Blz extends EventEmitter {
     this.serialDriver.off("reset", listener);
   }
 
-  private detachSerialDriverListeners(): void {
+  private detachSerialDriverEventBridge(): void {
+    if (!this.serialDriverEventBridgeAttached) {
+      return;
+    }
+
     this.serialDriver.off("received", this.onFrameReceivedHandler);
     this.serialDriver.off("close", this.onSerialCloseHandler);
-    this.serialDriver.off("reset", this.onSerialResetHandler);
     this.serialDriverEventBridgeAttached = false;
+  }
+
+  private detachSerialDriverResetListener(): void {
+    this.serialDriver.off("reset", this.onSerialResetHandler);
+  }
+
+  private detachSerialDriverListeners(): void {
+    this.detachSerialDriverEventBridge();
+    this.detachSerialDriverResetListener();
   }
 
   public isInitialized(): boolean {
