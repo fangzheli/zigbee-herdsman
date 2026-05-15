@@ -129,8 +129,8 @@ export interface BlzIncomingMessage {
   lqi: number;
   rssi: number;
   sender: number;
-  bindingIndex: number;
-  addressIndex: number;
+  bindingIndex: number | null;
+  addressIndex: number | null;
   message: Buffer;
   senderEui64?: BlzEUI64;
   zdoResponse?: GenericZdoResponse;

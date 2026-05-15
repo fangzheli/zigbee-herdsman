@@ -54,6 +54,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("private async onBlzReset");
         expect(source).toContain("void this.reset().catch");
         expect(source).not.toContain("extPanIdArray.push");
+        expect(source).toContain("bindingIndex: number | null;");
+        expect(source).toContain("addressIndex: number | null;");
         expect(source).toContain("public async sendZdo(");
         expect(source).toContain("private async sendZdoFrame(");
         expect(source).toContain("private waitFor(");

@@ -970,6 +970,8 @@ Future BLZ refactors should follow these rules:
 - Split high-level driver incoming frame dispatch so APS indication frame
   construction and waiter/event resolution are owned by private helpers instead
   of a broad `switch (true)` block.
+- Aligned the exported BLZ incoming-message contract with actual payloads by
+  declaring `bindingIndex` and `addressIndex` as nullable.
 
 ## Next Steps
 
