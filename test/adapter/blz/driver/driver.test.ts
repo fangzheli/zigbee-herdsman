@@ -1520,6 +1520,25 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(typeof message === "function" ? message() : message).toBe(`BLZ reset recovery failed: ${resetFailure}`);
     });
 
+    it("does not let reset recovery failure logging throw when the reset error cannot be stringified", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const resetFailure = new Error("reset failed");
+        resetFailure.toString = () => {
+            throw new Error("reset failure stringification failed");
+        };
+        const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.spyOn(driver, "reset").mockRejectedValue(resetFailure);
+
+        (driver as unknown as {onBlzReset: () => void}).onBlzReset();
+        await Promise.resolve();
+
+        expect(consoleError).toHaveBeenCalledWith(
+            expect.stringMatching(
+                /^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh:blz:driv: Log message formatting failed: Error: reset failure stringification failed$/,
+            ),
+        );
+    });
+
     it("cancels reset delay promptly when stop interrupts reset", async () => {
         vi.useFakeTimers();
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");

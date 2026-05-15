@@ -1208,6 +1208,9 @@ Future BLZ refactors should follow these rules:
 - Extended shared `logger.error()` to accept lazy message lambdas and used that
   for BLZ reset-recovery failure reporting, so an error object's stringification
   cannot make the reset error catch path throw again.
+- Hardened the default logger's lazy-message formatting path so formatter
+  exceptions become fallback log lines instead of propagating into BLZ
+  reset-recovery cleanup or other lifecycle callers.
 
 ## Next Steps
 

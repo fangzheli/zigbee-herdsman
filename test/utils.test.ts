@@ -573,6 +573,14 @@ describe("Utils", () => {
         expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: error$/));
         logger.error(() => "lazy error", "zh");
         expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: lazy error$/));
+        expect(() => {
+            logger.error(() => {
+                throw new Error("lazy format failed");
+            }, "zh");
+        }).not.toThrow();
+        expect(errorSpy).toHaveBeenCalledWith(
+            expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: Log message formatting failed: Error: lazy format failed$/),
+        );
 
         setLogger(mockLogger);
         expect(logger).toEqual(mockLogger);
