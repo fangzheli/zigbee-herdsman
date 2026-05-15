@@ -1062,6 +1062,9 @@ Future BLZ refactors should follow these rules:
 - Centralized adapter stop-delay cancellation so startup, group, and broadcast
   settle waits are interrupted through a dedicated helper during stopped-state
   cleanup.
+- Cleaned up the BLZ serial event bridge on failed connect startup so repeated
+  connect failures do not leave received/close listeners attached to the UART
+  driver.
 
 ## Next Steps
 

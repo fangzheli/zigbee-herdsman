@@ -327,6 +327,27 @@ describe("BLZ Driver", () => {
       );
     });
 
+    it("should detach the serial event bridge when connect attempts fail", async () => {
+      serialDriverMock.connect.mockRejectedValue(new Error("Connection failed"));
+      serialDriverMock.isInitialized.mockReturnValue(false);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const connect = blz.connect(serialPortOptions);
+      const rejection = expect(connect).rejects.toThrow("Failed to connect");
+
+      for (let i = 1; i < MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        await vi.advanceTimersByTimeAsync(
+          SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i,
+        );
+      }
+
+      await rejection;
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+    });
+
     it("should cancel connection retry waits when closing", async () => {
       serialDriverMock.connect.mockRejectedValue(new Error("Connection failed"));
       serialDriverMock.isInitialized.mockReturnValue(false);
