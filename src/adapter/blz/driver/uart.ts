@@ -128,8 +128,7 @@ export class SerialDriver extends EventEmitter {
       opened = true;
       logger.debug("Serialport opened", NS);
 
-      serialPort.once("close", this.onPortCloseHandler);
-      serialPort.on("error", this.onPortErrorHandler);
+      this.attachRuntimePortListeners(serialPort);
 
       // reset
       // await this.reset();
@@ -198,8 +197,7 @@ export class SerialDriver extends EventEmitter {
           }
 
           detachOpenListeners();
-          socketPort.once("close", this.onPortCloseHandler);
-          socketPort.on("error", this.onPortErrorHandler);
+          this.attachRuntimePortListeners(socketPort);
           this.detachSocketListeners = detachRuntimeListeners;
 
           settled = true;
@@ -219,8 +217,7 @@ export class SerialDriver extends EventEmitter {
           socketPort.off("close", openClose);
         };
         const detachRuntimeListeners = (): void => {
-          socketPort.off("close", this.onPortCloseHandler);
-          socketPort.off("error", this.onPortErrorHandler);
+          this.detachRuntimePortListeners(socketPort);
         };
         this.detachSocketListeners = (): void => {
           detachOpenListeners();
@@ -436,6 +433,16 @@ export class SerialDriver extends EventEmitter {
     this.destroyActivePort();
   }
 
+  private attachRuntimePortListeners(port: SerialPort | net.Socket): void {
+    port.once("close", this.onPortCloseHandler);
+    port.on("error", this.onPortErrorHandler);
+  }
+
+  private detachRuntimePortListeners(port: SerialPort | net.Socket): void {
+    port.off("close", this.onPortCloseHandler);
+    port.off("error", this.onPortErrorHandler);
+  }
+
   private cancelPendingOperations(error: Error): void {
     this.operationGeneration += 1;
     this.sendRetryDelay.cancel();
@@ -450,8 +457,7 @@ export class SerialDriver extends EventEmitter {
 
     this.writer.unpipe(this.serialPort);
     this.serialPort.unpipe(this.parser);
-    this.serialPort.off("close", this.onPortCloseHandler);
-    this.serialPort.off("error", this.onPortErrorHandler);
+    this.detachRuntimePortListeners(this.serialPort);
   }
 
   private detachSocketPort(): void {

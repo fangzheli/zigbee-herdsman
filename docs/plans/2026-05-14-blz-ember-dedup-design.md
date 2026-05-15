@@ -1004,6 +1004,8 @@ Future BLZ refactors should follow these rules:
   and non-reset stops advance stop generation and cancel reset delay, force-reset
   operations, startup delay, and startup operations through one helper while
   preserving internal reset stops.
+- Centralized UART runtime close/error listener binding so serial and TCP ports
+  use the same attach/detach helpers for owned runtime listeners.
 
 ## Next Steps
 
