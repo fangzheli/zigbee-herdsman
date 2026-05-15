@@ -26,7 +26,9 @@ export class CallbackRegistry<T> {
                 }
             }
         } finally {
-            this.items.clear();
+            for (const item of items) {
+                this.items.delete(item);
+            }
         }
 
         if (hasError) {
