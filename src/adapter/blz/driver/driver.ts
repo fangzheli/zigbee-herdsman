@@ -1545,7 +1545,7 @@ export class Driver extends EventEmitter {
         throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
       }
     } catch (error) {
-      waiter?.cancel();
+      this.cancelZdoResponseWaiter(waiter);
 
       if (this.isRequestCancelled(requestGeneration)) {
         throw new Error("Driver stopped");
@@ -1692,6 +1692,10 @@ export class Driver extends EventEmitter {
   ): ReturnType<typeof this.waitress.waitFor> & { cancel: () => void } {
     const waiter = this.waitress.waitFor({ address, clusterId }, timeout);
     return { ...waiter, cancel: () => this.waitress.remove(waiter.ID) };
+  }
+
+  private cancelZdoResponseWaiter(waiter: { cancel: () => void } | undefined): void {
+    waiter?.cancel();
   }
 
   private waitressTimeoutFormatter(

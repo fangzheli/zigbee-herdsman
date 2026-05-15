@@ -1026,6 +1026,9 @@ Future BLZ refactors should follow these rules:
 - Centralized adapter ZCL response waiter cancellation so endpoint send
   failures and negative data-confirm paths release pending ZCL waiters through
   the same helper.
+- Centralized high-level driver ZDO response waiter cancellation so failed
+  lower APS sends release driver-owned ZDO waiters through the same helper
+  pattern as the other BLZ layers.
 
 ## Next Steps
 
