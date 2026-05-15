@@ -232,7 +232,7 @@ describe("BLZ Driver", () => {
       expect(source).toContain("this.cleanupAfterSerialDriverEvent(this.createConnectionResetError());");
       expect(source).toContain("this.cleanupAfterSerialDriverEvent(this.createConnectionClosedError());");
       expect(source).toContain("this.enterDisconnectedState(connectionCancelError, closeError);");
-      expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(2);
+      expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(3);
       expect(source.match(/this\.cancelConnectionOperations\(connectionError\);/g)).toHaveLength(1);
       expect(source).toContain("private createConnectionClosedError(): Error");
       expect(source.match(/this\.createConnectionClosedError\(\)/g)).toHaveLength(4);
@@ -606,6 +606,31 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
       expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
       expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+    });
+
+    it("should close serial driver when post-connect setup cleanup fails", async () => {
+      const attachError = new Error("runtime reset listener attach failed");
+      let initialized = false;
+      serialDriverMock.connect.mockImplementation(() => {
+        initialized = true;
+        return Promise.resolve();
+      });
+      serialDriverMock.close.mockImplementation(() => {
+        initialized = false;
+        return Promise.resolve();
+      });
+      serialDriverMock.isInitialized.mockImplementation(() => initialized);
+      serialDriverMock.on.mockImplementation((event: string) => {
+        if (event === "reset" && serialDriverMock.connect.mock.calls.length > 0) {
+          throw attachError;
+        }
+      });
+
+      await expect(blz.connect(serialPortOptions)).rejects.toThrow(attachError);
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
     });
 
     it("should detach the existing serial reset listener when reconnect attempts fail", async () => {

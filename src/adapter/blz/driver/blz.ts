@@ -195,15 +195,15 @@ export class Blz extends EventEmitter {
       logger.debug("Connection established successfully", NS);
     } catch (error) {
       if (!connectionEstablished) {
-        this.throwAfterFailedConnectCleanup(error);
+        return await this.throwAfterFailedConnectCleanup(error);
       }
       throw error;
     }
   }
 
-  private throwAfterFailedConnectCleanup(error: unknown): never {
+  private async throwAfterFailedConnectCleanup(error: unknown): Promise<never> {
     try {
-      this.detachSerialDriverListeners();
+      await this.cleanupFailedConnect();
     } catch (cleanupError) {
       throw new AggregateError(
         [error, cleanupError],
@@ -212,6 +212,20 @@ export class Blz extends EventEmitter {
     }
 
     throw error;
+  }
+
+  private async cleanupFailedConnect(): Promise<void> {
+    if (!this.closePromise && this.serialDriver.isInitialized()) {
+      await runAsyncCleanupSteps([
+        () => {
+          this.detachSerialDriverListeners();
+        },
+        () => this.serialDriver.close(false),
+      ]);
+      return;
+    }
+
+    this.detachSerialDriverListeners();
   }
 
   private async connectWithRetries(
