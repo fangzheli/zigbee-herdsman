@@ -1125,6 +1125,8 @@ Future BLZ refactors should follow these rules:
   reforming avoid local conversion logic and hex-string round trips.
 - Centralized UART send operation generation checks so send attempts and retry
   delays use one active-operation predicate.
+- Centralized BLZ watchdog generation checks so successful and failed
+  heartbeat paths share one active-watchdog predicate.
 
 ## Next Steps
 

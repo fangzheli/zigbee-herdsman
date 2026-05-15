@@ -1021,12 +1021,12 @@ export class Blz extends EventEmitter {
 
     try {
       await this.getVersion();
-      if (watchdogGeneration !== this.watchdogGeneration) {
+      if (!this.isWatchdogGenerationActive(watchdogGeneration)) {
         return;
       }
       this.failures = 0;
     } catch (error) {
-      if (watchdogGeneration !== this.watchdogGeneration) {
+      if (!this.isWatchdogGenerationActive(watchdogGeneration)) {
         return;
       }
       logger.error(`Watchdog heartbeat timeout ${error}`, NS);
@@ -1041,5 +1041,9 @@ export class Blz extends EventEmitter {
         }
       }
     }
+  }
+
+  private isWatchdogGenerationActive(watchdogGeneration: number): boolean {
+    return watchdogGeneration === this.watchdogGeneration;
   }
 }

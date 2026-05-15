@@ -123,6 +123,9 @@ describe("BLZ Driver", () => {
       expect(source).toContain('this.cancelConnectResetOperations(new Error("Failure to connect"));');
       expect(source).toContain("private startWatchdogTimer(): void");
       expect(source).toContain("this.startWatchdogTimer();");
+      expect(source).toContain("private isWatchdogGenerationActive(watchdogGeneration: number): boolean");
+      expect(source.match(/this\.isWatchdogGenerationActive\(watchdogGeneration\)/g)).toHaveLength(2);
+      expect(source.match(/watchdogGeneration !== this\.watchdogGeneration/g) ?? []).toHaveLength(0);
       expect(source).toContain("private cancelWaiter(");
       expect(source).toContain("this.cancelWaiter(waiter);");
 
