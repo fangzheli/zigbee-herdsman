@@ -62,6 +62,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public waitFor(");
         expect(source).toContain("private cancelZdoResponseWaiter(");
         expect(source).toContain("this.cancelZdoResponseWaiter(waiter);");
+        expect(source).toContain("private clearZdoResponseWaiters(error: Error): void");
+        expect(source.match(/this\.clearZdoResponseWaiters\(/g)).toHaveLength(3);
+        expect(source.match(/this\.waitress\.clear\(error\);/g)).toHaveLength(1);
         expect(source).toContain("private async mrequest(");
         expect(source).not.toContain("public async mrequest(");
         expect(source).toContain("private async brequest(");

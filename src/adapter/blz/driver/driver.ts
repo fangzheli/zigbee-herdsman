@@ -417,7 +417,7 @@ export class Driver extends EventEmitter {
     logger.debug(`Reset connection.`, NS);
     const resetError = new Error("Driver reset");
     this.cancelDriverRequests(resetError);
-    this.waitress.clear(resetError);
+    this.clearZdoResponseWaiters(resetError);
     this.cancelStartupOperations(resetError);
 
     try {
@@ -479,7 +479,7 @@ export class Driver extends EventEmitter {
       this.detachBlzListeners(this.blz);
       this.blz = undefined;
     }
-    this.waitress.clear(closeError);
+    this.clearZdoResponseWaiters(closeError);
     this.clearCoordinatorAndNetworkState();
     this.emit("close");
   }
@@ -536,7 +536,7 @@ export class Driver extends EventEmitter {
       }
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
-      this.waitress.clear(stopError);
+      this.clearZdoResponseWaiters(stopError);
       this.clearCoordinatorAndNetworkState();
       if (this.emitCloseWhenStopCompletes) {
         this.emit("close");
@@ -1696,6 +1696,10 @@ export class Driver extends EventEmitter {
 
   private cancelZdoResponseWaiter(waiter: { cancel: () => void } | undefined): void {
     waiter?.cancel();
+  }
+
+  private clearZdoResponseWaiters(error: Error): void {
+    this.waitress.clear(error);
   }
 
   private waitressTimeoutFormatter(

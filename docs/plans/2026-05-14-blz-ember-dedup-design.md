@@ -1035,6 +1035,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART TCP open-time listener attach/detach so connect, ready,
   error, and close listeners used before socket readiness are managed through
   helper methods before runtime listeners take over.
+- Centralized high-level driver ZDO response-waiter clearing so reset, lower
+  transport close, and stop paths reject pending response waiters through one
+  helper while preserving their existing error reasons.
 
 ## Next Steps
 
