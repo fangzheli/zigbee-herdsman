@@ -1013,14 +1013,14 @@ export class Driver extends EventEmitter {
     this.eui64ToNodeId.delete(normalizeIeeeAddress(ieeeAddr));
   }
 
-  public handleNodeJoined(nwk: number, ieee: number | bigint): void {
+  private handleNodeJoined(nwk: number, ieee: number | bigint): void {
     const eui64 = this.cacheNodeIeee(nwk, ieee);
     const ieeeAddrFull = `0x${eui64.toString()}`;
     logger.debug(`deviceJoined, 0x${nwk.toString(16)}, ${ieeeAddrFull}`, NS);
     this.emit("deviceJoined", nwk, ieeeAddrFull);
   }
 
-  public handleNodeLeft(nwk: number, ieeeAddr: string): void {
+  private handleNodeLeft(nwk: number, ieeeAddr: string): void {
     this.removeCachedNode(nwk, ieeeAddr);
     logger.debug(`deviceLeft, 0x${nwk.toString(16)}, ${ieeeAddr}`, NS);
     this.emit("deviceLeft", nwk, ieeeAddr);

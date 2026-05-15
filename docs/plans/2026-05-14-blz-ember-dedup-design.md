@@ -943,6 +943,8 @@ Future BLZ refactors should follow these rules:
 - Removed the public `Driver.setNode()` cache mutator; endpoint ZCL sends and
   driver receive/lookup paths now update address caches through private driver
   helpers only.
+- Made driver node join/leave handlers private, keeping device lifecycle cache
+  mutation and event emission owned by the driver receive/ZDO paths.
 
 ## Next Steps
 
