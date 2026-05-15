@@ -721,6 +721,42 @@ describe("BLZ high-level driver lifecycle", () => {
         ]);
     });
 
+    it("does not stringify ZDO waiter matcher fields unless debug logging evaluates the message", () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const clusterId = {
+            toString: () => {
+                throw new Error("eager ZDO waiter matcher string");
+            },
+        };
+
+        try {
+            const matched = (driver as unknown as {
+                waitressValidator: (
+                    payload: unknown,
+                    matcher: {address: number; clusterId: number},
+                ) => boolean;
+            }).waitressValidator(
+                {
+                    address: 0x1234,
+                    frame: {clusterId},
+                },
+                {
+                    address: 0x1234,
+                    clusterId: 0x8000,
+                },
+            );
+
+            expect(matched).toBe(false);
+            expect(debug).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(String),
+            );
+        } finally {
+            debug.mockRestore();
+        }
+    });
+
     it("sends ZDO requests through driver-owned response waiters", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         setDriverBlz(driver, {});

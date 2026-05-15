@@ -1743,7 +1743,8 @@ export class Driver extends EventEmitter {
     matcher: BlzWaitressMatcher,
   ): boolean {
     logger.debug(
-      `waitressValidator: payload.address=${payload.address}, matcher.address=${matcher.address}, payload.frame.clusterId=${payload.frame?.clusterId}, matcher.clusterId=${matcher.clusterId}`,
+      () =>
+        `waitressValidator: payload.address=${payload.address}, matcher.address=${matcher.address}, payload.frame.clusterId=${payload.frame?.clusterId}, matcher.clusterId=${matcher.clusterId}`,
       NS,
     );
     return (

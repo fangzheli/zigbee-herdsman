@@ -205,6 +205,8 @@ Future BLZ refactors should follow these rules:
   called on the debug-disabled startup path.
 - Centralized checked high-level BLZ command execution so backup/security/network
   helper commands share the same request cancellation and status assertion path.
+- Made high-level ZDO waiter matcher logging lazy so waiter scans do not format
+  matcher fields unless debug logging consumes the message.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.
