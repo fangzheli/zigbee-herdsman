@@ -44,6 +44,7 @@ import {
 } from "./types";
 import { BlzEUI64, BlzOutgoingMessageType, BlzValueId } from "./types/named";
 import { BlzApsFrame, BlzNetworkParameters } from "./types/struct";
+import { AddressCache, type AddressCacheInput } from "./addressCache";
 
 const NS = "zh:blz:driv";
 
@@ -132,9 +133,7 @@ export class Driver extends EventEmitter {
   private blz?: Blz;
   private nwkOpt: TsType.NetworkOptions;
   private networkParams?: BlzNetworkParameters;
-  //// @ts-expect-error XXX: init in startup
-  private eui64ToNodeId = new Map<string, number>();
-  private nodeIdToEui64 = new Map<number, BlzEUI64>();
+  private readonly addressCache = new AddressCache();
   private ieee?: BlzEUI64;
   private waitress: Waitress<BlzFrame, BlzWaitressMatcher>;
   private resetPromise?: Promise<void>;
@@ -1084,44 +1083,16 @@ export class Driver extends EventEmitter {
     logger.debug(`handleNetworkStatus: networkStatusCode=${status}`, NS);
   }
 
-  private cacheNodeIeee(
-    nwk: number,
-    ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
-  ): BlzEUI64 {
-    const eui64 =
-      ieee instanceof BlzEUI64
-        ? new BlzEUI64(ieee)
-        : new BlzEUI64(
-            typeof ieee === "number" || typeof ieee === "bigint"
-              ? ieee.toString(16).padStart(16, "0")
-              : ieee,
-          );
-    const normalized = normalizeIeeeAddress(eui64);
-    const previousEui64 = this.nodeIdToEui64.get(nwk);
-    const previousNwk = this.eui64ToNodeId.get(normalized);
-
-    if (previousEui64) {
-      this.eui64ToNodeId.delete(normalizeIeeeAddress(previousEui64));
-    }
-
-    if (previousNwk !== undefined && previousNwk !== nwk) {
-      this.nodeIdToEui64.delete(previousNwk);
-    }
-
-    this.eui64ToNodeId.set(normalized, nwk);
-    this.nodeIdToEui64.set(nwk, eui64);
-
-    return new BlzEUI64(eui64);
+  private cacheNodeIeee(nwk: number, ieee: AddressCacheInput): BlzEUI64 {
+    return this.addressCache.set(nwk, ieee);
   }
 
   private getCachedEui64(nwk: number): BlzEUI64 | undefined {
-    const eui64 = this.nodeIdToEui64.get(nwk);
-    return eui64 ? new BlzEUI64(eui64) : undefined;
+    return this.addressCache.getEui64(nwk);
   }
 
   private clearAddressCache(): void {
-    this.eui64ToNodeId.clear();
-    this.nodeIdToEui64.clear();
+    this.addressCache.clear();
   }
 
   private clearNetworkState(): void {
@@ -1135,19 +1106,7 @@ export class Driver extends EventEmitter {
   }
 
   private removeCachedNode(nwk: number, ieeeAddr: string): void {
-    const normalized = normalizeIeeeAddress(ieeeAddr);
-    const cachedNwk = this.eui64ToNodeId.get(normalized);
-    if (cachedNwk !== undefined && cachedNwk !== nwk) {
-      return;
-    }
-
-    const cachedEui64 = this.nodeIdToEui64.get(nwk);
-    if (cachedEui64) {
-      this.eui64ToNodeId.delete(normalizeIeeeAddress(cachedEui64));
-    }
-
-    this.nodeIdToEui64.delete(nwk);
-    this.eui64ToNodeId.delete(normalized);
+    this.addressCache.remove(nwk, ieeeAddr);
   }
 
   private handleNodeJoined(nwk: number, ieee: number | bigint): void {
@@ -1181,7 +1140,7 @@ export class Driver extends EventEmitter {
         if (typeof nwk !== "number") {
           const eui64 = nwk as BlzEUI64;
           const strEui64 = eui64.toString();
-          let nodeId = this.eui64ToNodeId.get(normalizeIeeeAddress(strEui64));
+          let nodeId = this.addressCache.getNodeId(eui64);
 
           if (nodeId === undefined) {
             nodeId = (
@@ -1736,12 +1695,6 @@ export class Driver extends EventEmitter {
 
     if (cached) {
       return cached;
-    }
-
-    for (const [eui64Str, nodeId] of this.eui64ToNodeId) {
-      if (nodeId === nwk) {
-        return this.cacheNodeIeee(nwk, eui64Str);
-      }
     }
 
     const blz = this.getBlz();

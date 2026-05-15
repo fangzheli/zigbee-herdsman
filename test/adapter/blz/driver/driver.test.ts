@@ -309,6 +309,14 @@ describe("BLZ high-level driver lifecycle", () => {
         }).cacheNodeIeee(nwk, ieee);
     }
 
+    function getCachedDriverEui64(driver: Driver, nwk: number): string | undefined {
+        return (driver as unknown as {addressCache: {getEui64: (nwk: number) => BlzEUI64 | undefined}}).addressCache.getEui64(nwk)?.toString();
+    }
+
+    function getCachedDriverNodeId(driver: Driver, ieee: string): number | undefined {
+        return (driver as unknown as {addressCache: {getNodeId: (ieee: string) => number | undefined}}).addressCache.getNodeId(ieee);
+    }
+
     function handleDriverNodeJoined(driver: Driver, nwk: number, ieee: number | bigint): void {
         (driver as unknown as {
             handleNodeJoined: (nwk: number, ieee: number | bigint) => void;
@@ -920,8 +928,8 @@ describe("BLZ high-level driver lifecycle", () => {
             0x1234,
             "0x0102030405060708",
         );
-        expect((driver as unknown as {nodeIdToEui64: Map<number, unknown>}).nodeIdToEui64.has(0x1234)).toBe(false);
-        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.has("0102030405060708")).toBe(false);
+        expect(getCachedDriverEui64(driver, 0x1234)).toBeUndefined();
+        expect(getCachedDriverNodeId(driver, "0102030405060708")).toBeUndefined();
     });
 
     it("does not remove reassigned address cache entries for a stale leave event", () => {
@@ -932,10 +940,10 @@ describe("BLZ high-level driver lifecycle", () => {
         handleDriverNodeJoined(driver, 0x5678, 0x0102030405060708n);
         handleDriverNodeLeft(driver, 0x1234, "0x0102030405060708");
 
-        expect((driver as unknown as {nodeIdToEui64: Map<number, BlzEUI64>}).nodeIdToEui64.get(0x1234)?.toString()).toBe("1112131415161718");
-        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.get("1112131415161718")).toBe(0x1234);
-        expect((driver as unknown as {nodeIdToEui64: Map<number, BlzEUI64>}).nodeIdToEui64.get(0x5678)?.toString()).toBe("0102030405060708");
-        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.get("0102030405060708")).toBe(0x5678);
+        expect(getCachedDriverEui64(driver, 0x1234)).toBe("1112131415161718");
+        expect(getCachedDriverNodeId(driver, "1112131415161718")).toBe(0x1234);
+        expect(getCachedDriverEui64(driver, 0x5678)).toBe("0102030405060708");
+        expect(getCachedDriverNodeId(driver, "0102030405060708")).toBe(0x5678);
     });
 
     it("clears address cache when stopping", async () => {
@@ -1798,7 +1806,7 @@ describe("BLZ high-level driver lifecycle", () => {
             data.length,
             data,
         );
-        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.get("0102030405060708")).toBe(0x1234);
+        expect(getCachedDriverNodeId(driver, "0102030405060708")).toBe(0x1234);
     });
 
     it("stops active multicast and broadcast APS requests when driver stop interrupts the lower send", async () => {
