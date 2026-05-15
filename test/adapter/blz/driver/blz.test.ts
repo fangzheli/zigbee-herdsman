@@ -202,6 +202,28 @@ describe("BLZ Driver", () => {
       expect(source.match(/this\.commandWaiters\.clear\(/g)).toHaveLength(1);
     });
 
+    it("should continue connection cleanup when connect operation cancellation fails", () => {
+      const cancelError = new Error("connect operation cancel failed");
+      const connectOperations = (blz as unknown as {connectOperations: {cancel: (error: Error) => void}}).connectOperations;
+      const connectResetOperations = (blz as unknown as {connectResetOperations: {cancel: (error: Error) => void}}).connectResetOperations;
+      const connectRetryDelay = (blz as unknown as {connectRetryDelay: {cancel: () => void}}).connectRetryDelay;
+      const watchdog = (blz as unknown as {watchdog: {clear: () => void}}).watchdog;
+      const connectResetCancel = vi.spyOn(connectResetOperations, "cancel");
+      const connectRetryCancel = vi.spyOn(connectRetryDelay, "cancel");
+      const watchdogClear = vi.spyOn(watchdog, "clear");
+      connectOperations.cancel = vi.fn((): void => {
+        throw cancelError;
+      });
+
+      expect(() => {
+        (blz as unknown as {cancelConnectionOperations: (error: Error) => void}).cancelConnectionOperations(new Error("Connection closed"));
+      }).toThrow(cancelError);
+
+      expect(connectResetCancel).toHaveBeenCalledTimes(1);
+      expect(connectRetryCancel).toHaveBeenCalledTimes(1);
+      expect(watchdogClear).toHaveBeenCalledTimes(1);
+    });
+
     it("centralizes disconnected-state cleanup", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
 
