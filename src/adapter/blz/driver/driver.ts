@@ -588,7 +588,7 @@ export class Driver extends EventEmitter {
           startupStopGeneration,
         );
       } catch (error) {
-        logger.debug(`BLZ could not connect: ${error}`, NS);
+        logger.debug(() => `BLZ could not connect: ${error}`, NS);
         throw error;
       }
       this.throwIfStartupCancelled(startupStopGeneration);

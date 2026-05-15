@@ -1235,6 +1235,8 @@ Future BLZ refactors should follow these rules:
   still call the transform callback and do not break stream processing.
 - Deferred BLZ frame-candidate parse error formatting so truncated candidate
   payloads with unprintable errors still fall through to `undefined`/fallback.
+- Deferred high-level startup connect failure formatting so unprintable connect
+  errors do not mask the original startup failure or cleanup path.
 
 ## Next Steps
 

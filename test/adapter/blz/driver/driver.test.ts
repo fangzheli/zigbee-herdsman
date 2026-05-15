@@ -1948,6 +1948,38 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.close).toHaveBeenCalledWith(false);
     });
 
+    it("preserves startup connect failures that cannot be stringified", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const connectFailure = new Error("connect failed");
+        connectFailure.toString = () => {
+            throw new Error("connect failure stringification failed");
+        };
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockRejectedValue(connectFailure),
+            forceReset: vi.fn(),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        try {
+            const startupResult = driver.startup().then(
+                () => "resolved",
+                (error: Error) => error === connectFailure ? "connect failure" : `rejected:${error.message}`,
+            );
+
+            await expect(startupResult).resolves.toBe("connect failure");
+            expect(blzMock.forceReset).not.toHaveBeenCalled();
+            expect(blzMock.close).toHaveBeenCalledWith(false);
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            debug.mockRestore();
+        }
+    });
+
     it("cleans up failed startup without stringifying the startup error eagerly", async () => {
         const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
         const startupFailure = new Error("reset failed");
