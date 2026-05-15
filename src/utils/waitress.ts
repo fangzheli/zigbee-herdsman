@@ -13,6 +13,18 @@ interface Waiter<TPayload, TMatcher> {
 type Validator<TPayload, TMatcher> = (payload: TPayload, matcher: TMatcher) => boolean;
 type TimeoutFormatter<TMatcher> = (matcher: TMatcher, timeout: number) => string;
 
+function errorFromUnknown(error: unknown): Error {
+    if (error instanceof Error) {
+        return error;
+    }
+
+    try {
+        return new Error(String(error), {cause: error});
+    } catch {
+        return new Error("<unprintable error>", {cause: error});
+    }
+}
+
 export class Waitress<TPayload, TMatcher> {
     private waiters: Map<number, Waiter<TPayload, TMatcher>>;
     private readonly validator: Validator<TPayload, TMatcher>;
@@ -94,9 +106,10 @@ export class Waitress<TPayload, TMatcher> {
                         });
                         waiter.reject(error);
                     } catch (formatError) {
-                        waiter.reject(formatError instanceof Error ? formatError : new Error(String(formatError)));
+                        waiter.reject(errorFromUnknown(formatError));
+                    } finally {
+                        this.waiters.delete(ID);
                     }
-                    this.waiters.delete(ID);
                 }, timeout);
             }
 

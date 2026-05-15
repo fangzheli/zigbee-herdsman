@@ -284,6 +284,33 @@ describe("Utils", () => {
         vi.useRealTimers();
     });
 
+    it("Test waitress releases timed out waiters when timeout formatter errors cannot be stringified", async () => {
+        vi.useFakeTimers();
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const formatterFailure = {
+            toString: () => {
+                throw new Error("formatter stringification failed");
+            },
+        };
+        const waitress = new Waitress<string, number>(validator, () => {
+            throw formatterFailure;
+        });
+        const waiter = waitress.waitFor(2, 5000).start();
+        const result = waiter.promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        await vi.advanceTimersByTimeAsync(5000).catch(() => {});
+        const observed = await Promise.race([result, Promise.resolve("pending")]);
+
+        expect(observed).toBe("rejected:<unprintable error>");
+        expect(waitress.count()).toStrictEqual(0);
+        vi.useRealTimers();
+    });
+
     it("Test waitress defers timeout formatting for waiters that resolve", async () => {
         vi.useFakeTimers();
         const validator = (payload: string, matcher: number): boolean => {

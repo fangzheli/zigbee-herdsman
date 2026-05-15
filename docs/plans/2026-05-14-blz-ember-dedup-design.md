@@ -1247,6 +1247,8 @@ Future BLZ refactors should follow these rules:
   failed ready-reset cleanup is not replaced by stringification errors.
 - Hardened shared `CancellableDelay` expiry handling so guard exceptions reject
   the delay and release tracked waiters instead of leaving hung lifecycle waits.
+- Hardened shared `Waitress` timeout formatter failures so unprintable
+  formatter errors reject waiters and clear their timeout entries.
 
 ## Next Steps
 
