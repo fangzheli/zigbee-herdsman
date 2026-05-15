@@ -1270,6 +1270,9 @@ Future BLZ refactors should follow these rules:
 - Routed incoming UART RESET and ERROR frames through the reset lifecycle path,
   so pending UART waiters are rejected, the active port is released, and upper
   layers are notified immediately instead of waiting for send timeouts.
+- Reused full serial-driver listener cleanup when a reconnect attempt fails,
+  and tracked the BLZ runtime reset listener attachment state so stale reset
+  handlers are removed without redundant `off()` calls.
 
 ## Next Steps
 

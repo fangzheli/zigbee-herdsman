@@ -305,6 +305,7 @@ export class Blz extends EventEmitter {
   private readonly connectOperations = new CancellableOperation();
   private readonly connectResetOperations = new CancellableOperation();
   private serialDriverEventBridgeAttached = false;
+  private serialDriverResetListenerAttached = false;
   private readonly onSerialResetHandler = this.onSerialReset.bind(this);
   private readonly onSerialCloseHandler = this.onSerialClose.bind(this);
   private readonly onFrameReceivedHandler = this.onFrameReceived.bind(this);
@@ -389,7 +390,7 @@ export class Blz extends EventEmitter {
       logger.debug("Connection established successfully", NS);
     } catch (error) {
       if (!connectionEstablished) {
-        this.detachSerialDriverEventBridge();
+        this.detachSerialDriverListeners();
       }
       throw error;
     }
@@ -565,6 +566,7 @@ export class Blz extends EventEmitter {
   private attachSerialDriverResetListener(): void {
     this.detachSerialDriverResetListener();
     this.serialDriver.on("reset", this.onSerialResetHandler);
+    this.serialDriverResetListenerAttached = true;
   }
 
   private attachConnectResetListener(listener: () => void): void {
@@ -586,7 +588,12 @@ export class Blz extends EventEmitter {
   }
 
   private detachSerialDriverResetListener(): void {
+    if (!this.serialDriverResetListenerAttached) {
+      return;
+    }
+
     this.serialDriver.off("reset", this.onSerialResetHandler);
+    this.serialDriverResetListenerAttached = false;
   }
 
   private detachSerialDriverListeners(): void {

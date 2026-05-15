@@ -179,7 +179,7 @@ describe("BLZ Driver", () => {
       expect(source).toContain("this.enterDisconnectedState(this.createConnectionResetError());");
       expect(source).toContain("this.enterDisconnectedState(this.createConnectionClosedError());");
       expect(source).toContain("this.enterDisconnectedState(connectionCancelError, closeError);");
-      expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(1);
+      expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(2);
       expect(source.match(/this\.cancelConnectionOperations\(connectionError\);/g)).toHaveLength(1);
       expect(source).toContain("private createConnectionClosedError(): Error");
       expect(source.match(/this\.createConnectionClosedError\(\)/g)).toHaveLength(4);
@@ -397,6 +397,41 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
+    it("should detach the existing serial reset listener when reconnect attempts fail", async () => {
+      let initialized = false;
+      serialDriverMock.connect.mockImplementation(() => {
+        initialized = true;
+        return Promise.resolve();
+      });
+      serialDriverMock.close.mockImplementation(() => {
+        initialized = false;
+        return Promise.resolve();
+      });
+      serialDriverMock.isInitialized.mockImplementation(() => initialized);
+
+      await blz.connect(serialPortOptions);
+      const runtimeResetHandler = serialDriverMock.on.mock.calls
+        .filter((call) => call[0] === "reset")
+        .at(-1)?.[1];
+      serialDriverMock.connect.mockRejectedValue(new Error("Connection failed"));
+      serialDriverMock.off.mockClear();
+
+      const reconnect = blz.connect(serialPortOptions);
+      const rejection = expect(reconnect).rejects.toThrow("Failed to connect");
+
+      for (let i = 1; i < MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        await vi.advanceTimersByTimeAsync(
+          SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i,
+        );
+      }
+
+      await rejection;
+
+      expect(runtimeResetHandler).toBeDefined();
+      expect(serialDriverMock.off).toHaveBeenCalledWith("reset", runtimeResetHandler);
+      expect(serialDriverMock.removeAllListeners).not.toHaveBeenCalled();
+    });
+
     it("should preserve failed-attempt cleanup when connect errors cannot expose a message", async () => {
       const errorLog = vi.spyOn(logger, "error").mockImplementation(() => {});
       const connectError = new Error("Connection failed");
@@ -536,7 +571,7 @@ describe("BLZ Driver", () => {
 
       expect(observed).toBe("rejected:Connection cancelled by close");
       expect(serialDriverMock.connect).toHaveBeenCalledTimes(1);
-      expect(serialDriverMock.off.mock.calls.filter((call) => call[0] === "reset")).toHaveLength(2);
+      expect(serialDriverMock.off.mock.calls.filter((call) => call[0] === "reset")).toHaveLength(1);
     });
 
     it("should cancel a pending serial connect attempt when closing", async () => {
