@@ -179,6 +179,8 @@ describe("BLZ Adapter", () => {
       expect(source).toContain("private clearZclResponseWaiters(error: Error): void");
       expect(source.match(/this\.clearZclResponseWaiters\(/g)).toHaveLength(1);
       expect(source.match(/this\.waitress\.clear\(error\);/g)).toHaveLength(1);
+      expect(source).toContain("private cancelStopDelay(): void");
+      expect(source).toContain("this.cancelStopDelay();");
       expect(source.match(/this\.stopDelay\.cancel\(/g)).toHaveLength(1);
       expect(source.match(/this\.cancelRunningOperations\(/g)).toHaveLength(1);
     });

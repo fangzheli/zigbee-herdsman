@@ -271,7 +271,7 @@ export class BLZAdapter extends Adapter {
     this.queue.clear(error);
     this.clearZclResponseWaiters(error);
     this.cancelRunningOperations(error);
-    this.stopDelay.cancel();
+    this.cancelStopDelay();
   }
 
   private throwIfStopped(generation: number): void {
@@ -283,6 +283,10 @@ export class BLZAdapter extends Adapter {
   private cancelRunningOperations(error: Error): void {
     this.runningCancellationError = error;
     this.runningOperations.cancel(error);
+  }
+
+  private cancelStopDelay(): void {
+    this.stopDelay.cancel();
   }
 
   private async runOperationWhileRunning<T>(

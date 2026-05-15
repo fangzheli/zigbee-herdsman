@@ -1059,6 +1059,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ connect-reset operation cancellation so temporary reconnect
   reset listeners and full connection cleanup cancel reset-wrapped connect
   attempts through the same helper.
+- Centralized adapter stop-delay cancellation so startup, group, and broadcast
+  settle waits are interrupted through a dedicated helper during stopped-state
+  cleanup.
 
 ## Next Steps
 
