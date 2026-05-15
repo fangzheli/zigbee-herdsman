@@ -1211,6 +1211,9 @@ Future BLZ refactors should follow these rules:
 - Hardened the default logger's lazy-message formatting path so formatter
   exceptions become fallback log lines instead of propagating into BLZ
   reset-recovery cleanup or other lifecycle callers.
+- Deferred BLZ UART parse-error formatting until error logging evaluates the
+  message, keeping malformed-frame handling from throwing again before it
+  returns control to the serial receive loop.
 
 ## Next Steps
 

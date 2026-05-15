@@ -287,7 +287,7 @@ export class SerialDriver extends EventEmitter {
           this.handleDATA(frame);
       }
     } catch (error) {
-      logger.error(`Error parsing frame: ${error}`, NS);
+      logger.error(() => `Error parsing frame: ${error}`, NS);
     }
   }
 
