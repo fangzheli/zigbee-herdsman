@@ -741,9 +741,7 @@ export class Blz extends EventEmitter {
             return new BLZFrameData("reset", false, {});
           }
         } catch (error) {
-          if (waiter) {
-            this.waitress.remove(waiter.ID);
-          }
+          this.cancelWaiter(waiter);
           this.throwIfConnectionChanged(commandConnectGeneration);
           throw new Error(`Failure send ${name}:` + JSON.stringify(data), {
             cause: error,
@@ -921,6 +919,12 @@ export class Blz extends EventEmitter {
     timeout = 10000,
   ): { start: () => { promise: Promise<BLZFrame>; ID: number }; ID: number } {
     return this.waitress.waitFor({ frameId }, timeout);
+  }
+
+  private cancelWaiter(waiter: ReturnType<typeof this.waitFor> | undefined): void {
+    if (waiter) {
+      this.waitress.remove(waiter.ID);
+    }
   }
 
   private waitressTimeoutFormatter(

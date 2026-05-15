@@ -110,6 +110,8 @@ describe("BLZ Driver", () => {
       expect(source).toContain("this.attachSerialDriverResetListener();");
       expect(source).toContain("private startWatchdogTimer(): void");
       expect(source).toContain("this.startWatchdogTimer();");
+      expect(source).toContain("private cancelWaiter(");
+      expect(source).toContain("this.cancelWaiter(waiter);");
 
       const version = blz.getVersionSnapshot();
       version.product = 99;

@@ -1018,6 +1018,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ watchdog timer startup so successful connects clear any
   previous heartbeat timer and install the replacement through one lifecycle
   helper.
+- Centralized BLZ command waiter cancellation so failed command sends remove
+  pending response waiters through one helper instead of open-coding waitress
+  removal in the command path.
 
 ## Next Steps
 
