@@ -867,6 +867,23 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
+    it("should release TCP listener cleanup callback when socket listener detach fails", async () => {
+      const detachError = new Error("socket listener detach failed");
+      const connect = driver.connect(tcpPortOptions);
+      await socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
+      await connect;
+      socketPortMock.off.mockImplementation((event: string): void => {
+        if (event === "close") {
+          throw detachError;
+        }
+      });
+
+      await expect(driver.close(true)).rejects.toThrow(detachError);
+
+      expect(socketPortMock.destroy).toHaveBeenCalledTimes(1);
+      expect((driver as unknown as {detachSocketListeners?: () => void}).detachSocketListeners).toBeUndefined();
+    });
+
     it("should reject and clean listeners when TCP reset fails after socket ready", async () => {
       writerMock.sendReset.mockImplementation(() => {
         throw new Error("Reset failed");

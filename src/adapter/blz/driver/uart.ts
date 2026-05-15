@@ -732,8 +732,11 @@ export class SerialDriver extends EventEmitter {
         socketPort.unpipe(this.parser);
       },
       () => {
-        this.detachSocketListeners?.();
-        this.detachSocketListeners = undefined;
+        try {
+          this.detachSocketListeners?.();
+        } finally {
+          this.detachSocketListeners = undefined;
+        }
       },
     ]);
   }
