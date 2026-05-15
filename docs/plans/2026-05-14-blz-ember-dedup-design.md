@@ -1041,6 +1041,9 @@ Future BLZ refactors should follow these rules:
 - Split BLZ serial-driver listener teardown so the received/close event bridge
   and runtime reset listener each have paired detach helpers under the existing
   serial cleanup path.
+- Split high-level driver BLZ listener teardown so the startup close listener
+  and runtime reset/frame listeners each have paired detach helpers under the
+  existing lower-transport cleanup path.
 
 ## Next Steps
 

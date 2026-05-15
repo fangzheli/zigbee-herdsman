@@ -553,10 +553,18 @@ export class Driver extends EventEmitter {
     blz.on("frame", this.handleFrameHandler);
   }
 
-  private detachBlzListeners(blz: Blz): void {
+  private detachBlzCloseListener(blz: Blz): void {
     blz.off("close", this.onBlzCloseHandler);
+  }
+
+  private detachBlzRuntimeListeners(blz: Blz): void {
     blz.off("reset", this.onBlzResetHandler);
     blz.off("frame", this.handleFrameHandler);
+  }
+
+  private detachBlzListeners(blz: Blz): void {
+    this.detachBlzCloseListener(blz);
+    this.detachBlzRuntimeListeners(blz);
   }
 
   public async startup(): Promise<TsType.StartResult> {

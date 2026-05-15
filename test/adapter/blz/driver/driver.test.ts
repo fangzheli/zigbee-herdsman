@@ -91,8 +91,12 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source.match(/this\.resetForceOperations\.cancel\(error\);/g)).toHaveLength(1);
         expect(source).toContain("private attachBlzCloseListener(blz: Blz): void");
         expect(source).toContain("private attachBlzRuntimeListeners(blz: Blz): void");
+        expect(source).toContain("private detachBlzCloseListener(blz: Blz): void");
+        expect(source).toContain("private detachBlzRuntimeListeners(blz: Blz): void");
         expect(source).toContain("this.attachBlzCloseListener(blz);");
         expect(source).toContain("this.attachBlzRuntimeListeners(blz);");
+        expect(source).toContain("this.detachBlzCloseListener(blz);");
+        expect(source).toContain("this.detachBlzRuntimeListeners(blz);");
         expect(source).not.toContain("switch (true)");
         expect(source).toContain("private updateNetworkParametersSnapshot(");
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");
