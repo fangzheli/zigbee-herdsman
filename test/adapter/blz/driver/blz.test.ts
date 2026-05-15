@@ -1390,6 +1390,22 @@ describe("BLZ Driver", () => {
       expect((blz as unknown as {inResetingProcess: boolean}).inResetingProcess).toBe(false);
     });
 
+    it("should restore reset state when force reset cleanup fails before UART reset", async () => {
+      const cleanupError = new Error("pending command cleanup failed");
+      serialDriverMock.isInitialized.mockReturnValue(true);
+      vi.spyOn(
+        blz as unknown as {clearPendingCommands: (error: Error) => void},
+        "clearPendingCommands",
+      ).mockImplementation(() => {
+        throw cleanupError;
+      });
+
+      await expect(blz.forceReset()).rejects.toBe(cleanupError);
+
+      expect(serialDriverMock.reset).not.toHaveBeenCalled();
+      expect((blz as unknown as {inResetingProcess: boolean}).inResetingProcess).toBe(false);
+    });
+
     it("should handle send failures before command waiters start", async () => {
       const sendError = new Error("send failed");
       serialDriverMock.sendDATA.mockRejectedValue(sendError);

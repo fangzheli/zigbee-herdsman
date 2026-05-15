@@ -591,12 +591,11 @@ export class Blz extends EventEmitter {
     }
 
     this.inResetingProcess = true;
-    this.throwIfConnectionChanged(resetConnectGeneration);
-    const resetError = this.createConnectionResetError();
-    this.clearPendingCommands(resetError);
-    this.throwIfConnectionChanged(resetConnectGeneration);
-
     try {
+      this.throwIfConnectionChanged(resetConnectGeneration);
+      const resetError = this.createConnectionResetError();
+      this.clearPendingCommands(resetError);
+      this.throwIfConnectionChanged(resetConnectGeneration);
       await this.serialDriver.reset();
       this.throwIfConnectionChanged(resetConnectGeneration);
       logger.debug("Direct UART reset sent successfully", NS);
