@@ -185,6 +185,8 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("private attachParserToPort(port: SerialPort | net.Socket): void");
       expect(source.match(/this\.writer\.pipe\(/g)).toHaveLength(1);
       expect(source.match(/this\.parser\.on\("parsed"/g)).toHaveLength(1);
+      expect(source).toContain("private cleanupFailedOpenPort(port: SerialPort | net.Socket): void");
+      expect(source).not.toContain("const cleanupOpen = (): void");
     });
 
     it("should connect successfully", async () => {

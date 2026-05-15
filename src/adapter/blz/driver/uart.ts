@@ -113,17 +113,6 @@ export class SerialDriver extends EventEmitter {
     this.attachParserToPort(serialPort);
 
     let opened = false;
-    const cleanupOpen = (): void => {
-      if (this.serialPort !== serialPort) {
-        return;
-      }
-
-      this.initialized = false;
-      this.cleanupParser();
-      this.detachSerialPort();
-      serialPort.destroy();
-      this.serialPort = undefined;
-    };
 
     try {
       await this.connectOperations.run(
@@ -148,7 +137,7 @@ export class SerialDriver extends EventEmitter {
       this.initialized = true;
     } catch (error) {
       if (!opened) {
-        cleanupOpen();
+        this.cleanupFailedOpenPort(serialPort);
       }
 
       throw error;
@@ -167,17 +156,6 @@ export class SerialDriver extends EventEmitter {
 
     let settled = false;
     const socketPort = this.socketPort!;
-    const cleanupOpen = (): void => {
-      if (this.socketPort !== socketPort) {
-        return;
-      }
-
-      this.initialized = false;
-      this.cleanupParser();
-      this.detachSocketPort();
-      socketPort.destroy();
-      this.socketPort = undefined;
-    };
 
     const openSocket = (): Promise<void> =>
       new Promise<void>((resolve, reject): void => {
@@ -188,7 +166,7 @@ export class SerialDriver extends EventEmitter {
           }
 
           settled = true;
-          cleanupOpen();
+          this.cleanupFailedOpenPort(socketPort);
           reject(err);
         };
         const openClose = (): void => {
@@ -265,7 +243,7 @@ export class SerialDriver extends EventEmitter {
     } catch (error) {
       if (!settled) {
         settled = true;
-        cleanupOpen();
+        this.cleanupFailedOpenPort(socketPort);
       }
 
       throw error;
@@ -446,6 +424,16 @@ export class SerialDriver extends EventEmitter {
     this.writer.pipe(port);
     port.pipe(this.parser);
     this.parser.on("parsed", this.onParsedHandler);
+  }
+
+  private cleanupFailedOpenPort(port: SerialPort | net.Socket): void {
+    if (this.serialPort !== port && this.socketPort !== port) {
+      return;
+    }
+
+    this.initialized = false;
+    this.cleanupParser();
+    this.destroyActivePort();
   }
 
   private cancelPendingOperations(error: Error): void {

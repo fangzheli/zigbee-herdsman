@@ -994,6 +994,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART parser/port pipe setup so serial and TCP opens register the
   writer pipe, parser pipe, and parsed-frame listener through one helper matched
   by the existing parser cleanup path.
+- Centralized UART open-failure cleanup so serial open errors, TCP open errors,
+  pre-ready TCP closes, and close-interrupted opens release parser listeners,
+  pipes, destroyed ports, and active port references through one helper.
 
 ## Next Steps
 
