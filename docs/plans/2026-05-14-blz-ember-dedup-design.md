@@ -1104,6 +1104,9 @@ Future BLZ refactors should follow these rules:
   status conversion.
 - Centralized adapter running-generation checks so queued operations, running
   operations, and settle delays all use the same stopped-state predicate.
+- Centralized high-level driver startup-generation checks so startup throws,
+  startup delays, and in-flight startup operations share one stop/reset
+  cancellation predicate.
 
 ## Next Steps
 

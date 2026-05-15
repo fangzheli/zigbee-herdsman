@@ -1304,9 +1304,13 @@ export class Driver extends EventEmitter {
   }
 
   private throwIfStartupCancelled(startupStopGeneration: number): void {
-    if (this.stopGeneration !== startupStopGeneration) {
+    if (!this.isStartupGenerationActive(startupStopGeneration)) {
       throw this.startupCancellationError ?? new Error("Driver stopped");
     }
+  }
+
+  private isStartupGenerationActive(startupStopGeneration: number): boolean {
+    return this.stopGeneration === startupStopGeneration;
   }
 
   private async waitForStartupDelay(
@@ -1317,7 +1321,7 @@ export class Driver extends EventEmitter {
 
     const stillActive = await this.startupDelay.wait(
       milliseconds,
-      () => this.stopGeneration === startupStopGeneration,
+      () => this.isStartupGenerationActive(startupStopGeneration),
     );
 
     if (!stillActive) {
@@ -1345,7 +1349,7 @@ export class Driver extends EventEmitter {
   ): Promise<T> {
     return await this.startupOperations.run(
       operation,
-      () => this.stopGeneration === startupStopGeneration,
+      () => this.isStartupGenerationActive(startupStopGeneration),
       () => this.startupCancellationError ?? new Error("Driver stopped"),
     );
   }
