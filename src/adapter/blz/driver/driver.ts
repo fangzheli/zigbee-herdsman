@@ -165,6 +165,7 @@ export class Driver extends EventEmitter {
   private readonly requestRetryDelay = new CancellableDelay();
   private readonly resetDelay = new CancellableDelay();
   private readonly startupDelay = new CancellableDelay();
+  private readonly channelChangeDelay = new CancellableDelay();
   private transactionID = 1;
   private readonly onBlzCloseHandler = this.onBlzClose.bind(this);
   private readonly onBlzResetHandler = this.onBlzReset.bind(this);
@@ -253,6 +254,79 @@ export class Driver extends EventEmitter {
     networkParams.channels = channelToMask(channel);
   }
 
+  public async changeChannel(
+    newChannel: number,
+    nwkUpdateId: number,
+  ): Promise<void> {
+    logger.info(
+      `[BLZ] Starting channel change to channel ${newChannel} with NWKUpdateID ${nwkUpdateId}`,
+      NS,
+    );
+
+    const currentParams = this.getNetworkParametersSnapshot();
+    if (nwkUpdateId <= currentParams.nwkUpdateId) {
+      throw new Error(
+        `Invalid NWKUpdateID ${nwkUpdateId} - must be greater than current ${currentParams.nwkUpdateId}`,
+      );
+    }
+
+    logger.debug(`[BLZ] Current network parameters:`, NS);
+    logger.debug(`[BLZ]   - PanID: 0x${currentParams.panId.toString(16)}`, NS);
+    logger.debug(
+      `[BLZ]   - ExtendedPanID: 0x${currentParams.extendedPanId.toString("hex")}`,
+      NS,
+    );
+    logger.debug(`[BLZ]   - Channel: ${currentParams.Channel}`, NS);
+    logger.debug(
+      `[BLZ]   - Current NWKUpdateID: ${currentParams.nwkUpdateId}`,
+      NS,
+    );
+    logger.debug(`[BLZ]   - New NWKUpdateID: ${nwkUpdateId}`, NS);
+
+    const networkKeyInfo = await this.getNetworkKeyInfo();
+    const tcLinkKeyInfo = await this.getGlobalTcLinkKey();
+
+    logger.info(`[BLZ] Waiting for broadcast to propagate (15s)...`, NS);
+    await this.waitForChannelChangeDelay(15000);
+
+    logger.info(`[BLZ] Leaving current network...`, NS);
+    const leaveStatus = await this.leaveNetwork();
+    if (leaveStatus !== BlzStatus.SUCCESS) {
+      throw new Error(
+        `[BLZ] Failed to leave network with status=${leaveStatus}`,
+      );
+    }
+    await this.waitForChannelChangeDelay(4000);
+
+    logger.info(`[BLZ] Updating network security info...`, NS);
+    await this.setNetworkKeyInfo(
+      networkKeyInfo.nwkKey,
+      networkKeyInfo.outgoingFrameCounter,
+      networkKeyInfo.nwkKeySeqNum,
+    );
+    await this.setGlobalTcLinkKey(
+      tcLinkKeyInfo.linkKey,
+      tcLinkKeyInfo.outgoingFrameCounter,
+    );
+
+    logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
+    const formStatus = await this.formNetworkWithParameters(
+      BigInt(`0x${currentParams.extendedPanId.toString("hex")}`),
+      currentParams.panId,
+      newChannel,
+    );
+    if (formStatus !== BlzStatus.SUCCESS) {
+      throw new Error(`[BLZ] Failed to form network on channel ${newChannel}`);
+    }
+
+    this.updateNetworkParametersSnapshot(newChannel, nwkUpdateId);
+
+    logger.info(`[BLZ] Waiting for network to stabilize (5s)...`, NS);
+    await this.waitForChannelChangeDelay(5000);
+
+    logger.info(`[BLZ] Channel change completed successfully`, NS);
+  }
+
   /**
    * Converts BLZ hardware MAC address to IEEE EUI-64 format
    * BLZ hardware returns 8 bytes in little-endian format
@@ -318,6 +392,7 @@ export class Driver extends EventEmitter {
     this.requestGeneration += 1;
     this.cancelRequestOperations(resetError);
     this.requestRetryDelay.cancel();
+    this.channelChangeDelay.cancel();
     this.waitress.clear(resetError);
     this.cancelStartupOperations(resetError);
 
@@ -390,6 +465,7 @@ export class Driver extends EventEmitter {
     this.requestGeneration += 1;
     this.cancelRequestOperations(closeError);
     this.requestRetryDelay.cancel();
+    this.channelChangeDelay.cancel();
     this.stopGeneration += 1;
     this.resetDelay.cancel();
     this.cancelStartupOperations(closeError);
@@ -434,6 +510,7 @@ export class Driver extends EventEmitter {
     this.requestGeneration += 1;
     this.cancelRequestOperations(new Error("Driver stopped"));
     this.requestRetryDelay.cancel();
+    this.channelChangeDelay.cancel();
     if (!internalReset) {
       const stopError = new Error("Driver stopped");
       this.stopGeneration += 1;
@@ -1152,6 +1229,18 @@ export class Driver extends EventEmitter {
       milliseconds,
       () => !this.isRequestCancelled(requestGeneration),
     );
+  }
+
+  private async waitForChannelChangeDelay(milliseconds: number): Promise<void> {
+    const requestGeneration = this.requestGeneration;
+    const completed = await this.channelChangeDelay.wait(
+      milliseconds,
+      () => !this.isRequestCancelled(requestGeneration),
+    );
+
+    if (!completed) {
+      throw new Error("Driver stopped");
+    }
   }
 
   private async waitForResetDelay(

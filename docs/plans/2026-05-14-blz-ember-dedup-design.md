@@ -945,6 +945,11 @@ Future BLZ refactors should follow these rules:
   helpers only.
 - Made driver node join/leave handlers private, keeping device lifecycle cache
   mutation and event emission owned by the driver receive/ZDO paths.
+- Moved BLZ channel-change reformation into a high-level driver API. The
+  adapter now parses and broadcasts NWK update requests, then delegates local
+  leave/key-restore/form-network/snapshot update sequencing to
+  `Driver.changeChannel()`. The driver's channel-change delays are cancellable
+  through the stop/reset cleanup paths.
 
 ## Next Steps
 

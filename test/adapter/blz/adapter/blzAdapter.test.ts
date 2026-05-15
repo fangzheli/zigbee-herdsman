@@ -31,6 +31,7 @@ describe("BLZ Adapter", () => {
     sendZclMulticast: ReturnType<typeof vi.fn>;
     sendZclBroadcast: ReturnType<typeof vi.fn>;
     sendZclEndpoint: ReturnType<typeof vi.fn>;
+    changeChannel: ReturnType<typeof vi.fn>;
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
@@ -96,6 +97,7 @@ describe("BLZ Adapter", () => {
       sendZclMulticast: vi.fn(),
       sendZclBroadcast: vi.fn(),
       sendZclEndpoint: vi.fn(),
+      changeChannel: vi.fn(),
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
@@ -192,6 +194,19 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain("this.driver.makeApsFrame(");
       expect(source).not.toContain("private makeZclApsFrame(");
       expect(source).toContain("this.driver.sendZclEndpoint(");
+    });
+
+    it("keeps channel-change reform ownership inside the driver API", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).not.toContain("this.driver.getNetworkKeyInfo(");
+      expect(source).not.toContain("this.driver.getGlobalTcLinkKey(");
+      expect(source).not.toContain("this.driver.leaveNetwork(");
+      expect(source).not.toContain("this.driver.setNetworkKeyInfo(");
+      expect(source).not.toContain("this.driver.setGlobalTcLinkKey(");
+      expect(source).not.toContain("this.driver.formNetworkWithParameters(");
+      expect(source).not.toContain("this.driver.updateNetworkParametersSnapshot(");
+      expect(source).toContain("this.driver.changeChannel(");
     });
 
     it("should stop successfully", async () => {
@@ -1131,31 +1146,8 @@ describe("BLZ Adapter", () => {
       );
     });
 
-    it("should preserve the extended PAN ID when changing channel", async () => {
-      driverMock.networkParams.panId = 0x2ea0;
-      driverMock.networkParams.extendedPanId = Buffer.from(
-        "b3c6675b7437d674",
-        "hex",
-      );
-      driverMock.networkParams.Channel = 11;
-      driverMock.networkParams.nwkUpdateId = 0;
+    it("should hand parsed channel changes to the driver API", async () => {
       driverMock.sendZdo.mockResolvedValue(undefined);
-      driverMock.getNetworkKeyInfo.mockResolvedValue({
-        nwkKey: Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex"),
-        outgoingFrameCounter: 40968,
-        nwkKeySeqNum: 0,
-      });
-      driverMock.getGlobalTcLinkKey.mockResolvedValue({
-        linkKey: Buffer.alloc(16),
-        outgoingFrameCounter: 0,
-      });
-      driverMock.leaveNetwork.mockResolvedValue(BlzStatus.SUCCESS);
-      driverMock.formNetworkWithParameters.mockResolvedValue(BlzStatus.SUCCESS);
-      driverMock.setNetworkKeyInfo.mockResolvedValue(BlzStatus.SUCCESS);
-      driverMock.setGlobalTcLinkKey.mockResolvedValue(BlzStatus.SUCCESS);
-      driverMock.getBlz.mockImplementation(() => {
-        throw new Error("transport leaked");
-      });
 
       const payload = Zdo.Buffalo.buildRequest(
         true,
@@ -1185,11 +1177,7 @@ describe("BLZ Adapter", () => {
         Buffer.from("0000800000fe01ffff", "hex"),
         true,
       );
-      expect(driverMock.formNetworkWithParameters).toHaveBeenCalledWith(
-        BigInt("0xb3c6675b7437d674"),
-        0x2ea0,
-        15,
-      );
+      expect(driverMock.changeChannel).toHaveBeenCalledWith(15, 1);
     });
 
     it("should not copy the raw NWK update payload just for logging", async () => {
@@ -1327,24 +1315,9 @@ describe("BLZ Adapter", () => {
     });
 
     it("should cancel an in-flight channel change when stopping", async () => {
-      driverMock.networkParams.panId = 0x2ea0;
-      driverMock.networkParams.extendedPanId = Buffer.from(
-        "b3c6675b7437d674",
-        "hex",
-      );
-      driverMock.networkParams.Channel = 11;
-      driverMock.networkParams.nwkUpdateId = 0;
       driverMock.sendZdo.mockResolvedValue(undefined);
+      driverMock.changeChannel.mockReturnValue(new Promise<void>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
-      driverMock.getNetworkKeyInfo.mockResolvedValue({
-        nwkKey: Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex"),
-        outgoingFrameCounter: 40968,
-        nwkKeySeqNum: 0,
-      });
-      driverMock.getGlobalTcLinkKey.mockResolvedValue({
-        linkKey: Buffer.alloc(16),
-        outgoingFrameCounter: 0,
-      });
       const payload = Zdo.Buffalo.buildRequest(
         true,
         Zdo.ClusterId.NWK_UPDATE_REQUEST,
@@ -1377,22 +1350,16 @@ describe("BLZ Adapter", () => {
       ]);
 
       expect(observed).toBe("rejected:Adapter stopped");
-      expect(driverMock.leaveNetwork).not.toHaveBeenCalled();
+      expect(driverMock.changeChannel).toHaveBeenCalledWith(15, 1);
+      expect(driverMock.getNetworkKeyInfo).not.toHaveBeenCalled();
       expect(driverMock.formNetworkWithParameters).not.toHaveBeenCalled();
       await change.catch(() => {});
     });
 
-    it("should cancel channel change while reading network key info", async () => {
-      driverMock.networkParams.panId = 0x2ea0;
-      driverMock.networkParams.extendedPanId = Buffer.from(
-        "b3c6675b7437d674",
-        "hex",
-      );
-      driverMock.networkParams.Channel = 11;
-      driverMock.networkParams.nwkUpdateId = 0;
+    it("should cancel channel change while the driver change is pending", async () => {
       driverMock.sendZdo.mockResolvedValue(undefined);
+      driverMock.changeChannel.mockReturnValue(new Promise<void>(() => {}));
       driverMock.stop.mockResolvedValue(undefined);
-      driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
       const payload = Zdo.Buffalo.buildRequest(
         true,
         Zdo.ClusterId.NWK_UPDATE_REQUEST,
@@ -1425,22 +1392,16 @@ describe("BLZ Adapter", () => {
       ]);
 
       expect(observed).toBe("rejected:Adapter stopped");
-      expect(driverMock.getNetworkKeyInfo).toHaveBeenCalled();
+      expect(driverMock.changeChannel).toHaveBeenCalledWith(15, 1);
+      expect(driverMock.getNetworkKeyInfo).not.toHaveBeenCalled();
       expect(driverMock.getGlobalTcLinkKey).not.toHaveBeenCalled();
       expect(driverMock.leaveNetwork).not.toHaveBeenCalled();
       await change.catch(() => {});
     });
 
     it("should serialize concurrent channel changes through the adapter queue", async () => {
-      driverMock.networkParams.panId = 0x2ea0;
-      driverMock.networkParams.extendedPanId = Buffer.from(
-        "b3c6675b7437d674",
-        "hex",
-      );
-      driverMock.networkParams.Channel = 11;
-      driverMock.networkParams.nwkUpdateId = 0;
       driverMock.sendZdo.mockResolvedValue(undefined);
-      driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
+      driverMock.changeChannel.mockReturnValue(new Promise<void>(() => {}));
 
       const firstPayload = Zdo.Buffalo.buildRequest(
         true,
@@ -1480,7 +1441,7 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(driverMock.sendZdo).toHaveBeenCalledTimes(1);
-      expect(driverMock.getNetworkKeyInfo).toHaveBeenCalledTimes(1);
+      expect(driverMock.changeChannel).toHaveBeenCalledTimes(1);
 
       await adapter.stop();
       await Promise.all([firstChange.catch(() => {}), secondChange.catch(() => {})]);

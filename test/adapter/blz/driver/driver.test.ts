@@ -722,6 +722,124 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(snapshot.channels).toBe(2 ** 20);
     });
 
+    it("changes channel inside the driver while preserving network identity", async () => {
+        vi.useFakeTimers();
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+        (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.panId = 0x2ea0;
+        (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.extendedPanId = Buffer.from(
+            "b3c6675b7437d674",
+            "hex",
+        );
+        const nwkKey = Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex");
+        const linkKey = Buffer.alloc(16);
+        const execCommand = vi.fn((command: string) => {
+            switch (command) {
+                case "getNwkSecurityInfos":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        nwkKey,
+                        outgoingFrameCounter: 40968,
+                        nwkKeySeqNum: 0,
+                    });
+                case "getGlobalTcLinkKey":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        linkKey,
+                        outgoingFrameCounter: 7,
+                        trustCenterAddress: 0,
+                    });
+                case "setNwkSecurityInfos":
+                case "setGlobalTcLinkKey":
+                    return Promise.resolve({status: BlzStatus.SUCCESS});
+                default:
+                    throw new Error(`unexpected command ${command}`);
+            }
+        });
+        const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        setDriverBlz(driver, {execCommand, leaveNetwork, formNetwork});
+
+        const change = driver.changeChannel(15, 1);
+        await vi.advanceTimersByTimeAsync(24000);
+        await change;
+
+        expect(leaveNetwork).toHaveBeenCalledTimes(1);
+        expect(execCommand).toHaveBeenCalledWith("setNwkSecurityInfos", {
+            nwkKey,
+            outgoingFrameCounter: 40968,
+            nwkKeySeqNum: 0,
+        });
+        expect(execCommand).toHaveBeenCalledWith("setGlobalTcLinkKey", {
+            linkKey,
+            outgoingFrameCounter: 7,
+        });
+        expect(formNetwork).toHaveBeenCalledWith(
+            BigInt("0xb3c6675b7437d674"),
+            0x2ea0,
+            15,
+        );
+        const snapshot = driver.getNetworkParametersSnapshot();
+        expect(snapshot.Channel).toBe(15);
+        expect(snapshot.nwkUpdateId).toBe(1);
+        expect(snapshot.channels).toBe(2 ** 15);
+    });
+
+    it("cancels a driver-owned channel change delay when stopping", async () => {
+        vi.useFakeTimers();
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+        const execCommand = vi.fn((command: string) => {
+            switch (command) {
+                case "getNwkSecurityInfos":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        nwkKey: Buffer.alloc(16),
+                        outgoingFrameCounter: 1,
+                        nwkKeySeqNum: 0,
+                    });
+                case "getGlobalTcLinkKey":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        linkKey: Buffer.alloc(16),
+                        outgoingFrameCounter: 1,
+                        trustCenterAddress: 0,
+                    });
+                default:
+                    throw new Error(`unexpected command ${command}`);
+            }
+        });
+        const leaveNetwork = vi.fn();
+        const formNetwork = vi.fn();
+        setDriverBlz(driver, {
+            execCommand,
+            leaveNetwork,
+            formNetwork,
+            off: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        });
+
+        const change = driver.changeChannel(15, 1);
+        const changeResult = change.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(0);
+
+        await driver.stop(false);
+        await vi.advanceTimersByTimeAsync(0);
+        const observed = await Promise.race([
+            changeResult,
+            Promise.resolve("pending"),
+        ]);
+
+        void change.catch(() => {});
+
+        expect(observed).toBe("rejected:Driver stopped");
+        expect(leaveNetwork).not.toHaveBeenCalled();
+        expect(formNetwork).not.toHaveBeenCalled();
+    });
+
     it("cancels network ID to EUI64 lookup when stopping", async () => {
         vi.useFakeTimers();
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));

@@ -522,129 +522,16 @@ export class BLZAdapter extends Adapter {
       );
       this.throwIfStopped(generation);
 
-      await this.handleChannelChange(
-        channelChange.channel,
-        channelChange.nwkUpdateId,
+      await this.runOperationWhileRunning(
+        () =>
+          this.driver.changeChannel(
+            channelChange.channel,
+            channelChange.nwkUpdateId,
+          ),
+        generation,
       );
+      this.throwIfStopped(generation);
     }, networkAddress);
-  }
-
-  /**
-   * Handle channel change for BLZ adapter
-   * Since BLZ doesn't support runtime channel change, we:
-   * 1. Wait for broadcast to propagate
-   * 2. Leave the network
-   * 3. Reform on the new channel
-   */
-  private async handleChannelChange(
-    newChannel: number,
-    nwkUpdateId: number,
-  ): Promise<void> {
-    const generation = this.stopGeneration;
-    logger.info(
-      `[BLZ] Starting channel change to channel ${newChannel} with NWKUpdateID ${nwkUpdateId}`,
-      NS,
-    );
-
-    this.throwIfStopped(generation);
-
-    // 1. Validate NWKUpdateID
-    const currentParams = await this.runOperationWhileRunning(
-      () => this.getNetworkParameters(),
-      generation,
-    );
-    if (nwkUpdateId <= currentParams.nwkUpdateID) {
-      throw new Error(
-        `Invalid NWKUpdateID ${nwkUpdateId} - must be greater than current ${currentParams.nwkUpdateID}`,
-      );
-    }
-
-    logger.debug(`[BLZ] Current network parameters:`, NS);
-    logger.debug(`[BLZ]   - PanID: 0x${currentParams.panID.toString(16)}`, NS);
-    logger.debug(`[BLZ]   - ExtendedPanID: ${currentParams.extendedPanID}`, NS);
-    logger.debug(
-      `[BLZ]   - ExtendedPanID type: ${typeof currentParams.extendedPanID}`,
-      NS,
-    );
-    logger.debug(`[BLZ]   - Channel: ${currentParams.channel}`, NS);
-    logger.debug(
-      `[BLZ]   - Current NWKUpdateID: ${currentParams.nwkUpdateID}`,
-      NS,
-    );
-    logger.debug(`[BLZ]   - New NWKUpdateID: ${nwkUpdateId}`, NS);
-
-    // 2. Get current network state
-    const networkKeyInfo = await this.runOperationWhileRunning(
-      () => this.driver.getNetworkKeyInfo(),
-      generation,
-    );
-    const tcLinkKeyInfo = await this.runOperationWhileRunning(
-      () => this.driver.getGlobalTcLinkKey(),
-      generation,
-    );
-
-    // 3. Wait for broadcast to propagate (minimum 15 seconds per Zigbee spec)
-    logger.info(`[BLZ] Waiting for broadcast to propagate (15s)...`, NS);
-    await this.waitWhileRunning(15000, generation);
-
-    // 4. Leave current network
-    logger.info(`[BLZ] Leaving current network...`, NS);
-    const leaveStatus = await this.runOperationWhileRunning(
-      () => this.driver.leaveNetwork(),
-      generation,
-    );
-    if (leaveStatus !== BlzStatus.SUCCESS) {
-      throw new Error(
-        `[BLZ] Failed to leave network with status=${leaveStatus}`,
-      );
-    }
-    await this.waitWhileRunning(4000, generation);
-
-    // 5. Update network security info with new NWKUpdateID
-    logger.info(`[BLZ] Updating network security info...`, NS);
-    await this.runOperationWhileRunning(
-      () =>
-        this.driver.setNetworkKeyInfo(
-          networkKeyInfo.nwkKey,
-          networkKeyInfo.outgoingFrameCounter,
-          networkKeyInfo.nwkKeySeqNum,
-        ),
-      generation,
-    );
-    await this.runOperationWhileRunning(
-      () =>
-        this.driver.setGlobalTcLinkKey(
-          tcLinkKeyInfo.linkKey,
-          tcLinkKeyInfo.outgoingFrameCounter,
-        ),
-      generation,
-    );
-
-    // 6. Reform network on new channel
-    logger.info(`[BLZ] Reforming network on channel ${newChannel}...`, NS);
-    const extPanId = BigInt(currentParams.extendedPanID);
-    const formStatus = await this.runOperationWhileRunning(
-      () =>
-        this.driver.formNetworkWithParameters(
-          extPanId,
-          currentParams.panID,
-          newChannel,
-        ),
-      generation,
-    );
-
-    if (formStatus !== BlzStatus.SUCCESS) {
-      throw new Error(`[BLZ] Failed to form network on channel ${newChannel}`);
-    }
-
-    // 7. Update driver's network parameters
-    this.driver.updateNetworkParametersSnapshot(newChannel, nwkUpdateId);
-
-    // 8. Wait for network stabilization
-    logger.info(`[BLZ] Waiting for network to stabilize (5s)...`, NS);
-    await this.waitWhileRunning(5000, generation);
-
-    logger.info(`[BLZ] Channel change completed successfully`, NS);
   }
 
   public async sendZclFrameToEndpoint(
