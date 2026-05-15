@@ -1231,6 +1231,8 @@ Future BLZ refactors should follow these rules:
   original lower reset error after restoring BLZ reset state.
 - Deferred low-level BLZ received-frame parse error formatting so malformed or
   unknown frames with unprintable decode errors are still discarded locally.
+- Deferred UART parser invalid-frame error formatting so corrupted serial bytes
+  still call the transform callback and do not break stream processing.
 
 ## Next Steps
 

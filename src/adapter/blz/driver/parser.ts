@@ -51,7 +51,7 @@ export class Parser extends stream.Transform {
           this.emit("parsed", frame); // Emit the parsed frame
         }
       } catch (error) {
-        logger.debug(`<-- error ${error}`, NS);
+        logger.debug(() => `<-- error ${error}`, NS);
       }
 
       // Remove the processed part and search for the next frame
