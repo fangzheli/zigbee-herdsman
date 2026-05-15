@@ -76,6 +76,10 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private handleApsDataIndication(");
         expect(source).toContain("private makeIncomingApsFrame(");
         expect(source).toContain("private emitIncomingApsMessage(");
+        expect(source).toContain("private cancelDriverRequests(error: Error): void");
+        expect(source.match(/this\.requestGeneration \+= 1;/g)).toHaveLength(1);
+        expect(source.match(/this\.requestRetryDelay\.cancel\(\);/g)).toHaveLength(1);
+        expect(source.match(/this\.channelChangeDelay\.cancel\(\);/g)).toHaveLength(1);
         expect(source).not.toContain("switch (true)");
         expect(source).toContain("private updateNetworkParametersSnapshot(");
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");

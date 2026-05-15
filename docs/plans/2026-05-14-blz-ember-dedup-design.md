@@ -997,6 +997,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART open-failure cleanup so serial open errors, TCP open errors,
   pre-ready TCP closes, and close-interrupted opens release parser listeners,
   pipes, destroyed ports, and active port references through one helper.
+- Centralized high-level driver request cancellation so reset, lower transport
+  close, and stop all advance the request generation and cancel lower request
+  operations, retry delays, and channel-change delays through one helper.
 
 ## Next Steps
 

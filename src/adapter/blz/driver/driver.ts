@@ -397,10 +397,7 @@ export class Driver extends EventEmitter {
     const resettingBlz = this.blz;
     logger.debug(`Reset connection.`, NS);
     const resetError = new Error("Driver reset");
-    this.requestGeneration += 1;
-    this.cancelRequestOperations(resetError);
-    this.requestRetryDelay.cancel();
-    this.channelChangeDelay.cancel();
+    this.cancelDriverRequests(resetError);
     this.waitress.clear(resetError);
     this.cancelStartupOperations(resetError);
 
@@ -457,10 +454,7 @@ export class Driver extends EventEmitter {
   private onBlzClose(): void {
     logger.debug("onBlzClose()", NS);
     const closeError = new Error("Driver closed");
-    this.requestGeneration += 1;
-    this.cancelRequestOperations(closeError);
-    this.requestRetryDelay.cancel();
-    this.channelChangeDelay.cancel();
+    this.cancelDriverRequests(closeError);
     this.stopGeneration += 1;
     this.resetDelay.cancel();
     this.cancelStartupOperations(closeError);
@@ -502,12 +496,9 @@ export class Driver extends EventEmitter {
 
   private prepareStop(internalReset: boolean): void {
     logger.debug("Stopping driver", NS);
-    this.requestGeneration += 1;
-    this.cancelRequestOperations(new Error("Driver stopped"));
-    this.requestRetryDelay.cancel();
-    this.channelChangeDelay.cancel();
+    const stopError = new Error("Driver stopped");
+    this.cancelDriverRequests(stopError);
     if (!internalReset) {
-      const stopError = new Error("Driver stopped");
       this.stopGeneration += 1;
       this.resetDelay.cancel();
       this.resetForceOperations.cancel(stopError);
@@ -1200,6 +1191,13 @@ export class Driver extends EventEmitter {
 
   private isRequestCancelled(requestGeneration: number): boolean {
     return this.requestGeneration !== requestGeneration || !this.blz;
+  }
+
+  private cancelDriverRequests(error: Error): void {
+    this.requestGeneration += 1;
+    this.cancelRequestOperations(error);
+    this.requestRetryDelay.cancel();
+    this.channelChangeDelay.cancel();
   }
 
   private cancelRequestOperations(error: Error): void {
