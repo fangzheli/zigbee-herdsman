@@ -188,7 +188,10 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("this.cancelSendRetryDelay();");
       expect(source.match(/this\.sendRetryDelay\.cancel\(\);/g)).toHaveLength(1);
       expect(source).toContain("private enterClosedState(error: Error): void");
-      expect(source.match(/this\.enterClosedState\(closeError\);/g)).toHaveLength(2);
+      expect(source.match(/this\.enterClosedState\(closeError\);/g)).toHaveLength(1);
+      expect(source).toContain("private cleanupPortEvent(error: Error): void");
+      expect(source).toContain("this.cleanupPortEvent(closeError);");
+      expect(source).toContain("this.cleanupPortEvent(resetError);");
       expect(source).toContain("private createConnectionClosedError(): Error");
       expect(source.match(/this\.createConnectionClosedError\(\)/g)).toHaveLength(8);
       expect(source).toContain("private createConnectionResetError(): Error");
@@ -370,6 +373,22 @@ describe("BLZ Serial Driver", () => {
       expect(serialPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should destroy failed serial opens when parser cleanup fails", async () => {
+      serialPortMock.asyncOpen.mockRejectedValue(
+        new Error("Connection failed"),
+      );
+      parserMock.off.mockImplementation(() => {
+        throw new Error("parser cleanup failed");
+      });
+
+      await expect(driver.connect(serialPortOptions)).rejects.toThrow("parser cleanup failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+    });
+
     it("should clean serial resources when parser attachment fails before open", async () => {
       writerMock.pipe.mockImplementation(() => {
         throw new Error("pipe failed");
@@ -513,6 +532,22 @@ describe("BLZ Serial Driver", () => {
       expect(serialPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
       expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+    });
+
+    it("should continue serial close when parser cleanup fails", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+
+      await driver.connect(serialPortOptions);
+      parserMock.off.mockImplementation(() => {
+        throw new Error("parser cleanup failed");
+      });
+
+      await expect(driver.close(false)).rejects.toThrow("parser cleanup failed");
+
+      expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
+      expect(serialPortMock.destroy).not.toHaveBeenCalled();
       expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
     });
 
@@ -1003,6 +1038,22 @@ describe("BLZ Serial Driver", () => {
       expect(callback).toHaveBeenCalledTimes(1);
       expect(driver.isInitialized()).toBe(false);
       expect(serialPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should emit reset and destroy serial resources after reset frame when parser cleanup fails", () => {
+      const callback = vi.fn();
+      driver.on("reset", callback);
+      parserMock.off.mockImplementation(() => {
+        throw new Error("parser cleanup failed");
+      });
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](
+        createFrame(0x0003, 0x01, 0x00),
+      );
+
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it("should not stringify parsed RESET frames unless warning logging evaluates the message", () => {
@@ -1498,6 +1549,23 @@ describe("BLZ Serial Driver", () => {
       expect(
         (driver as unknown as {serialPort?: unknown}).serialPort,
       ).toBeUndefined();
+    });
+
+    it("should emit close and destroy serial resources after port close when parser cleanup fails", () => {
+      const callback = vi.fn();
+      driver.on("close", callback);
+      parserMock.off.mockImplementation(() => {
+        throw new Error("parser cleanup failed");
+      });
+
+      expect(() => {
+        serialPortMock.once.mock.calls.find((call) => call[0] === "close")?.[1](false);
+      }).not.toThrow();
+
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+      expect(driver.isInitialized()).toBe(false);
+      expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it("should release serial resources when port close error cannot be stringified", () => {

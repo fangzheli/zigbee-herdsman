@@ -410,8 +410,7 @@ export class SerialDriver extends EventEmitter {
 
   private handleResetFrame(): void {
     const resetError = this.createConnectionResetError();
-    this.enterClosedState(resetError);
-    this.destroyActivePort();
+    this.cleanupPortEvent(resetError);
     this.emit("reset");
   }
 
@@ -441,48 +440,83 @@ export class SerialDriver extends EventEmitter {
     const closeError = this.createConnectionClosedError();
     this.cancelConnectOperations(closeError);
     const wasInitialized = this.initialized;
-    this.enterClosedState(closeError);
-
     const serialPort = this.serialPort;
-    if (serialPort) {
-      try {
-        await runAsyncCleanupSteps([
-          () => {
-            this.detachSerialPort();
-          },
-          async () => {
-            if (wasInitialized && serialPort.isOpen) {
-              await serialPort.asyncFlushAndClose();
-            } else {
-              this.destroyActivePort();
-            }
-          },
-        ]);
-      } catch (error) {
-        try {
-          this.destroyActivePort();
-        } catch (destroyError) {
-          logger.debug(
-            () => `Failed to destroy serial port after close failure: ${formatErrorMessage(destroyError)}`,
-            NS,
-          );
-        }
-        if (this.emitCloseWhenCloseCompletes) {
-          this.emit("close");
-        }
-
-        throw error;
-      } finally {
-        if (this.serialPort === serialPort) {
-          this.serialPort = undefined;
-        }
-      }
-    } else if (this.socketPort) {
-      this.destroyActivePort();
+    try {
+      await runAsyncCleanupSteps([
+        () => {
+          this.enterClosedState(closeError);
+        },
+        async () => {
+          await this.closeActivePort(wasInitialized, serialPort);
+        },
+      ]);
+    } catch (error) {
+      this.emitCloseIfRequested();
+      throw error;
     }
 
+    this.emitCloseIfRequested();
+  }
+
+  private emitCloseIfRequested(): void {
     if (this.emitCloseWhenCloseCompletes) {
       this.emit("close");
+    }
+  }
+
+  private async closeActivePort(
+    wasInitialized: boolean,
+    serialPort: SerialPort | undefined,
+  ): Promise<void> {
+    if (serialPort) {
+      await this.closeSerialPort(wasInitialized, serialPort);
+    } else if (this.socketPort) {
+      this.destroyActivePortAfterCloseFailure("socket", true);
+    }
+  }
+
+  private async closeSerialPort(
+    wasInitialized: boolean,
+    serialPort: SerialPort,
+  ): Promise<void> {
+    try {
+      await runAsyncCleanupSteps([
+        () => {
+          this.detachSerialPort();
+        },
+        async () => {
+          if (wasInitialized && serialPort.isOpen) {
+            await serialPort.asyncFlushAndClose();
+          } else {
+            this.destroyActivePort();
+          }
+        },
+      ]);
+    } catch (error) {
+      this.destroyActivePortAfterCloseFailure("serial", false);
+      throw error;
+    } finally {
+      if (this.serialPort === serialPort) {
+        this.serialPort = undefined;
+      }
+    }
+  }
+
+  private destroyActivePortAfterCloseFailure(
+    portType: "serial" | "socket",
+    rethrow: boolean,
+  ): void {
+    try {
+      this.destroyActivePort();
+    } catch (destroyError) {
+      logger.debug(
+        () => `Failed to destroy ${portType} port after close failure: ${formatErrorMessage(destroyError)}`,
+        NS,
+      );
+
+      if (rethrow) {
+        throw destroyError;
+      }
     }
   }
 
@@ -503,8 +537,14 @@ export class SerialDriver extends EventEmitter {
     }
 
     this.initialized = false;
-    this.cleanupParser();
-    this.destroyActivePort();
+    runCleanupSteps([
+      () => {
+        this.cleanupParser();
+      },
+      () => {
+        this.destroyActivePort();
+      },
+    ]);
   }
 
   private attachRuntimePortListeners(port: SerialPort | net.Socket): void {
@@ -605,8 +645,32 @@ export class SerialDriver extends EventEmitter {
 
   private enterClosedState(error: Error): void {
     this.initialized = false;
-    this.cancelPendingOperations(error);
-    this.cleanupParser();
+    runCleanupSteps([
+      () => {
+        this.cancelPendingOperations(error);
+      },
+      () => {
+        this.cleanupParser();
+      },
+    ]);
+  }
+
+  private cleanupPortEvent(error: Error): void {
+    try {
+      runCleanupSteps([
+        () => {
+          this.enterClosedState(error);
+        },
+        () => {
+          this.destroyActivePort();
+        },
+      ]);
+    } catch (cleanupError) {
+      logger.debug(
+        () => `Failed to cleanup UART port event: ${formatErrorMessage(cleanupError)}`,
+        NS,
+      );
+    }
   }
 
   private detachSerialPort(): void {
@@ -678,9 +742,7 @@ export class SerialDriver extends EventEmitter {
   private onPortClose(err: boolean | Error): void {
     logger.debug(() => `Port closed. Error? ${err}`, NS);
     const closeError = this.createPortCloseError(err);
-    this.enterClosedState(closeError);
-
-    this.destroyActivePort();
+    this.cleanupPortEvent(closeError);
 
     if (err != null && err !== false) {
       this.emit("reset");
