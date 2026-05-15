@@ -13,6 +13,8 @@ import type {
 } from "../../../zspec/zdo/definition/tstypes";
 import { BLZAdapterBackup } from "../adapter/backup";
 import {
+  bytesEqual,
+  bytesToHex,
   fixedBufferFromBytes,
   fixedBufferFromHex,
   uint64FromLittleEndianBytes,
@@ -66,32 +68,6 @@ type IeeeMfg = {
 
 function channelToMask(channel: number): number {
   return 2 ** channel;
-}
-
-function bytesToHex(value: ArrayLike<number>): string {
-  let result = "";
-  for (let i = 0; i < value.length; i++) {
-    result += (value[i] & 0xff).toString(16).padStart(2, "0");
-  }
-
-  return result;
-}
-
-function bytesEqual(
-  left: ArrayLike<number>,
-  right: ArrayLike<number>,
-): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  for (let i = 0; i < left.length; i++) {
-    if ((left[i] & 0xff) !== (right[i] & 0xff)) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 function addressesMatch(

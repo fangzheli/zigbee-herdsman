@@ -1119,6 +1119,8 @@ Future BLZ refactors should follow these rules:
 - Moved uint64 little-endian conversion into shared byte utilities so backup
   serialization, startup validation, and restore comparison do not carry
   separate conversion loops.
+- Moved byte equality and lazy hex formatting helpers into shared byte
+  utilities so driver restore checks no longer own generic byte loops.
 
 ## Next Steps
 

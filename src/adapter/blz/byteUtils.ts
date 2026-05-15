@@ -104,3 +104,29 @@ export function uint64ToLittleEndianBuffer(value: bigint | number | string): Buf
 
   return result;
 }
+
+export function bytesToHex(value: ArrayLike<number>): string {
+  let result = "";
+  for (let i = 0; i < value.length; i++) {
+    result += (value[i] & 0xff).toString(16).padStart(2, "0");
+  }
+
+  return result;
+}
+
+export function bytesEqual(
+  left: ArrayLike<number>,
+  right: ArrayLike<number>,
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let i = 0; i < left.length; i++) {
+    if ((left[i] & 0xff) !== (right[i] & 0xff)) {
+      return false;
+    }
+  }
+
+  return true;
+}

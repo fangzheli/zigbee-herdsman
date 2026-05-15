@@ -56,6 +56,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("extPanIdArray.push");
         expect(source).toContain("uint64ToLittleEndianBuffer(netParams.extPanId)");
         expect(source).not.toContain("const extPanIdArray = new Array<number>(8)");
+        expect(source).not.toContain("function bytesToHex(");
+        expect(source).not.toContain("function bytesEqual(");
         expect(source).toContain("bindingIndex: number | null;");
         expect(source).toContain("addressIndex: number | null;");
         expect(source).toContain("public async sendZdo(");
