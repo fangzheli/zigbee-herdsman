@@ -269,7 +269,7 @@ export class BLZAdapter extends Adapter {
     this.closing = true;
     this.stopGeneration += 1;
     this.queue.clear(error);
-    this.waitress.clear(error);
+    this.clearZclResponseWaiters(error);
     this.cancelRunningOperations(error);
     this.stopDelay.cancel();
   }
@@ -843,6 +843,10 @@ export class BLZAdapter extends Adapter {
     waiter: ReturnType<typeof this.waitForInternal> | null,
   ): void {
     waiter?.cancel();
+  }
+
+  private clearZclResponseWaiters(error: Error): void {
+    this.waitress.clear(error);
   }
 
   public waitFor(

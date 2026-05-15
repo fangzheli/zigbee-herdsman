@@ -1050,6 +1050,9 @@ Future BLZ refactors should follow these rules:
 - Added a read-only active-waiter count to `CancellableDelay`, matching
   `CancellableOperation` so delay cleanup tests can assert leaked retry/startup
   waits without reaching into private state.
+- Centralized adapter ZCL response-waiter clearing so adapter stop and driver
+  close paths reject pending ZCL waiters through one helper while preserving
+  their existing error reasons.
 
 ## Next Steps
 
