@@ -359,7 +359,7 @@ export class Blz extends EventEmitter {
     }
 
     const resetForReconnect = (): void => {
-      this.connectResetOperations.cancel(new Error("Failure to connect"));
+      this.cancelConnectResetOperations(new Error("Failure to connect"));
     };
     this.attachConnectResetListener(resetForReconnect);
 
@@ -586,9 +586,13 @@ export class Blz extends EventEmitter {
   private cancelConnectionOperations(error: Error): void {
     this.connectGeneration += 1;
     this.connectOperations.cancel(error);
-    this.connectResetOperations.cancel(error);
+    this.cancelConnectResetOperations(error);
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
+  }
+
+  private cancelConnectResetOperations(error: Error): void {
+    this.connectResetOperations.cancel(error);
   }
 
   private clearPendingCommands(error: Error): void {

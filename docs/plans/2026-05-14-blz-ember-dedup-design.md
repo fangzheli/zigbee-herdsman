@@ -1056,6 +1056,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART connect-operation cancellation so close interrupts pending
   serial/TCP opens through an explicit helper before clearing runtime send
   queues and waiters.
+- Centralized BLZ connect-reset operation cancellation so temporary reconnect
+  reset listeners and full connection cleanup cancel reset-wrapped connect
+  attempts through the same helper.
 
 ## Next Steps
 

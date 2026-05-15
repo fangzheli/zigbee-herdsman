@@ -117,6 +117,8 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private detachConnectResetListener(listener: () => void): void");
       expect(source).toContain("this.attachConnectResetListener(resetForReconnect);");
       expect(source).toContain("this.detachConnectResetListener(resetForReconnect);");
+      expect(source).toContain("private cancelConnectResetOperations(error: Error): void");
+      expect(source).toContain('this.cancelConnectResetOperations(new Error("Failure to connect"));');
       expect(source).toContain("private startWatchdogTimer(): void");
       expect(source).toContain("this.startWatchdogTimer();");
       expect(source).toContain("private cancelWaiter(");
@@ -135,6 +137,7 @@ describe("BLZ Driver", () => {
       expect(source.match(/this\.connectGeneration \+= 1;/g)).toHaveLength(1);
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
       expect(source.match(/this\.connectResetOperations\.cancel\(error\);/g)).toHaveLength(1);
+      expect(source.match(/this\.cancelConnectResetOperations\(error\);/g)).toHaveLength(1);
       expect(source.match(/this\.connectRetryDelay\.cancel\(\);/g)).toHaveLength(1);
     });
 
