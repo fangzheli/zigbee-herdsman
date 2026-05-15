@@ -655,7 +655,11 @@ export class SerialDriver extends EventEmitter {
         return;
       } catch (e) {
         this.cancelWaiter(waiter);
-        logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
+        logger.error(
+          () =>
+            `Attempt ${attempt + 1} failed for seq ${seq}: ${formatErrorMessage(e)}`,
+          NS,
+        );
 
         if (!this.isOperationGenerationActive(generation)) {
           throw this.createSendCancelledError();

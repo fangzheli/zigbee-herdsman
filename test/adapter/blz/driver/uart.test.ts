@@ -1210,6 +1210,23 @@ describe("BLZ Serial Driver", () => {
         "Failed to send data after 0 retries",
       );
     });
+
+    it("should preserve send failure handling when write errors cannot be stringified", async () => {
+      const writeError = new Error("write failed");
+      writeError.toString = () => {
+        throw new Error("write error stringification failed");
+      };
+      writerMock.sendData.mockImplementation(() => {
+        throw writeError;
+      });
+
+      await expect(driver.sendDATA(Buffer.from([1, 2, 3]), 0x0000, 0)).rejects.toThrow(
+        "Failed to send data after 0 retries",
+      );
+      expect(
+        (driver as unknown as {waitress: {count: () => number}}).waitress.count(),
+      ).toBe(0);
+    });
   });
 
   describe("Error handling", () => {

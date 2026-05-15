@@ -1221,6 +1221,8 @@ Future BLZ refactors should follow these rules:
   notification.
 - Deferred UART port-error logging so serial `error` events cannot throw from
   the handler before the surrounding serial implementation finishes dispatch.
+- Deferred UART send-attempt failure formatting so unprintable writer errors
+  cannot replace retry/final send failure handling with a logging exception.
 
 ## Next Steps
 
