@@ -426,7 +426,7 @@ export class Driver extends EventEmitter {
       if (resettingBlz) {
         await this.resetForceOperations.run(
           () => resettingBlz.forceReset({ holdResetState: true }),
-          () => this.stopGeneration === resetStopGeneration,
+          () => this.isResetGenerationActive(resetStopGeneration),
           () => new Error("Driver stopped"),
         );
       }
@@ -439,7 +439,7 @@ export class Driver extends EventEmitter {
       logger.debug(`Stop error ${err}`, NS);
     }
     try {
-      if (this.stopGeneration !== resetStopGeneration) {
+      if (!this.isResetGenerationActive(resetStopGeneration)) {
         logger.debug("Reset cancelled by stop.", NS);
         return;
       }
@@ -1286,14 +1286,14 @@ export class Driver extends EventEmitter {
     milliseconds: number,
     resetStopGeneration: number,
   ): Promise<boolean> {
-    if (this.stopGeneration !== resetStopGeneration) {
+    if (!this.isResetGenerationActive(resetStopGeneration)) {
       logger.debug("Reset cancelled by stop.", NS);
       return false;
     }
 
     const stillActive = await this.resetDelay.wait(
       milliseconds,
-      () => this.stopGeneration === resetStopGeneration,
+      () => this.isResetGenerationActive(resetStopGeneration),
     );
 
     if (!stillActive) {
@@ -1301,6 +1301,10 @@ export class Driver extends EventEmitter {
     }
 
     return stillActive;
+  }
+
+  private isResetGenerationActive(resetStopGeneration: number): boolean {
+    return this.stopGeneration === resetStopGeneration;
   }
 
   private throwIfStartupCancelled(startupStopGeneration: number): void {

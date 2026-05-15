@@ -99,6 +99,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("this.cancelResetRecovery(error);");
         expect(source.match(/this\.resetDelay\.cancel\(\);/g)).toHaveLength(1);
         expect(source.match(/this\.resetForceOperations\.cancel\(error\);/g)).toHaveLength(1);
+        expect(source).toContain("private isResetGenerationActive(resetStopGeneration: number): boolean");
+        expect(source.match(/this\.isResetGenerationActive\(resetStopGeneration\)/g)).toHaveLength(4);
+        expect(source.match(/this\.stopGeneration === resetStopGeneration/g)).toHaveLength(1);
         expect(source).toContain("private cancelStartupDelay(): void");
         expect(source).toContain("this.cancelStartupDelay();");
         expect(source.match(/this\.startupDelay\.cancel\(\);/g)).toHaveLength(1);

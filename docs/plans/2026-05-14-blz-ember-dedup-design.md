@@ -1107,6 +1107,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver startup-generation checks so startup throws,
   startup delays, and in-flight startup operations share one stop/reset
   cancellation predicate.
+- Centralized high-level driver reset-generation checks so force-reset work,
+  reset delay waits, and post-stop restart decisions share one stop-cancellation
+  predicate.
 
 ## Next Steps
 
