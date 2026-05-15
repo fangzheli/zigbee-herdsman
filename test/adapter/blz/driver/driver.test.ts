@@ -170,7 +170,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private assertBlzStatus(");
         expect(source).toContain("errorMessage: string");
         expect(source).toContain("private async runCheckedBlzCommand(");
-        expect(source.match(/this\.runCheckedBlzCommand\(/g)).toHaveLength(6);
+        expect(source.match(/this\.runCheckedBlzCommand\(/g)).toHaveLength(7);
         expect(source.match(/this\.assertBlzStatus\(/g)).toHaveLength(1);
         expect(source.match(/if \(status !== BlzStatus\.SUCCESS\)/g)).toHaveLength(1);
         expect(source).toContain("private async networkIdToEUI64(");
@@ -2366,6 +2366,82 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await rejection;
         expect(blzMock.execCommand).not.toHaveBeenCalledWith("getValue", expect.anything());
+    });
+
+    it("fails startup when coordinator IEEE probe reports a non-success status", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    nodeType: 0,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.GENERAL_ERROR,
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(3000);
+
+        await expect(startupResult).resolves.toBe("rejected:getValue failed with status=1");
+        expect((driver as unknown as {ieee?: BlzEUI64}).ieee).toBeUndefined();
+    });
+
+    it("fails startup when endpoint registration reports a non-success status", async () => {
+        vi.useFakeTimers();
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockRejectedValue(new Error("getVersion should not run after addEndpoint failure")),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn().mockResolvedValueOnce({
+                status: BlzStatus.GENERAL_ERROR,
+            }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        const startup = driver.startup();
+        const startupResult = startup.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(2000);
+
+        await expect(startupResult).resolves.toBe("rejected:Failed to add endpoint: status 1");
+        expect(blzMock.getVersion).not.toHaveBeenCalled();
     });
 
     it("cancels startup while addEndpoint is pending", async () => {

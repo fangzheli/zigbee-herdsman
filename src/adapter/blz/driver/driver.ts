@@ -638,23 +638,13 @@ export class Driver extends EventEmitter {
       // TODO: make sure the stack is running
       logger.info("The Zigbee network is formed", NS);
 
-      const netParams = await this.runStartupOperation(
-        () => blz.execCommand("getNetworkParameters"),
+      const netParams = await this.runCheckedStartupCommand(
+        "getNetworkParameters",
+        undefined,
         startupStopGeneration,
+        "Command (getNetworkParameters) returned unexpected state",
+        "getNetworkParameters failed",
       );
-      logger.info(
-        `Command (getNetworkParameters) returned: ${netParams.status}`,
-        NS,
-      );
-      if (netParams.status !== BlzStatus.SUCCESS) {
-        logger.error(
-          `Command (getNetworkParameters) returned unexpected state: ${netParams.status}`,
-          NS,
-        );
-        throw new Error(
-          `getNetworkParameters failed with status=${netParams.status}`,
-        );
-      }
       logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
       const networkParams = this.setNetworkParametersSnapshot(netParams);
@@ -665,12 +655,14 @@ export class Driver extends EventEmitter {
       );
 
       const ieee = (
-        await this.runStartupOperation(
-          () =>
-            blz.execCommand("getValue", {
-              valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
-            }),
+        await this.runCheckedStartupCommand(
+          "getValue",
+          {
+            valueId: BlzValueId.BLZ_VALUE_ID_MAC_ADDRESS,
+          },
           startupStopGeneration,
+          "Command (getValue) returned unexpected state",
+          "getValue failed",
         )
       ).value;
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
@@ -1348,6 +1340,31 @@ export class Driver extends EventEmitter {
     );
   }
 
+  private async runCheckedStartupCommand(
+    command: string,
+    params: ParamsDesc | undefined,
+    startupStopGeneration: number,
+    logMessage: string,
+    errorMessage: string,
+  ): Promise<BLZFrameData> {
+    const frameResponse = await this.runStartupOperation(
+      () =>
+        params === undefined
+          ? this.getBlz().execCommand(command)
+          : this.getBlz().execCommand(command, params),
+      startupStopGeneration,
+    );
+
+    logger.info(`Command (${command}) returned: ${frameResponse.status}`, NS);
+
+    if (frameResponse.status !== BlzStatus.SUCCESS) {
+      logger.error(`${logMessage}: ${frameResponse.status}`, NS);
+      throw new Error(`${errorMessage} with status=${frameResponse.status}`);
+    }
+
+    return frameResponse;
+  }
+
   private async mrequest(
     apsFrame: BlzApsFrame,
     data: Buffer,
@@ -1699,8 +1716,9 @@ export class Driver extends EventEmitter {
     inputClusters = [],
     outputClusters = [],
   }: AddEndpointParameters): Promise<void> {
-    const res = await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("addEndpoint", {
+    const res = await this.runCheckedBlzCommand(
+      "addEndpoint",
+      {
         endpoint: endpoint,
         profileId: profileId,
         deviceId: deviceId,
@@ -1709,7 +1727,9 @@ export class Driver extends EventEmitter {
         outputClusterCount: outputClusters.length,
         inputClusterList: inputClusters,
         outputClusterList: outputClusters,
-      }),
+      },
+      "addEndpoint() returned unexpected BLZ status",
+      "Failed to add endpoint",
     );
     logger.debug(() => `Blz adding endpoint: ${JSON.stringify(res)}`, NS);
   }

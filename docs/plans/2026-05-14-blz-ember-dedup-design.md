@@ -1161,6 +1161,12 @@ Future BLZ refactors should follow these rules:
   predicates.
 - Centralized adapter stopped error creation so running-operation guards,
   delay cancellation, and stop entry use one adapter-stop error source.
+- Added checked startup command handling for final network-parameter and
+  coordinator-IEEE probes, so non-success startup reads fail by status before
+  consuming missing payload fields.
+- Routed startup endpoint registration through the shared checked driver-command
+  path, so `addEndpoint` non-success statuses abort startup before later
+  initialization steps run.
 
 ## Next Steps
 
