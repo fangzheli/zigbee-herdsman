@@ -310,6 +310,26 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.on.mock.calls.filter((call) => call[0] === "close")).toHaveLength(2);
     });
 
+    it("should detach partially attached serial event bridge when reconnect listener attach fails", async () => {
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.close.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized.mockReturnValue(true);
+
+      await blz.connect(serialPortOptions);
+      await blz.close(false);
+      serialDriverMock.off.mockClear();
+      serialDriverMock.on.mockImplementation((event: string) => {
+        if (event === "close") {
+          throw new Error("close bridge failed");
+        }
+      });
+
+      await expect(blz.connect(serialPortOptions)).rejects.toThrow("close bridge failed");
+
+      expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
+      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+    });
+
     it("should clear the previous watchdog timer before reconnecting", async () => {
       const clearIntervalSpy = vi.spyOn(global, "clearInterval");
       serialDriverMock.connect.mockResolvedValue(undefined);
