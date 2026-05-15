@@ -203,6 +203,7 @@ describe("BLZ Adapter", () => {
       expect(source).toContain("private getRunningCancellationError(): Error");
       expect(source.match(/this\.getRunningCancellationError\(\)/g)).toHaveLength(3);
       expect(source.match(/new Error\("Adapter stopped"\)/g)).toHaveLength(1);
+      expect(source).not.toContain("} catch (error) {\n      throw error;\n    } finally {");
     });
 
     it("keeps ZDO response waiter ownership inside the driver API", () => {
