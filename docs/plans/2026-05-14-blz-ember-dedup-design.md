@@ -1009,6 +1009,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver network-parameter snapshot capture so startup
   records BLZ network identity through the same state update helper instead of
   constructing cached snapshot fields inline.
+- Centralized high-level driver BLZ listener attachment so startup binds
+  close/reset/frame listeners through helper methods paired with the existing
+  owned-listener detach path.
 
 ## Next Steps
 

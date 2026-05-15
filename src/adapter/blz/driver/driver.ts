@@ -544,6 +544,15 @@ export class Driver extends EventEmitter {
     }
   }
 
+  private attachBlzCloseListener(blz: Blz): void {
+    blz.on("close", this.onBlzCloseHandler);
+  }
+
+  private attachBlzRuntimeListeners(blz: Blz): void {
+    blz.on("reset", this.onBlzResetHandler);
+    blz.on("frame", this.handleFrameHandler);
+  }
+
   private detachBlzListeners(blz: Blz): void {
     blz.off("close", this.onBlzCloseHandler);
     blz.off("reset", this.onBlzResetHandler);
@@ -581,7 +590,7 @@ export class Driver extends EventEmitter {
     this.blz = blz;
 
     try {
-      blz.on("close", this.onBlzCloseHandler);
+      this.attachBlzCloseListener(blz);
 
       try {
         await this.runStartupOperation(
@@ -690,8 +699,7 @@ export class Driver extends EventEmitter {
       // Convert BLZ hardware MAC format to IEEE EUI-64 standard format
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
-      blz.on("reset", this.onBlzResetHandler);
-      blz.on("frame", this.handleFrameHandler);
+      this.attachBlzRuntimeListeners(blz);
       logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
       logger.debug("Network ready", NS);
 
