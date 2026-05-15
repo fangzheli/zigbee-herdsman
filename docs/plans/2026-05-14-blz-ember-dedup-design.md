@@ -1251,6 +1251,12 @@ Future BLZ refactors should follow these rules:
   formatter errors reject waiters and clear their timeout entries.
 - Hardened malformed ZDO response logging at the high-level BLZ receive
   boundary so unprintable parser errors still emit the raw incoming message.
+- Normalized shared `Queue` concurrency to at least one worker, preventing
+  `concurrent=0` adapter configuration from leaving queued jobs permanently
+  stuck.
+- Extended shared `AsyncMutex.clear()` to reject queued jobs instead of only
+  dropping their resolvers, preventing shutdown/reset paths from leaving
+  callers pending after a mutex wait is cleared.
 
 ## Next Steps
 

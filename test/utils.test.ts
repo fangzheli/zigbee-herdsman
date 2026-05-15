@@ -413,6 +413,22 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
+    it("Test queue normalizes non-positive concurrency so jobs cannot stay stuck", async () => {
+        const queue = new Queue(0);
+        let started = false;
+
+        const result = queue.execute(async () => {
+            started = true;
+            await Promise.resolve();
+            return "started";
+        });
+        await Promise.resolve();
+
+        expect(started).toBe(true);
+        await expect(result).resolves.toBe("started");
+        expect(queue.count()).toBe(0);
+    });
+
     it("Test queue clear rejects active jobs and does not let old work remove new jobs", async () => {
         const queue = new Queue(1);
         const started: number[] = [];
@@ -544,13 +560,17 @@ describe("Utils", () => {
 
         const queue = new AsyncMutex();
 
-        void queue.run(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        });
+        void queue
+            .run(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            })
+            .catch(() => {});
 
-        void queue.run(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        });
+        void queue
+            .run(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            })
+            .catch(() => {});
 
         await vi.advanceTimersByTimeAsync(500);
         expect(queue.count).toStrictEqual(1); // first has ran but still pending return, second is queued
@@ -558,9 +578,11 @@ describe("Utils", () => {
         await vi.advanceTimersByTimeAsync(1000);
         expect(queue.count).toStrictEqual(0);
 
-        void queue.run(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        });
+        void queue
+            .run(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            })
+            .catch(() => {});
 
         expect(queue.count).toStrictEqual(1); // second has ran but still pending return, third is queued
         await vi.advanceTimersByTimeAsync(1600);
@@ -568,12 +590,16 @@ describe("Utils", () => {
 
         //-- clear
 
-        void queue.run(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        });
-        void queue.run(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        });
+        void queue
+            .run(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            })
+            .catch(() => {});
+        void queue
+            .run(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            })
+            .catch(() => {});
 
         expect(queue.count).toStrictEqual(1);
 
@@ -583,6 +609,42 @@ describe("Utils", () => {
         await vi.runOnlyPendingTimersAsync(); // cleanup
 
         vi.useRealTimers();
+    });
+
+    it("Test async mutex clear rejects waiting jobs so callers cannot stay pending", async () => {
+        const queue = new AsyncMutex();
+        let releaseFirstJob: (() => void) | undefined;
+        const firstJobBlocker = new Promise<void>((resolve) => {
+            releaseFirstJob = resolve;
+        });
+        const started: number[] = [];
+
+        const firstJob = queue.run(async () => {
+            started.push(1);
+            await firstJobBlocker;
+        });
+        const waitingJob = queue.run(async () => {
+            await Promise.resolve();
+            started.push(2);
+        });
+        const waitingResult = waitingJob.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        queue.clear();
+
+        const observed = await Promise.race([
+            waitingResult,
+            new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
+
+        expect(observed).toBe("rejected:AsyncMutex cleared");
+        expect(started).toEqual([1]);
+        expect(queue.count).toBe(0);
+
+        releaseFirstJob?.();
+        await firstJob;
     });
 
     it("Logs", () => {

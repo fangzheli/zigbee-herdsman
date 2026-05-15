@@ -12,7 +12,8 @@ export class Queue {
     #running = 0;
 
     constructor(concurrent = 1) {
-        this.#concurrent = concurrent;
+        const normalizedConcurrent = Number.isFinite(concurrent) ? Math.floor(concurrent) : 1;
+        this.#concurrent = Math.max(1, normalizedConcurrent);
     }
 
     public async execute<T>(func: () => Promise<T>, key?: string | number): Promise<T> {
