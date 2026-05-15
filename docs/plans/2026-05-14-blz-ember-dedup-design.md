@@ -1077,6 +1077,9 @@ Future BLZ refactors should follow these rules:
   close/reset cleanup cancels retry timers through a dedicated helper.
 - Centralized UART send-retry delay cancellation so reset/close cleanup
   interrupts retry timers through a dedicated helper.
+- Centralized high-level driver stopped-state cleanup so lower-transport close
+  and explicit stop clear ZDO waiters, cached coordinator/network state, and
+  close emission through one helper.
 
 ## Next Steps
 

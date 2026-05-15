@@ -479,9 +479,7 @@ export class Driver extends EventEmitter {
       this.detachBlzListeners(this.blz);
       this.blz = undefined;
     }
-    this.clearZdoResponseWaiters(closeError);
-    this.clearCoordinatorAndNetworkState();
-    this.emit("close");
+    this.enterStoppedState(closeError, true);
   }
 
   public async stop(
@@ -536,11 +534,15 @@ export class Driver extends EventEmitter {
       }
     } finally {
       // Clear pending waiters to avoid dangling promises/timers even if close fails.
-      this.clearZdoResponseWaiters(stopError);
-      this.clearCoordinatorAndNetworkState();
-      if (this.emitCloseWhenStopCompletes) {
-        this.emit("close");
-      }
+      this.enterStoppedState(stopError, this.emitCloseWhenStopCompletes);
+    }
+  }
+
+  private enterStoppedState(error: Error, emitClose: boolean): void {
+    this.clearZdoResponseWaiters(error);
+    this.clearCoordinatorAndNetworkState();
+    if (emitClose) {
+      this.emit("close");
     }
   }
 
