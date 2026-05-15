@@ -8,7 +8,7 @@ import {logger} from "../../../../src/utils/logger";
 
 describe("BLZFrameData", () => {
     it("uses explicit frame parser fallback without non-null assertions", () => {
-        const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+        const source = fs.readFileSync("src/adapter/blz/driver/frameData.ts", "utf8");
 
         expect(source).not.toContain("names.every");
         expect(source).not.toContain("return frm!");
@@ -67,7 +67,7 @@ describe("BLZFrameData", () => {
     });
 
     it("serializes command fields through the shared mapped buffer helper", () => {
-        const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+        const source = fs.readFileSync("src/adapter/blz/driver/frameData.ts", "utf8");
 
         expect(source).not.toContain("buffers.push");
         expect(source).toContain("serializeMappedBufferSegments(fields");
