@@ -496,6 +496,26 @@ describe("BLZ Serial Driver", () => {
       expect(serialPortMock.removeAllListeners).not.toHaveBeenCalled();
     });
 
+    it("should continue serial close when serial detach fails", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+
+      await driver.connect(serialPortOptions);
+      writerMock.unpipe.mockImplementation(() => {
+        throw new Error("writer detach failed");
+      });
+
+      await expect(driver.close(false)).rejects.toThrow("writer detach failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(serialPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();
+    });
+
     it("should release the serial port reference when closing", async () => {
       serialPortMock.asyncOpen.mockResolvedValue(undefined);
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);

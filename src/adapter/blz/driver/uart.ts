@@ -13,6 +13,10 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {
+  runAsyncCleanupSteps,
+  runCleanupSteps,
+} from "../lifecycleCleanup";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
 import { Frame } from "./frame";
@@ -442,14 +446,27 @@ export class SerialDriver extends EventEmitter {
     const serialPort = this.serialPort;
     if (serialPort) {
       try {
-        this.detachSerialPort();
-        if (wasInitialized && serialPort.isOpen) {
-          await serialPort.asyncFlushAndClose();
-        } else {
-          this.destroyActivePort();
-        }
+        await runAsyncCleanupSteps([
+          () => {
+            this.detachSerialPort();
+          },
+          async () => {
+            if (wasInitialized && serialPort.isOpen) {
+              await serialPort.asyncFlushAndClose();
+            } else {
+              this.destroyActivePort();
+            }
+          },
+        ]);
       } catch (error) {
-        this.destroyActivePort();
+        try {
+          this.destroyActivePort();
+        } catch (destroyError) {
+          logger.debug(
+            () => `Failed to destroy serial port after close failure: ${formatErrorMessage(destroyError)}`,
+            NS,
+          );
+        }
         if (this.emitCloseWhenCloseCompletes) {
           this.emit("close");
         }
@@ -593,38 +610,64 @@ export class SerialDriver extends EventEmitter {
   }
 
   private detachSerialPort(): void {
-    if (!this.serialPort) {
+    const serialPort = this.serialPort;
+    if (!serialPort) {
       return;
     }
 
-    this.writer.unpipe(this.serialPort);
-    this.serialPort.unpipe(this.parser);
-    this.detachRuntimePortListeners(this.serialPort);
+    runCleanupSteps([
+      () => {
+        this.writer.unpipe(serialPort);
+      },
+      () => {
+        serialPort.unpipe(this.parser);
+      },
+      () => {
+        this.detachRuntimePortListeners(serialPort);
+      },
+    ]);
   }
 
   private detachSocketPort(): void {
-    if (!this.socketPort) {
+    const socketPort = this.socketPort;
+    if (!socketPort) {
       return;
     }
 
-    this.writer.unpipe(this.socketPort);
-    this.socketPort.unpipe(this.parser);
-    this.detachSocketListeners?.();
-    this.detachSocketListeners = undefined;
+    runCleanupSteps([
+      () => {
+        this.writer.unpipe(socketPort);
+      },
+      () => {
+        socketPort.unpipe(this.parser);
+      },
+      () => {
+        this.detachSocketListeners?.();
+        this.detachSocketListeners = undefined;
+      },
+    ]);
   }
 
   private destroyActivePort(): void {
     if (this.serialPort) {
-      this.detachSerialPort();
-      this.serialPort.destroy();
-      this.serialPort = undefined;
+      const serialPort = this.serialPort;
+      try {
+        this.detachSerialPort();
+      } finally {
+        serialPort.destroy();
+        this.serialPort = undefined;
+      }
       return;
     }
 
     if (this.socketPort) {
-      this.detachSocketPort();
-      this.socketPort.destroy();
-      this.socketPort = undefined;
+      const socketPort = this.socketPort;
+      try {
+        this.detachSocketPort();
+      } finally {
+        socketPort.destroy();
+        this.socketPort = undefined;
+      }
     }
   }
 
