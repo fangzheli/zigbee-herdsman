@@ -975,6 +975,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ incoming-message event construction in a private helper so
   nullable index fields, sender cache lookup, and ZDO response field shape stay
   consistent across ZDO and ZCL receive paths.
+- Centralized adapter stop/driver-close pending-operation cleanup so queue
+  jobs, ZCL waiters, cancellable lower operations, and settle delays are cleared
+  through one stopped-state path.
 
 ## Next Steps
 

@@ -240,13 +240,8 @@ export class BLZAdapter extends Adapter {
   }
 
   private async performStop(): Promise<void> {
-    this.closing = true;
-    this.stopGeneration += 1;
     const stopError = new Error("Adapter stopped");
-    this.queue.clear(stopError);
-    this.waitress.clear(stopError);
-    this.cancelRunningOperations(stopError);
-    this.stopDelay.cancel();
+    this.enterStoppedState(stopError);
 
     try {
       await this.driver.stop(false);
@@ -262,17 +257,21 @@ export class BLZAdapter extends Adapter {
 
     const wasClosing = this.closing;
     const closeError = new Error("Adapter disconnected");
-    this.closing = true;
-    this.stopGeneration += 1;
-    this.queue.clear(closeError);
-    this.waitress.clear(closeError);
-    this.cancelRunningOperations(closeError);
-    this.stopDelay.cancel();
+    this.enterStoppedState(closeError);
     this.detachDriverListeners();
 
     if (!wasClosing) {
       this.emit("disconnected");
     }
+  }
+
+  private enterStoppedState(error: Error): void {
+    this.closing = true;
+    this.stopGeneration += 1;
+    this.queue.clear(error);
+    this.waitress.clear(error);
+    this.cancelRunningOperations(error);
+    this.stopDelay.cancel();
   }
 
   private throwIfStopped(generation: number): void {

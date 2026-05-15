@@ -169,6 +169,16 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain('return await Promise.reject(new Error("Not supported"));');
     });
 
+    it("centralizes adapter stop and close pending-operation cleanup", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).toContain("private enterStoppedState(error: Error): void");
+      expect(source.match(/this\.queue\.clear\(/g)).toHaveLength(1);
+      expect(source.match(/this\.waitress\.clear\(/g)).toHaveLength(1);
+      expect(source.match(/this\.stopDelay\.cancel\(/g)).toHaveLength(1);
+      expect(source.match(/this\.cancelRunningOperations\(/g)).toHaveLength(1);
+    });
+
     it("keeps ZDO response waiter ownership inside the driver API", () => {
       const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
 
