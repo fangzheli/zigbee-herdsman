@@ -429,15 +429,7 @@ export class Blz extends EventEmitter {
     this.inResetingProcess = false;
     this.failures = 0;
     this.attachSerialDriverResetListener();
-
-    this.clearWatchdogTimer();
-
-    if (WATCHDOG_WAKE_PERIOD) {
-      this.watchdogTimer = setInterval(
-        this.watchdogHandlerRef,
-        WATCHDOG_WAKE_PERIOD * 1000,
-      );
-    }
+    this.startWatchdogTimer();
 
     logger.debug("Connection established successfully", NS);
   }
@@ -515,6 +507,17 @@ export class Blz extends EventEmitter {
     if (this.watchdogTimer) {
       clearInterval(this.watchdogTimer);
       this.watchdogTimer = undefined;
+    }
+  }
+
+  private startWatchdogTimer(): void {
+    this.clearWatchdogTimer();
+
+    if (WATCHDOG_WAKE_PERIOD) {
+      this.watchdogTimer = setInterval(
+        this.watchdogHandlerRef,
+        WATCHDOG_WAKE_PERIOD * 1000,
+      );
     }
   }
 

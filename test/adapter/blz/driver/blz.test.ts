@@ -108,6 +108,8 @@ describe("BLZ Driver", () => {
       expect(source).not.toContain("ZDORESPONSE_NAME_BY_ID");
       expect(source).toContain("private attachSerialDriverResetListener(): void");
       expect(source).toContain("this.attachSerialDriverResetListener();");
+      expect(source).toContain("private startWatchdogTimer(): void");
+      expect(source).toContain("this.startWatchdogTimer();");
 
       const version = blz.getVersionSnapshot();
       version.product = 99;

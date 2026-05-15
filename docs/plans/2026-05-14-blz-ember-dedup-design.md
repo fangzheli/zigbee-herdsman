@@ -1015,6 +1015,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ serial reset listener attachment so successful reconnects
   dedupe the reset handler through one helper paired with serial listener
   cleanup.
+- Centralized BLZ watchdog timer startup so successful connects clear any
+  previous heartbeat timer and install the replacement through one lifecycle
+  helper.
 
 ## Next Steps
 
