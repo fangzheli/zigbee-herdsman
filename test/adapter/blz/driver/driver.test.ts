@@ -89,6 +89,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async getCurrentNetworkParameters(");
         expect(source).toContain("private async getMacAddress(");
         expect(source).not.toContain("public async getMacAddress(");
+        expect(source).toContain("private async networkIdToEUI64(");
+        expect(source).not.toContain("public async networkIdToEUI64(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -295,6 +297,12 @@ describe("BLZ high-level driver lifecycle", () => {
         return (driver as unknown as {
             getMacAddress: () => Promise<Buffer>;
         }).getMacAddress();
+    }
+
+    function driverNetworkIdToEUI64(driver: Driver, nwk: number): Promise<BlzEUI64> {
+        return (driver as unknown as {
+            networkIdToEUI64: (nwk: number) => Promise<BlzEUI64>;
+        }).networkIdToEUI64(nwk);
     }
 
     function spyOnDriverSetNetworkKeyInfo(
@@ -753,7 +761,7 @@ describe("BLZ high-level driver lifecycle", () => {
             eui64: Buffer.from("0000000000003344", "hex"),
         });
         setDriverBlz(driver, {execCommand});
-        const eui64 = await driver.networkIdToEUI64(0x3344);
+        const eui64 = await driverNetworkIdToEUI64(driver, 0x3344);
 
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});
         expect(eui64.toString()).toBe("0000000000003344");
@@ -766,12 +774,12 @@ describe("BLZ high-level driver lifecycle", () => {
         cacheDriverNode(driver, 0x3344, source);
         (source as unknown as {_value: Buffer})._value[7] = 0xff;
 
-        const firstLookup = await driver.networkIdToEUI64(0x3344);
+        const firstLookup = await driverNetworkIdToEUI64(driver, 0x3344);
         expect(firstLookup.toString()).toBe("0000000000003344");
 
         (firstLookup as unknown as {_value: Buffer})._value[7] = 0xee;
 
-        const secondLookup = await driver.networkIdToEUI64(0x3344);
+        const secondLookup = await driverNetworkIdToEUI64(driver, 0x3344);
         expect(secondLookup.toString()).toBe("0000000000003344");
     });
 
@@ -966,7 +974,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         });
-        const lookup = driver.networkIdToEUI64(0x3344);
+        const lookup = driverNetworkIdToEUI64(driver, 0x3344);
         const lookupResult = lookup.then(
             () => "resolved",
             (error: Error) => `rejected:${error.message}`,
@@ -2829,7 +2837,7 @@ describe("BLZ high-level driver lifecycle", () => {
         handleDriverNodeJoined(driver, 0x3344, 0x1111);
         seedNetworkSnapshot(driver);
         await (driver as unknown as {formNetwork: (restore: boolean) => Promise<void>}).formNetwork(false);
-        const eui64 = await driver.networkIdToEUI64(0x3344);
+        const eui64 = await driverNetworkIdToEUI64(driver, 0x3344);
 
         expect((driver as unknown as {networkParams?: BlzNetworkParameters}).networkParams).toBeUndefined();
         expect(execCommand).toHaveBeenCalledWith("getEui64ByNodeId", {nodeId: 0x3344});

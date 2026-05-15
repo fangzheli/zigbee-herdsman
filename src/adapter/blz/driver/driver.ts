@@ -1598,7 +1598,7 @@ export class Driver extends EventEmitter {
     return frame;
   }
 
-  public async networkIdToEUI64(nwk: number): Promise<BlzEUI64> {
+  private async networkIdToEUI64(nwk: number): Promise<BlzEUI64> {
     const cached = this.getCachedEui64(nwk);
 
     if (cached) {

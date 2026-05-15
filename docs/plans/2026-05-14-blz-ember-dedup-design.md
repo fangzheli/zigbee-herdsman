@@ -956,6 +956,8 @@ Future BLZ refactors should follow these rules:
 - Narrowed backup creation to a `BlzBackupProvider` interface. The backup helper
   no longer depends on concrete `Driver` public wrappers, allowing the driver
   command wrappers used only for backup collection to stay private.
+- Made `networkIdToEUI64()` private; production address resolution now stays
+  inside driver send/cache paths instead of exposing another lookup command API.
 
 ## Next Steps
 
