@@ -1650,7 +1650,7 @@ export class Driver extends EventEmitter {
     );
   }
 
-  public async addEndpoint({
+  private async addEndpoint({
     endpoint = 1,
     profileId = 260,
     deviceId = 0xbeef,

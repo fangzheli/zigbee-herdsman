@@ -958,6 +958,8 @@ Future BLZ refactors should follow these rules:
   command wrappers used only for backup collection to stay private.
 - Made `networkIdToEUI64()` private; production address resolution now stays
   inside driver send/cache paths instead of exposing another lookup command API.
+- Made endpoint registration private; production add-endpoint commands now stay
+  inside driver startup instead of exposing a lower BLZ command wrapper.
 
 ## Next Steps
 

@@ -91,6 +91,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async getMacAddress(");
         expect(source).toContain("private async networkIdToEUI64(");
         expect(source).not.toContain("public async networkIdToEUI64(");
+        expect(source).toContain("private async addEndpoint(");
+        expect(source).not.toContain("public async addEndpoint(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -303,6 +305,32 @@ describe("BLZ high-level driver lifecycle", () => {
         return (driver as unknown as {
             networkIdToEUI64: (nwk: number) => Promise<BlzEUI64>;
         }).networkIdToEUI64(nwk);
+    }
+
+    type DriverAddEndpointParameters = {
+        endpoint?: number;
+        profileId?: number;
+        deviceId?: number;
+        appFlags?: number;
+        inputClusters?: number[];
+        outputClusters?: number[];
+    };
+
+    function driverAddEndpoint(driver: Driver, parameters: DriverAddEndpointParameters): Promise<void> {
+        return (driver as unknown as {
+            addEndpoint: (parameters: DriverAddEndpointParameters) => Promise<void>;
+        }).addEndpoint(parameters);
+    }
+
+    function spyOnDriverAddEndpoint(
+        driver: Driver,
+    ): ReturnType<typeof vi.spyOn> {
+        return vi.spyOn(
+            driver as unknown as {
+                addEndpoint: (parameters: DriverAddEndpointParameters) => Promise<void>;
+            },
+            "addEndpoint",
+        );
     }
 
     function spyOnDriverSetNetworkKeyInfo(
@@ -1003,7 +1031,7 @@ describe("BLZ high-level driver lifecycle", () => {
         },
         {
             name: "addEndpoint",
-            invoke: (driver: Driver) => driver.addEndpoint({endpoint: 1}),
+            invoke: (driver: Driver) => driverAddEndpoint(driver, {endpoint: 1}),
             expectedCommand: "addEndpoint",
             hasParameters: true,
         },
@@ -1685,7 +1713,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -1827,7 +1855,7 @@ describe("BLZ high-level driver lifecycle", () => {
             .mockImplementationOnce(() => firstBlzMock)
             .mockImplementationOnce(() => secondBlzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -1857,7 +1885,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -1924,7 +1952,7 @@ describe("BLZ high-level driver lifecycle", () => {
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const reset = vi.spyOn(driver, "reset").mockResolvedValue(undefined);
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         await vi.advanceTimersByTimeAsync(3000);
@@ -1968,7 +1996,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         const originalAlloc = Buffer.alloc;
         const allocSpy = vi.spyOn(Buffer, "alloc").mockImplementation(((size: number, ...args: unknown[]) => {
             if (size === 8) {
@@ -2023,7 +2051,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const rejection = expect(startup).rejects.toThrow("getNetworkParameters failed");
@@ -2045,7 +2073,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockReturnValue(new Promise<void>(() => {}));
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockReturnValue(new Promise<void>(() => {}));
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2082,7 +2110,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2121,7 +2149,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2166,7 +2194,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2222,7 +2250,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(undefined);
 
@@ -2258,7 +2286,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2316,7 +2344,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const startup = driver.startup();
         const startupResult = startup.then(
@@ -2367,7 +2395,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockReturnValue(new Promise(() => {}));
 
         const startup = driver.startup();
@@ -2417,7 +2445,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(null);
 
         const startup = driver.startup();
@@ -2467,7 +2495,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(null);
 
@@ -2519,7 +2547,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         spyOnDriverSetNetworkKeyInfo(driver).mockReturnValue(
             new Promise<BlzStatus>((resolve) => {
                 finishSetNetworkKeyInfo = () => resolve(BlzStatus.SUCCESS);
@@ -2574,7 +2602,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
         spyOnDriverSetNetworkKeyInfo(driver).mockResolvedValue(BlzStatus.SUCCESS);
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue(undefined);
 
@@ -2599,7 +2627,7 @@ describe("BLZ high-level driver lifecycle", () => {
         };
         blzConstructorMock.mockImplementation(() => blzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const addEndpoint = vi.spyOn(driver, "addEndpoint").mockResolvedValue(undefined);
+        const addEndpoint = spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
         const firstStartup = driver.startup().catch((error: Error) => error);
         await vi.advanceTimersByTimeAsync(0);
