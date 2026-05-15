@@ -1087,6 +1087,9 @@ Future BLZ refactors should follow these rules:
   interrupts startup timers through a dedicated helper.
 - Centralized high-level driver startup-operation cancellation so stop/reset
   interrupts in-flight startup work through a dedicated helper.
+- Routed TCP ready-stage UART reset through connect-operation cancellation so
+  closing during socket readiness interrupts the reset wait instead of leaving
+  the ready handler outside the connect lifecycle.
 
 ## Next Steps
 

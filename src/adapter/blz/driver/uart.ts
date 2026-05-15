@@ -185,7 +185,7 @@ export class SerialDriver extends EventEmitter {
 
           try {
             // reset
-            await this.reset();
+            await this.runSocketReadyReset(socketPort);
           } catch (error) {
             openError(error instanceof Error ? error : new Error(String(error)));
             return;
@@ -251,6 +251,14 @@ export class SerialDriver extends EventEmitter {
 
       throw error;
     }
+  }
+
+  private async runSocketReadyReset(port: net.Socket): Promise<void> {
+    await this.connectOperations.run(
+      () => this.reset(),
+      () => this.socketPort === port,
+      () => new Error("Connection closed"),
+    );
   }
 
   private onParsed(frame: Frame): void {
