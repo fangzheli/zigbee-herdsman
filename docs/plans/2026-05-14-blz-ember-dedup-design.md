@@ -1195,6 +1195,10 @@ Future BLZ refactors should follow these rules:
 - Added a read-only `Waitress.count()` API and moved BLZ waiter-leak assertions
   off direct private `waiters` map access, matching the existing queue and
   cancellable-operation observability pattern.
+- Routed startup checked-command status handling through the shared
+  `assertBlzStatus()` helper, keeping startup and runtime BLZ command failure
+  checks on one status assertion path while preserving their existing error
+  message formats.
 
 ## Next Steps
 

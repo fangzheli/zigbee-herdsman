@@ -1368,10 +1368,12 @@ export class Driver extends EventEmitter {
 
     logger.info(`Command (${command}) returned: ${frameResponse.status}`, NS);
 
-    if (frameResponse.status !== BlzStatus.SUCCESS) {
-      logger.error(`${logMessage}: ${frameResponse.status}`, NS);
-      throw new Error(`${errorMessage} with status=${frameResponse.status}`);
-    }
+    this.assertBlzStatus(
+      frameResponse.status,
+      logMessage,
+      errorMessage,
+      " with status=",
+    );
 
     return frameResponse;
   }
@@ -1791,10 +1793,11 @@ export class Driver extends EventEmitter {
     status: BlzStatus,
     logMessage: string,
     errorMessage: string,
+    statusText = ": status ",
   ): void {
     if (status !== BlzStatus.SUCCESS) {
       logger.error(`${logMessage}: ${status}`, NS);
-      throw new Error(`${errorMessage}: status ${status}`);
+      throw new Error(`${errorMessage}${statusText}${status}`);
     }
   }
 
