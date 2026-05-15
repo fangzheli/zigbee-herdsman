@@ -1231,6 +1231,15 @@ describe("BLZ Serial Driver", () => {
       expect(callback).not.toHaveBeenCalled();
     });
 
+    it("should not throw when port error cannot be stringified", () => {
+      const portError = new Error("Port error");
+      portError.toString = () => {
+        throw new Error("port error stringification failed");
+      };
+
+      expect(() => serialPortMock.on.mock.calls.find((call) => call[0] === "error")?.[1](portError)).not.toThrow();
+    });
+
     it("should handle port close with error", () => {
       const callback = vi.fn();
       driver.on("reset", callback);

@@ -1219,6 +1219,8 @@ Future BLZ refactors should follow these rules:
 - Deferred UART port-close error logging so an unstringifiable close error
   cannot interrupt closed-state cleanup, listener removal, and reset/close
   notification.
+- Deferred UART port-error logging so serial `error` events cannot throw from
+  the handler before the surrounding serial implementation finishes dispatch.
 
 ## Next Steps
 

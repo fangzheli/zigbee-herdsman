@@ -574,7 +574,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   private onPortError(error: Error): void {
-    logger.error(`Port error: ${error}`, NS);
+    logger.error(() => `Port error: ${error}`, NS);
   }
 
   private onPortClose(err: boolean | Error): void {
