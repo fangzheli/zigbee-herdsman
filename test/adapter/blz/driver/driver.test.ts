@@ -1583,6 +1583,38 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(blzMock.forceReset).toHaveBeenCalledTimes(1);
     });
 
+    it("cleans up failed reset startup without stringifying the reset error eagerly", async () => {
+        vi.useFakeTimers();
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const startupFailure = new Error("startup failed after reset");
+        startupFailure.toString = () => {
+            throw new Error("eager reset failure stringification");
+        };
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            forceReset: vi.fn().mockResolvedValue(undefined),
+        };
+        setDriverBlz(driver, blzMock);
+        const stop = vi.spyOn(driver, "stop").mockResolvedValue(undefined);
+        vi.spyOn(driver, "startup").mockRejectedValue(startupFailure);
+
+        try {
+            const reset = driver.reset();
+            const resetResult = reset.then(
+                () => "resolved",
+                (error: Error) => `rejected:${error.message}`,
+            );
+            await vi.advanceTimersByTimeAsync(3000);
+
+            await expect(resetResult).resolves.toBe("resolved");
+            expect(stop).toHaveBeenNthCalledWith(1, false, true);
+            expect(stop).toHaveBeenNthCalledWith(2);
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        } finally {
+            debug.mockRestore();
+        }
+    });
+
     it("returns false when multicast APS send returns a non-success status", async () => {
         const sendApsData = vi.fn().mockResolvedValue(BlzStatus.GENERAL_ERROR);
         const driver = makeDriverWithApsSender(sendApsData);

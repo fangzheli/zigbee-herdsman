@@ -413,7 +413,7 @@ export class Driver extends EventEmitter {
         await this.stop(false, true);
       }
     } catch (err) {
-      logger.debug(`Stop error ${err}`, NS);
+      logger.debug(() => `Stop error ${err}`, NS);
     }
     try {
       if (!this.isResetGenerationActive(resetStopGeneration)) {
@@ -428,14 +428,17 @@ export class Driver extends EventEmitter {
       logger.debug(`Startup again.`, NS);
       await this.startup();
     } catch (err) {
-      logger.debug(`Reset error ${err}`, NS);
+      logger.debug(() => `Reset error ${err}`, NS);
       // Clear reset state on error
 
       try {
         // here we let emit
         await this.stop();
       } catch (stopErr) {
-        logger.debug(`Failed to stop after failed reset ${stopErr}`, NS);
+        logger.debug(
+          () => `Failed to stop after failed reset ${stopErr}`,
+          NS,
+        );
       }
     }
   }

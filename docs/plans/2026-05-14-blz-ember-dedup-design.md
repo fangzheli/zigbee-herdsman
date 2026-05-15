@@ -1202,6 +1202,9 @@ Future BLZ refactors should follow these rules:
 - Deferred failed-startup cleanup error formatting until debug logging evaluates
   the message, so an error object's stringification cannot mask the original
   startup failure or prevent BLZ close/listener cleanup from running.
+- Deferred reset-recovery cleanup error formatting until debug logging evaluates
+  the message, so reset startup failures cannot be masked by logging before the
+  driver performs its follow-up stop cleanup.
 
 ## Next Steps
 
