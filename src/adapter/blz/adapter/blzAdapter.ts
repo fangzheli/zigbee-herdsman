@@ -119,11 +119,20 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
-    this.driver.on("close", this.onDriverCloseHandler);
-    this.driver.on("deviceJoined", this.onDeviceJoinedHandler);
-    this.driver.on("deviceLeft", this.onDeviceLeftHandler);
-    this.driver.on("incomingMessage", this.onIncomingMessageHandler);
-    this.driverListenersAttached = true;
+    try {
+      this.driver.on("close", this.onDriverCloseHandler);
+      this.driver.on("deviceJoined", this.onDeviceJoinedHandler);
+      this.driver.on("deviceLeft", this.onDeviceLeftHandler);
+      this.driver.on("incomingMessage", this.onIncomingMessageHandler);
+      this.driverListenersAttached = true;
+    } catch (error) {
+      this.driver.off("close", this.onDriverCloseHandler);
+      this.driver.off("deviceJoined", this.onDeviceJoinedHandler);
+      this.driver.off("deviceLeft", this.onDeviceLeftHandler);
+      this.driver.off("incomingMessage", this.onIncomingMessageHandler);
+      this.driverListenersAttached = false;
+      throw error;
+    }
   }
 
   private detachDriverListeners(): void {
@@ -221,9 +230,9 @@ export class BLZAdapter extends Adapter {
   private async performStart(): Promise<StartResult> {
     this.closing = false;
     this.runningCancellationError = undefined;
-    this.attachDriverListeners();
     const generation = this.stopGeneration;
     try {
+      this.attachDriverListeners();
       const result = await this.runOperationWhileRunning(
         () => this.driver.startup(),
         generation,

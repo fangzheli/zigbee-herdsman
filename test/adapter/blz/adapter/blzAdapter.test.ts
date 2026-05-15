@@ -282,6 +282,26 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
     });
 
+    it("should detach partially attached driver listeners when start listener attach fails", async () => {
+      driverMock.stop.mockResolvedValue(undefined);
+      await adapter.stop();
+      driverMock.on.mockClear();
+      driverMock.off.mockClear();
+      driverMock.on.mockImplementation((event: string) => {
+        if (event === "incomingMessage") {
+          throw new Error("incoming listener failed");
+        }
+      });
+
+      await expect(adapter.start()).rejects.toThrow("incoming listener failed");
+
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect(driverMock.startup).not.toHaveBeenCalled();
+    });
+
     it("should reject adapter waiters with the startup failure when startup fails", async () => {
       const waiter = adapter.waitFor(
         0x1234,
