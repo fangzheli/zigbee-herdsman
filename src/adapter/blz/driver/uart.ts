@@ -573,9 +573,7 @@ export class SerialDriver extends EventEmitter {
         }
         return;
       } catch (e) {
-        if (waiter) {
-          this.waitress.remove(waiter.ID);
-        }
+        this.cancelWaiter(waiter);
         logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
 
         if (this.operationGeneration !== generation || !this.initialized) {
@@ -612,6 +610,12 @@ export class SerialDriver extends EventEmitter {
     timeout = 3000,
   ): { start: () => { promise: Promise<BLZPacket>; ID: number }; ID: number } {
     return this.waitress.waitFor({ frameId }, timeout);
+  }
+
+  private cancelWaiter(waiter: ReturnType<typeof this.waitFor> | undefined): void {
+    if (waiter) {
+      this.waitress.remove(waiter.ID);
+    }
   }
 
   private waitressTimeoutFormatter(

@@ -1021,6 +1021,8 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ command waiter cancellation so failed command sends remove
   pending response waiters through one helper instead of open-coding waitress
   removal in the command path.
+- Centralized UART DATA waiter cancellation so retry failures remove ACK
+  waiters through the same helper pattern used by BLZ command waiters.
 
 ## Next Steps
 
