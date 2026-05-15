@@ -1258,6 +1258,26 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should release serial resources when port close error cannot be stringified", () => {
+      const callback = vi.fn();
+      const closeError = new Error("Close error");
+      closeError.toString = () => {
+        throw new Error("close stringification failed");
+      };
+      driver.on("reset", callback);
+
+      expect(() => serialPortMock.once.mock.calls.find((call) => call[0] === "close")?.[1](closeError)).not.toThrow();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(serialPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should release serial resources after an error close", async () => {
       serialPortMock.once.mock.calls.find((call) => call[0] === "close")?.[1](
         new Error("Close error"),

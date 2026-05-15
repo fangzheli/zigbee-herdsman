@@ -1216,6 +1216,9 @@ Future BLZ refactors should follow these rules:
   returns control to the serial receive loop.
 - Added safe UART reset error text formatting so a writer reset failure cannot
   prevent the UART layer from emitting its reset notification before rejecting.
+- Deferred UART port-close error logging so an unstringifiable close error
+  cannot interrupt closed-state cleanup, listener removal, and reset/close
+  notification.
 
 ## Next Steps
 

@@ -578,7 +578,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   private onPortClose(err: boolean | Error): void {
-    logger.debug(`Port closed. Error? ${err}`, NS);
+    logger.debug(() => `Port closed. Error? ${err}`, NS);
     const closeError = this.createPortCloseError(err);
     this.enterClosedState(closeError);
 
