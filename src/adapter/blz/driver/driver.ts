@@ -1327,8 +1327,12 @@ export class Driver extends EventEmitter {
 
   private cancelStartupOperations(error: Error): void {
     this.startupCancellationError = error;
-    this.startupDelay.cancel();
+    this.cancelStartupDelay();
     this.startupOperations.cancel(error);
+  }
+
+  private cancelStartupDelay(): void {
+    this.startupDelay.cancel();
   }
 
   private async runStartupOperation<T>(

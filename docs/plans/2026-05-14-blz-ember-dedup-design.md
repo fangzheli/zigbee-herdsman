@@ -1083,6 +1083,8 @@ Future BLZ refactors should follow these rules:
 - Centralized low-level BLZ connect-operation cancellation so connection
   close/reset cleanup cancels connect attempts through the same helper pattern
   as reset attempts and retry delays.
+- Centralized high-level driver startup-delay cancellation so stop/reset
+  interrupts startup timers through a dedicated helper.
 
 ## Next Steps
 
