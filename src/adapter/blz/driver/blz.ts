@@ -565,11 +565,6 @@ export class Blz extends EventEmitter {
     this.detachSerialDriverListeners();
   }
 
-  public setResetingProcess(value: boolean): void {
-    logger.debug(`Setting inResetingProcess to ${value}`, NS);
-    this.inResetingProcess = value;
-  }
-
   public async close(emitClose: boolean): Promise<void> {
     if (emitClose) {
       this.emitCloseWhenCloseCompletes = true;
@@ -608,6 +603,7 @@ export class Blz extends EventEmitter {
     try {
       await this.serialDriver.close(emitClose);
     } finally {
+      this.inResetingProcess = false;
       if (this.emitCloseWhenCloseCompletes) {
         this.emit("close");
       }
@@ -620,11 +616,13 @@ export class Blz extends EventEmitter {
   public async forceReset(): Promise<void> {
     logger.debug("Forcing direct UART reset", NS);
     const resetConnectGeneration = this.connectGeneration;
+    const wasResetingProcess = this.inResetingProcess;
 
     if (!this.serialDriver.isInitialized()) {
       throw new Error("Connection not initialized");
     }
 
+    this.inResetingProcess = true;
     this.throwIfConnectionChanged(resetConnectGeneration);
     const resetError = new Error("Connection reset");
     this.queue.clear(resetError);
@@ -636,6 +634,7 @@ export class Blz extends EventEmitter {
       this.throwIfConnectionChanged(resetConnectGeneration);
       logger.debug("Direct UART reset sent successfully", NS);
     } catch (error) {
+      this.inResetingProcess = wasResetingProcess;
       logger.error(`Direct UART reset failed: ${error}`, NS);
       throw error;
     }

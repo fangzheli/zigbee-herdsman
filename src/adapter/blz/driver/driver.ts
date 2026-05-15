@@ -395,7 +395,6 @@ export class Driver extends EventEmitter {
   private async performReset(): Promise<void> {
     const resetStopGeneration = this.stopGeneration;
     const resettingBlz = this.blz;
-    let resetStateMarked = false;
     logger.debug(`Reset connection.`, NS);
     const resetError = new Error("Driver reset");
     this.requestGeneration += 1;
@@ -409,8 +408,6 @@ export class Driver extends EventEmitter {
       // logger.debug(`Ready to reset in 10 seconds`, NS);
       // await wait(10000);
       if (resettingBlz) {
-        resettingBlz.setResetingProcess(true);
-        resetStateMarked = true;
         await this.resetForceOperations.run(
           () => resettingBlz.forceReset(),
           () => this.stopGeneration === resetStopGeneration,
@@ -437,13 +434,6 @@ export class Driver extends EventEmitter {
 
       logger.debug(`Startup again.`, NS);
       await this.startup();
-      // Clear reset state after successful startup
-      if (this.blz) {
-        this.blz.setResetingProcess(false);
-        if (this.blz === resettingBlz) {
-          resetStateMarked = false;
-        }
-      }
     } catch (err) {
       logger.debug(`Reset error ${err}`, NS);
       // Clear reset state on error
@@ -453,10 +443,6 @@ export class Driver extends EventEmitter {
         await this.stop();
       } catch (stopErr) {
         logger.debug(`Failed to stop after failed reset ${stopErr}`, NS);
-      }
-    } finally {
-      if (resetStateMarked) {
-        resettingBlz?.setResetingProcess(false);
       }
     }
   }

@@ -99,6 +99,7 @@ describe("BLZ Driver", () => {
       expect(source).not.toContain("public waitFor(");
       expect(source).not.toContain("cmdSeq");
       expect(source).not.toContain("makeZDOframe(");
+      expect(source).not.toContain("setResetingProcess");
       expect(source).not.toContain("BLZZDORequestFrameData");
       expect(source).not.toContain("BLZZDOResponseFrameData");
       expect(source).not.toContain("ZDOREQUESTS");
@@ -986,6 +987,18 @@ describe("BLZ Driver", () => {
       ]);
 
       expect(observed).toBe("rejected:Connection reset");
+    });
+
+    it("should suppress serial close events while force reset owns the reset state", async () => {
+      const callback = vi.fn();
+      blz.on("close", callback);
+      serialDriverMock.reset.mockImplementation(async () => {
+        serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+      });
+
+      await expect(blz.forceReset()).rejects.toThrow("Connection closed");
+
+      expect(callback).not.toHaveBeenCalled();
     });
 
     it("should clear BLZ state when the serial driver closes unexpectedly", async () => {

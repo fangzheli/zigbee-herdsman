@@ -962,6 +962,8 @@ Future BLZ refactors should follow these rules:
   inside driver startup instead of exposing a lower BLZ command wrapper.
 - Kept the backup provider interface module-private; tests use a local
   structural mock type instead of importing BLZ backup internals.
+- Moved BLZ reset-state suppression into `Blz.forceReset()`, so the high-level
+  driver no longer mutates low-level transport reset flags during recovery.
 
 ## Next Steps
 
