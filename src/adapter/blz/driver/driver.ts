@@ -1279,8 +1279,14 @@ export class Driver extends EventEmitter {
 
   private cancelDriverRequests(error: Error): void {
     this.requestGeneration += 1;
-    this.cancelRequestOperations(error);
-    this.cancelRequestDelays();
+    runCleanupSteps([
+      () => {
+        this.cancelRequestOperations(error);
+      },
+      () => {
+        this.cancelRequestDelays();
+      },
+    ]);
   }
 
   private cancelRequestDelays(): void {

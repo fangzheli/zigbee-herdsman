@@ -1306,6 +1306,26 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(formNetwork).not.toHaveBeenCalled();
     });
 
+    it("continues driver request delay cleanup when operation cancellation fails", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cancelError = new Error("request operation cancel failed");
+        const requestRetryDelay = (driver as unknown as {requestRetryDelay: {cancel: () => void}}).requestRetryDelay;
+        const channelChangeDelay = (driver as unknown as {channelChangeDelay: {cancel: () => void}}).channelChangeDelay;
+        const requestOperations = (driver as unknown as {requestOperations: {cancel: (error: Error) => void}}).requestOperations;
+        const requestRetryCancel = vi.spyOn(requestRetryDelay, "cancel");
+        const channelChangeCancel = vi.spyOn(channelChangeDelay, "cancel");
+        requestOperations.cancel = vi.fn((): void => {
+            throw cancelError;
+        });
+
+        expect(() => {
+            (driver as unknown as {cancelDriverRequests: (error: Error) => void}).cancelDriverRequests(new Error("Driver stopped"));
+        }).toThrow(cancelError);
+
+        expect(requestRetryCancel).toHaveBeenCalledTimes(1);
+        expect(channelChangeCancel).toHaveBeenCalledTimes(1);
+    });
+
     it("cancels network ID to EUI64 lookup when stopping", async () => {
         vi.useFakeTimers();
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
