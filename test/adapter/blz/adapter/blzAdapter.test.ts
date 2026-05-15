@@ -166,6 +166,7 @@ describe("BLZ Adapter", () => {
 
       expect(source).not.toContain("this.driver.waitFor(");
       expect(source).not.toContain("type ZdoSendWaiter");
+      expect(source).not.toContain("private async sendZdoFrame(");
       expect(source).toContain("this.driver.sendZdo(");
     });
 
@@ -1174,14 +1175,7 @@ describe("BLZ Adapter", () => {
       );
       driverMock.networkParams.Channel = 11;
       driverMock.networkParams.nwkUpdateId = 0;
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.brequest.mockResolvedValue(true);
+      driverMock.sendZdo.mockResolvedValue(undefined);
       driverMock.getNetworkKeyInfo.mockResolvedValue({
         nwkKey: Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex"),
         outgoingFrameCounter: 40968,
@@ -1220,12 +1214,12 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(24000);
       await change;
 
-      expect(driverMock.brequest).toHaveBeenCalledWith(
+      expect(driverMock.sendZdo).toHaveBeenCalledWith(
+        ZSpec.BLANK_EUI64,
         ZSpec.BroadcastAddress.SLEEPY,
-        expect.objectContaining({
-          clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        }),
-        Buffer.from("0900800000fe01ffff", "hex"),
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        Buffer.from("0000800000fe01ffff", "hex"),
+        true,
       );
       expect(driverMock.formNetworkWithParameters).toHaveBeenCalledWith(
         BigInt("0xb3c6675b7437d674"),
@@ -1235,14 +1229,7 @@ describe("BLZ Adapter", () => {
     });
 
     it("should not copy the raw NWK update payload just for logging", async () => {
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.sendZdo.mockReturnValue(new Promise<void>(() => {}));
       const payload = Zdo.Buffalo.buildRequest(
         true,
         Zdo.ClusterId.NWK_UPDATE_REQUEST,
@@ -1290,12 +1277,12 @@ describe("BLZ Adapter", () => {
       fromSpy.mockRestore();
 
       expect(observed).toBe("pending");
-      expect(driverMock.brequest).toHaveBeenCalledWith(
+      expect(driverMock.sendZdo).toHaveBeenCalledWith(
+        ZSpec.BLANK_EUI64,
         ZSpec.BroadcastAddress.SLEEPY,
-        expect.objectContaining({
-          clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        }),
-        Buffer.from("0900800000fe01ffff", "hex"),
+        Zdo.ClusterId.NWK_UPDATE_REQUEST,
+        Buffer.from("0000800000fe01ffff", "hex"),
+        true,
       );
 
       await adapter.stop();
@@ -1304,14 +1291,7 @@ describe("BLZ Adapter", () => {
 
     it("should not stringify NWK update payloads unless debug logging evaluates the message", async () => {
       const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.brequest.mockReturnValue(new Promise<boolean>(() => {}));
+      driverMock.sendZdo.mockReturnValue(new Promise<void>(() => {}));
       const payload = Zdo.Buffalo.buildRequest(
         true,
         Zdo.ClusterId.NWK_UPDATE_REQUEST,
@@ -1390,14 +1370,7 @@ describe("BLZ Adapter", () => {
       );
       driverMock.networkParams.Channel = 11;
       driverMock.networkParams.nwkUpdateId = 0;
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.brequest.mockResolvedValue(true);
+      driverMock.sendZdo.mockResolvedValue(undefined);
       driverMock.stop.mockResolvedValue(undefined);
       driverMock.getNetworkKeyInfo.mockResolvedValue({
         nwkKey: Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex"),
@@ -1453,14 +1426,7 @@ describe("BLZ Adapter", () => {
       );
       driverMock.networkParams.Channel = 11;
       driverMock.networkParams.nwkUpdateId = 0;
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.brequest.mockResolvedValue(true);
+      driverMock.sendZdo.mockResolvedValue(undefined);
       driverMock.stop.mockResolvedValue(undefined);
       driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
       const payload = Zdo.Buffalo.buildRequest(
@@ -1509,14 +1475,7 @@ describe("BLZ Adapter", () => {
       );
       driverMock.networkParams.Channel = 11;
       driverMock.networkParams.nwkUpdateId = 0;
-      driverMock.makeApsFrame.mockImplementation(() => ({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.NWK_UPDATE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      }));
-      driverMock.brequest.mockResolvedValue(true);
+      driverMock.sendZdo.mockResolvedValue(undefined);
       driverMock.getNetworkKeyInfo.mockReturnValue(new Promise(() => {}));
 
       const firstPayload = Zdo.Buffalo.buildRequest(
@@ -1556,7 +1515,7 @@ describe("BLZ Adapter", () => {
       await vi.advanceTimersByTimeAsync(0);
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(driverMock.brequest).toHaveBeenCalledTimes(1);
+      expect(driverMock.sendZdo).toHaveBeenCalledTimes(1);
       expect(driverMock.getNetworkKeyInfo).toHaveBeenCalledTimes(1);
 
       await adapter.stop();

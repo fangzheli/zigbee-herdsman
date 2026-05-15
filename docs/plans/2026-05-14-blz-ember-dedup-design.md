@@ -924,10 +924,10 @@ Future BLZ refactors should follow these rules:
   when logs are not consumed.
 - Deferred UART serial-open option JSON formatting and BLZ network init/leave
   result JSON formatting until debug logging evaluates the message.
-- Moved ordinary ZDO APS frame creation, TSN payload cloning, response waiter
-  ownership, and synthetic leave cache cleanup into the high-level driver,
-  leaving the adapter responsible for queueing/stop guards and the special
-  channel-change path.
+- Moved ZDO APS frame creation, TSN payload cloning, response waiter ownership,
+  channel-change broadcast sending, and synthetic leave cache cleanup into the
+  high-level driver, leaving the adapter responsible for queueing/stop guards
+  and channel-change parsing/reform orchestration.
 
 ## Next Steps
 

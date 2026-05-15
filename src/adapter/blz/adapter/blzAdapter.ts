@@ -436,7 +436,7 @@ export class BLZAdapter extends Adapter {
       clusterId === Zdo.ClusterId.NWK_UPDATE_REQUEST &&
       ZSpec.Utils.isBroadcastAddress(networkAddress)
     ) {
-      await this.handleNwkUpdateRequest(networkAddress, clusterId, payload, disableResponse);
+      await this.handleNwkUpdateRequest(networkAddress, clusterId, payload);
       return;
     }
 
@@ -462,45 +462,6 @@ export class BLZAdapter extends Adapter {
     }, networkAddress);
   }
 
-  private async sendZdoFrame(
-    ieeeAddress: string,
-    networkAddress: number,
-    clusterName: string,
-    frame: BlzApsFrame,
-    payload: Buffer,
-    generation: number,
-  ): Promise<void> {
-    const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
-    const route = isBroadcast
-      ? `BROADCAST to=${networkAddress}`
-      : `UNICAST to=${ieeeAddress}:${networkAddress}`;
-
-    logger.debug(
-      () => `~~~> [ZDO ${clusterName} ${route} payload=${payload.toString("hex")}]`,
-      NS,
-    );
-
-    try {
-      const req = await this.runOperationWhileRunning(
-        () =>
-          isBroadcast
-            ? this.driver.brequest(networkAddress, frame, payload)
-            : this.driver.request(networkAddress, frame, payload),
-        generation,
-      );
-
-      this.throwIfStopped(generation);
-      logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
-
-      if (!req) {
-        throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
-      }
-    } catch (error) {
-      this.throwIfStopped(generation);
-      throw error;
-    }
-  }
-
   /**
    * Handle NWK_UPDATE_REQUEST broadcast for channel change.
    * Normalizes the payload (adding TSN/nwkManagerAddr if missing),
@@ -510,7 +471,6 @@ export class BLZAdapter extends Adapter {
     networkAddress: number,
     clusterId: Zdo.ClusterId,
     rawPayload: Buffer,
-    disableResponse: boolean,
   ): Promise<void> {
     logger.debug(
       () => `[BLZ] NWK_UPDATE_REQUEST raw  len=${rawPayload.length}  ${rawPayload.toString("hex")}`,
@@ -549,20 +509,19 @@ export class BLZAdapter extends Adapter {
       this.checkInterpanLock();
       const generation = this.stopGeneration;
       this.throwIfStopped(generation);
-      const frame = this.driver.makeApsFrame(clusterId);
 
-      if (this.hasZdoMessageOverhead) {
-        payload[0] = frame.sequence;
-      }
-
-      await this.sendZdoFrame(
-        ZSpec.BLANK_EUI64,
-        networkAddress,
-        Zdo.ClusterId[clusterId],
-        frame,
-        payload,
+      await this.runOperationWhileRunning(
+        () =>
+          this.driver.sendZdo(
+            ZSpec.BLANK_EUI64,
+            networkAddress,
+            clusterId,
+            payload,
+            true,
+          ),
         generation,
       );
+      this.throwIfStopped(generation);
 
       await this.handleChannelChange(
         channelChange.channel,
