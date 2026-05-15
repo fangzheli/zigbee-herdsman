@@ -625,9 +625,17 @@ export class SerialDriver extends EventEmitter {
 
   private cancelPendingOperations(error: Error): void {
     this.operationGeneration += 1;
-    this.cancelSendRetryDelay();
-    this.queue.clear(error);
-    this.frameWaiters.clear(error);
+    runCleanupSteps([
+      () => {
+        this.cancelSendRetryDelay();
+      },
+      () => {
+        this.queue.clear(error);
+      },
+      () => {
+        this.frameWaiters.clear(error);
+      },
+    ]);
   }
 
   private cancelSendRetryDelay(): void {

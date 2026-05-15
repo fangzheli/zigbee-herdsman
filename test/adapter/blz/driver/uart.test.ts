@@ -1317,6 +1317,33 @@ describe("BLZ Serial Driver", () => {
       expect(observed).toBe("rejected:Connection closed");
     });
 
+    it("should clear UART waiters when queue cleanup fails during close", async () => {
+      serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
+      const cleanupError = new Error("queue cleanup failed");
+      const waiter = waitForDataAck();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      const queue = (driver as unknown as {queue: {clear: (error: Error) => void}}).queue;
+      queue.clear = vi.fn((): void => {
+        throw cleanupError;
+      });
+
+      const error = await driver.close(false).catch((caught: unknown) => caught);
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(error).toBe(cleanupError);
+      expect(observed).toBe("rejected:Connection closed");
+      expect(
+        (driver as unknown as {frameWaiters: {count: () => number}}).frameWaiters.count(),
+      ).toBe(0);
+      expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
+    });
+
     it("should handle send failure with retries", async () => {
       vi.useFakeTimers();
       try {
