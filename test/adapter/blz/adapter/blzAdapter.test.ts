@@ -312,7 +312,7 @@ describe("BLZ Adapter", () => {
       expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
-      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect(driverMock.off.mock.calls.filter((call) => call[0] === "incomingMessage")).toHaveLength(0);
       expect(driverMock.startup).not.toHaveBeenCalled();
     });
 

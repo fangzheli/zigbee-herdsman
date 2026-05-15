@@ -12,16 +12,21 @@ export interface OwnedEventListener {
 }
 
 export function attachListenersOrRollback(target: ListenerTarget, listeners: readonly OwnedEventListener[]): void {
+    const attached: OwnedEventListener[] = [];
+
     try {
-        for (const {event, listener, once} of listeners) {
+        for (const registration of listeners) {
+            const {event, listener, once} = registration;
             if (once) {
                 target.once(event, listener);
             } else {
                 target.on(event, listener);
             }
+
+            attached.push(registration);
         }
     } catch (error) {
-        detachListeners(target, listeners);
+        detachListeners(target, attached);
         throw error;
     }
 }

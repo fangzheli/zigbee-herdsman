@@ -2432,7 +2432,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await expect(startupResult).resolves.toBe("rejected:frame listener failed");
 
         expect(blzMock.off).toHaveBeenCalledWith("reset", expect.any(Function));
-        expect(blzMock.off).toHaveBeenCalledWith("frame", expect.any(Function));
+        expect(blzMock.off.mock.calls.filter((call) => call[0] === "frame")).toHaveLength(0);
         expect(blzMock.close).toHaveBeenCalledWith(false);
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });

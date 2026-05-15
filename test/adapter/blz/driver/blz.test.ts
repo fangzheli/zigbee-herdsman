@@ -355,7 +355,7 @@ describe("BLZ Driver", () => {
       await expect(blz.connect(serialPortOptions)).rejects.toThrow("close bridge failed");
 
       expect(serialDriverMock.off).toHaveBeenCalledWith("received", expect.any(Function));
-      expect(serialDriverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialDriverMock.off.mock.calls.filter((call) => call[0] === "close")).toHaveLength(0);
     });
 
     it("should clear the previous watchdog timer before reconnecting", async () => {
