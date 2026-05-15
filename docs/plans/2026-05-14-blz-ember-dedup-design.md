@@ -1102,6 +1102,8 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level multicast/broadcast APS request routing so both paths
   share request-generation capture, stop-cancellation handling, and lower send
   status conversion.
+- Centralized adapter running-generation checks so queued operations, running
+  operations, and settle delays all use the same stopped-state predicate.
 
 ## Next Steps
 
