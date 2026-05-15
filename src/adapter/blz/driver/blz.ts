@@ -326,7 +326,13 @@ export class Blz extends EventEmitter {
     connectGeneration: number,
   ): Promise<void> {
     const connectFailureError = this.createFailureToConnectError();
-    this.clearSerialRuntimeState(connectFailureError);
+    let runtimeCleanupError: unknown;
+
+    try {
+      this.clearSerialRuntimeState(connectFailureError);
+    } catch (error) {
+      runtimeCleanupError = error;
+    }
 
     try {
       await this.runConnectOperation(
@@ -342,6 +348,10 @@ export class Blz extends EventEmitter {
         () => `Failed to close serial driver after connect failure: ${error}`,
         NS,
       );
+    }
+
+    if (runtimeCleanupError !== undefined) {
+      throw runtimeCleanupError;
     }
   }
 

@@ -659,6 +659,21 @@ describe("BLZ Driver", () => {
       expect(errorLog).toHaveBeenCalledWith(expect.any(Function), NS);
     });
 
+    it("should close the serial driver when failed-attempt runtime cleanup fails", async () => {
+      const cleanupError = new Error("runtime cleanup failed");
+      const queue = (blz as unknown as {queue: {clear: (error: Error) => void}}).queue;
+      queue.clear = vi.fn((): void => {
+        throw cleanupError;
+      });
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      await expect(
+        (blz as unknown as {cleanupFailedConnectAttempt: (connectGeneration: number) => Promise<void>}).cleanupFailedConnectAttempt(0),
+      ).rejects.toThrow(cleanupError);
+
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+    });
+
     it("should preserve failed-attempt cleanup when non-error connect failures cannot be stringified", async () => {
       vi.spyOn(logger, "error").mockImplementation(() => {});
       const connectFailure = {
