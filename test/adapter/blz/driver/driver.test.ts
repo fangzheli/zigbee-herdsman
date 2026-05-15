@@ -80,6 +80,10 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source.match(/this\.requestGeneration \+= 1;/g)).toHaveLength(1);
         expect(source.match(/this\.requestRetryDelay\.cancel\(\);/g)).toHaveLength(1);
         expect(source.match(/this\.channelChangeDelay\.cancel\(\);/g)).toHaveLength(1);
+        expect(source).toContain("private cancelDriverLifecycle(error: Error): void");
+        expect(source.match(/this\.stopGeneration \+= 1;/g)).toHaveLength(1);
+        expect(source.match(/this\.resetDelay\.cancel\(\);/g)).toHaveLength(1);
+        expect(source.match(/this\.resetForceOperations\.cancel\(error\);/g)).toHaveLength(1);
         expect(source).not.toContain("switch (true)");
         expect(source).toContain("private updateNetworkParametersSnapshot(");
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");

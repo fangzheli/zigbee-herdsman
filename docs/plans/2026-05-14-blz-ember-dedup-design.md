@@ -1000,6 +1000,10 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver request cancellation so reset, lower transport
   close, and stop all advance the request generation and cancel lower request
   operations, retry delays, and channel-change delays through one helper.
+- Centralized high-level driver lifecycle cancellation so lower transport close
+  and non-reset stops advance stop generation and cancel reset delay, force-reset
+  operations, startup delay, and startup operations through one helper while
+  preserving internal reset stops.
 
 ## Next Steps
 

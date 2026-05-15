@@ -455,10 +455,7 @@ export class Driver extends EventEmitter {
     logger.debug("onBlzClose()", NS);
     const closeError = new Error("Driver closed");
     this.cancelDriverRequests(closeError);
-    this.stopGeneration += 1;
-    this.resetDelay.cancel();
-    this.cancelStartupOperations(closeError);
-    this.resetForceOperations.cancel(closeError);
+    this.cancelDriverLifecycle(closeError);
     if (this.blz) {
       this.detachBlzListeners(this.blz);
       this.blz = undefined;
@@ -499,10 +496,7 @@ export class Driver extends EventEmitter {
     const stopError = new Error("Driver stopped");
     this.cancelDriverRequests(stopError);
     if (!internalReset) {
-      this.stopGeneration += 1;
-      this.resetDelay.cancel();
-      this.resetForceOperations.cancel(stopError);
-      this.cancelStartupOperations(stopError);
+      this.cancelDriverLifecycle(stopError);
     }
   }
 
@@ -1198,6 +1192,13 @@ export class Driver extends EventEmitter {
     this.cancelRequestOperations(error);
     this.requestRetryDelay.cancel();
     this.channelChangeDelay.cancel();
+  }
+
+  private cancelDriverLifecycle(error: Error): void {
+    this.stopGeneration += 1;
+    this.resetDelay.cancel();
+    this.resetForceOperations.cancel(error);
+    this.cancelStartupOperations(error);
   }
 
   private cancelRequestOperations(error: Error): void {
