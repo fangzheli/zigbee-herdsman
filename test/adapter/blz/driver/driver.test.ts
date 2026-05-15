@@ -675,6 +675,27 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
     });
 
+    it("closes BLZ transport when stop preparation cleanup fails", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const cancelError = new Error("request operation cancel failed");
+        const close = vi.fn().mockResolvedValue(undefined);
+        setDriverBlz(driver, {
+            close,
+        });
+        const requestOperations = (driver as unknown as {requestOperations: {cancel: (error: Error) => void}}).requestOperations;
+        const startupOperations = (driver as unknown as {startupOperations: {cancel: (error: Error) => void}}).startupOperations;
+        const startupOperationsCancel = vi.spyOn(startupOperations, "cancel");
+        requestOperations.cancel = vi.fn((): void => {
+            throw cancelError;
+        });
+
+        await expect(driver.stop(false)).rejects.toThrow(cancelError);
+
+        expect(startupOperationsCancel).toHaveBeenCalledTimes(1);
+        expect(close).toHaveBeenCalledWith(false);
+        expect((driver as unknown as {blz?: unknown}).blz).toBeUndefined();
+    });
+
     it("cleans pending state when the lower BLZ transport closes unexpectedly", async () => {
         vi.useFakeTimers();
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");

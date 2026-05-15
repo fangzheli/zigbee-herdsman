@@ -524,11 +524,11 @@ export class Driver extends EventEmitter {
       this.emitCloseWhenStopCompletes = true;
     }
 
-    this.prepareStop(internalReset);
+    const prepareError = this.captureStopPreparation(internalReset);
 
     if (this.stopPromise) {
       logger.debug("Driver stop already in progress.", NS);
-      return await this.stopPromise;
+      return await this.waitForPreparedStop(this.stopPromise, prepareError);
     }
 
     const stopPromise = this.performStop(emitClose).finally(() => {
@@ -539,16 +539,54 @@ export class Driver extends EventEmitter {
     });
     this.stopPromise = stopPromise;
 
-    return await stopPromise;
+    return await this.waitForPreparedStop(stopPromise, prepareError);
+  }
+
+  private captureStopPreparation(internalReset: boolean): unknown {
+    try {
+      this.prepareStop(internalReset);
+    } catch (error) {
+      return error;
+    }
+
+    return undefined;
+  }
+
+  private async waitForPreparedStop(
+    stopPromise: Promise<void>,
+    prepareError: unknown,
+  ): Promise<void> {
+    try {
+      await stopPromise;
+    } catch (stopError) {
+      if (prepareError !== undefined) {
+        throw new AggregateError(
+          [prepareError, stopError],
+          "Failed to prepare driver stop and cleanup BLZ resources",
+        );
+      }
+
+      throw stopError;
+    }
+
+    if (prepareError !== undefined) {
+      throw prepareError;
+    }
   }
 
   private prepareStop(internalReset: boolean): void {
     logger.debug("Stopping driver", NS);
     const stopError = this.createDriverStoppedError();
-    this.cancelDriverRequests(stopError);
-    if (!internalReset) {
-      this.cancelDriverLifecycle(stopError);
-    }
+    runCleanupSteps([
+      () => {
+        this.cancelDriverRequests(stopError);
+      },
+      () => {
+        if (!internalReset) {
+          this.cancelDriverLifecycle(stopError);
+        }
+      },
+    ]);
   }
 
   private async performStop(emitClose: boolean): Promise<void> {
