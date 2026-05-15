@@ -3,7 +3,7 @@
 import { EventEmitter } from "events";
 import net from "net";
 
-import { Queue, Waitress } from "../../../utils";
+import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { SerialPort } from "../../serialPort";
 import { isTcpPath, parseTcpPath } from "../../utils";
@@ -19,16 +19,12 @@ import { Frame } from "./frame";
 import { Parser } from "./parser";
 import { Writer } from "./writer";
 import { FRAMES } from "./commands";
+import {
+  UartFrameWaiters,
+  type UartFrameWaiter,
+} from "./uartFrameWaiters";
 
 const NS = "zh:blz:uart";
-
-type BLZPacket = {
-  frameId: number;
-};
-
-type BLZPacketMatcher = {
-  frameId: number;
-};
 
 function formatErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -67,7 +63,7 @@ export class SerialDriver extends EventEmitter {
   private initialized: boolean;
   private sendSeq = 0; // next frame number to send
   private recvSeq = 0; // next frame number to receive
-  private waitress: Waitress<BLZPacket, BLZPacketMatcher>;
+  private readonly frameWaiters = new UartFrameWaiters();
   private queue: Queue;
   private operationGeneration = 0;
   private readonly sendRetryDelay = new CancellableDelay();
@@ -89,10 +85,6 @@ export class SerialDriver extends EventEmitter {
     super();
     this.initialized = false;
     this.queue = new Queue(1);
-    this.waitress = new Waitress<BLZPacket, BLZPacketMatcher>(
-      this.waitressValidator,
-      this.waitressTimeoutFormatter,
-    );
     this.writer = new Writer();
     this.parser = new Parser();
   }
@@ -347,7 +339,7 @@ export class SerialDriver extends EventEmitter {
     //     return;
     // }
 
-    const handled = this.waitress.resolve({ frameId: frame.frameId });
+    const handled = this.frameWaiters.resolve(frame.frameId);
     if (!handled) {
       logger.debug(`Unsolicited frame ID ${frame.frameId.toString(16)}`, NS);
     }
@@ -358,7 +350,7 @@ export class SerialDriver extends EventEmitter {
 
   private handleACK(frame: Frame): void {
     const ackSeq = (frame.control & 0x70) >> 4;
-    const handled = this.waitress.resolve({ frameId: frame.frameId });
+    const handled = this.frameWaiters.resolve(frame.frameId);
     if (!handled) {
       logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
     } else {
@@ -368,7 +360,7 @@ export class SerialDriver extends EventEmitter {
 
   private handleResetAck(frame: Frame): void {
     logger.debug(() => `<-- RESET_ACK: ${frame}`, NS);
-    // this.waitress.resolve({frameId: -1});
+    // this.frameWaiters.resolve(-1);
   }
 
   private handleError(frame: Frame): void {
@@ -560,7 +552,7 @@ export class SerialDriver extends EventEmitter {
     this.operationGeneration += 1;
     this.cancelSendRetryDelay();
     this.queue.clear(error);
-    this.waitress.clear(error);
+    this.frameWaiters.clear(error);
   }
 
   private cancelSendRetryDelay(): void {
@@ -695,10 +687,10 @@ export class SerialDriver extends EventEmitter {
       }
 
       const isRetransmission = attempt > 0;
-      const waiter =
+      const waiter: UartFrameWaiter | undefined =
         frameId === FRAMES.reset.ID
           ? undefined
-          : this.waitFor(frameId, 1000); // 1 second timeout per attempt
+          : this.frameWaiters.waitFor(frameId, 1000); // 1 second timeout per attempt
 
       try {
         this.writer.sendData(
@@ -717,7 +709,7 @@ export class SerialDriver extends EventEmitter {
         }
         return;
       } catch (e) {
-        this.cancelWaiter(waiter);
+        this.frameWaiters.cancel(waiter);
         logger.error(
           () =>
             `Attempt ${attempt + 1} failed for seq ${seq}: ${formatErrorMessage(e)}`,
@@ -755,32 +747,5 @@ export class SerialDriver extends EventEmitter {
 
   private isOperationGenerationActive(generation: number): boolean {
     return this.operationGeneration === generation && this.initialized;
-  }
-
-  private waitFor(
-    frameId: number,
-    timeout = 3000,
-  ): { start: () => { promise: Promise<BLZPacket>; ID: number }; ID: number } {
-    return this.waitress.waitFor({ frameId }, timeout);
-  }
-
-  private cancelWaiter(waiter: ReturnType<typeof this.waitFor> | undefined): void {
-    if (waiter) {
-      this.waitress.remove(waiter.ID);
-    }
-  }
-
-  private waitressTimeoutFormatter(
-    matcher: BLZPacketMatcher,
-    timeout: number,
-  ): string {
-    return `${JSON.stringify(matcher)} after ${timeout}ms`;
-  }
-
-  private waitressValidator(
-    payload: BLZPacket,
-    matcher: BLZPacketMatcher,
-  ): boolean {
-    return payload.frameId === matcher.frameId;
   }
 }

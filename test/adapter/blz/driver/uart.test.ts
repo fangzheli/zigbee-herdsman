@@ -170,11 +170,20 @@ describe("BLZ Serial Driver", () => {
   describe("Connection", () => {
     it("should keep low-level UART waiters behind driver internals", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/uart.ts", "utf8");
+      const waiterSource = fs.readFileSync("src/adapter/blz/driver/uartFrameWaiters.ts", "utf8");
 
-      expect(source).toContain("private waitFor(");
+      expect(source).toContain("private readonly frameWaiters = new UartFrameWaiters();");
+      expect(source).not.toContain("private waitress:");
+      expect(source).not.toContain("new Waitress<BLZPacket, BLZPacketMatcher>");
+      expect(source).not.toContain("private waitFor(");
       expect(source).not.toContain("public waitFor(");
-      expect(source).toContain("private cancelWaiter(");
-      expect(source).toContain("this.cancelWaiter(waiter);");
+      expect(source).not.toContain("private cancelWaiter(");
+      expect(source).toContain("this.frameWaiters.waitFor(");
+      expect(source).toContain("this.frameWaiters.cancel(waiter);");
+      expect(source).toContain("this.frameWaiters.resolve(");
+      expect(waiterSource).toContain("export class UartFrameWaiters");
+      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("public cancel(waiter: UartFrameWaiter | undefined): void");
       expect(source).toContain("private cancelSendRetryDelay(): void");
       expect(source).toContain("this.cancelSendRetryDelay();");
       expect(source.match(/this\.sendRetryDelay\.cancel\(\);/g)).toHaveLength(1);
@@ -220,7 +229,7 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("private attachRuntimePortListeners(port: SerialPort | net.Socket): void");
       expect(source).toContain("private detachRuntimePortListeners(port: SerialPort | net.Socket): void");
       expect(source).toContain("private readonly runtimePortListenerRegistrations");
-      expect(source).toContain('{ event: "close", listener: this.onPortCloseHandler, once: true }');
+      expect(source).toMatch(/\{\s*event: "close", listener: this\.onPortCloseHandler, once: true\s*\}/);
       expect(source).toContain("attachListenersOrRollback(port, this.runtimePortListenerRegistrations);");
       expect(source).toContain("detachListeners(port, this.runtimePortListenerRegistrations);");
     });
@@ -887,7 +896,7 @@ describe("BLZ Serial Driver", () => {
 
       parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
 
-      // ACK frames are handled internally by the waitress
+      // ACK frames are handled internally by the frame waiters
       expect(writerMock.sendACK).not.toHaveBeenCalled();
     });
 
@@ -897,13 +906,15 @@ describe("BLZ Serial Driver", () => {
       const frame = createFrame(0x0001, 0x01, 0x00);
       const waiter = (
         driver as unknown as {
-          waitFor: (
-            frameId: number,
-            timeout?: number,
-          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
-          waitress: { remove: (id: number) => void };
+          frameWaiters: {
+            waitFor: (
+              frameId: number,
+              timeout?: number,
+            ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+            cancel: (waiter: {ID: number}) => void;
+          };
         }
-      ).waitFor(0x0001, 1000);
+      ).frameWaiters.waitFor(0x0001, 1000);
       const waiterResult = waiter.start().promise.then(
         () => "resolved",
         (waitError: Error) => `rejected:${waitError.message}`,
@@ -923,7 +934,9 @@ describe("BLZ Serial Driver", () => {
         expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         expect(error).not.toHaveBeenCalled();
       } finally {
-        (driver as unknown as {waitress: { remove: (id: number) => void }}).waitress.remove(waiter.ID);
+        (
+          driver as unknown as {frameWaiters: {cancel: (waiter: {ID: number}) => void}}
+        ).frameWaiters.cancel(waiter);
         await waiterResult;
         toStringSpy.mockRestore();
         debug.mockRestore();
@@ -945,12 +958,14 @@ describe("BLZ Serial Driver", () => {
       driver.on("reset", callback);
       const waiter = (
         driver as unknown as {
-          waitFor: (
-            frameId: number,
-            timeout?: number,
-          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          frameWaiters: {
+            waitFor: (
+              frameId: number,
+              timeout?: number,
+            ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          };
         }
-      ).waitFor(0x0001, 1000);
+      ).frameWaiters.waitFor(0x0001, 1000);
       const waiterResult = waiter.start().promise.then(
         () => "resolved",
         (error: Error) => `rejected:${error.message}`,
@@ -1027,12 +1042,14 @@ describe("BLZ Serial Driver", () => {
       driver.on("reset", callback);
       const waiter = (
         driver as unknown as {
-          waitFor: (
-            frameId: number,
-            timeout?: number,
-          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          frameWaiters: {
+            waitFor: (
+              frameId: number,
+              timeout?: number,
+            ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          };
         }
-      ).waitFor(0x0001, 1000);
+      ).frameWaiters.waitFor(0x0001, 1000);
       const waiterResult = waiter.start().promise.then(
         () => "resolved",
         (error: Error) => `rejected:${error.message}`,
@@ -1113,12 +1130,14 @@ describe("BLZ Serial Driver", () => {
     } =>
       (
         driver as unknown as {
-          waitFor: (
-            frameId: number,
-            timeout?: number,
-          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          frameWaiters: {
+            waitFor: (
+              frameId: number,
+              timeout?: number,
+            ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          };
         }
-      ).waitFor(0x0000, 1000);
+      ).frameWaiters.waitFor(0x0000, 1000);
 
     it("should send data successfully", async () => {
       const data = Buffer.from([1, 2, 3]);
@@ -1374,7 +1393,7 @@ describe("BLZ Serial Driver", () => {
       await driver.sendDATA(Buffer.from([1, 2, 3]), 0x0003);
 
       expect(
-        (driver as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (driver as unknown as {frameWaiters: {count: () => number}}).frameWaiters.count(),
       ).toBe(0);
     });
 
@@ -1401,7 +1420,7 @@ describe("BLZ Serial Driver", () => {
         "Failed to send data after 0 retries",
       );
       expect(
-        (driver as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (driver as unknown as {frameWaiters: {count: () => number}}).frameWaiters.count(),
       ).toBe(0);
     });
   });
