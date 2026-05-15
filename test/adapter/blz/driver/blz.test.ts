@@ -120,7 +120,7 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private async connectWithRetries(");
       expect(source).toContain("await this.connectWithRetries(options, connectGeneration);");
       expect(source).toContain("private cancelConnectResetOperations(error: Error): void");
-      expect(source).toContain('this.cancelConnectResetOperations(new Error("Failure to connect"));');
+      expect(source).toContain("this.cancelConnectResetOperations(this.createFailureToConnectError());");
       expect(source).toContain("private startWatchdogTimer(): void");
       expect(source).toContain("this.startWatchdogTimer();");
       expect(source).toContain("private isWatchdogGenerationActive(watchdogGeneration: number): boolean");
@@ -152,6 +152,12 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private cancelConnectRetryDelay(): void");
       expect(source).toContain("this.cancelConnectRetryDelay();");
       expect(source.match(/this\.connectRetryDelay\.cancel\(\);/g)).toHaveLength(1);
+      expect(source).toContain("private createConnectionCancelledByCloseError(): Error");
+      expect(source.match(/this\.createConnectionCancelledByCloseError\(\)/g)).toHaveLength(5);
+      expect(source).toContain("private createFailureToConnectError(): Error");
+      expect(source.match(/this\.createFailureToConnectError\(\)/g)).toHaveLength(2);
+      expect(source.match(/new Error\("Connection cancelled by close"\)/g)).toHaveLength(1);
+      expect(source.match(/new Error\("Failure to connect"\)/g)).toHaveLength(1);
     });
 
     it("centralizes pending command cleanup", () => {
@@ -166,11 +172,17 @@ describe("BLZ Driver", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
 
       expect(source).toContain("private enterDisconnectedState(connectionError: Error, commandError = connectionError): void");
-      expect(source).toContain('this.enterDisconnectedState(new Error("Connection reset"));');
-      expect(source).toContain('this.enterDisconnectedState(new Error("Connection closed"));');
+      expect(source).toContain("this.enterDisconnectedState(this.createConnectionResetError());");
+      expect(source).toContain("this.enterDisconnectedState(this.createConnectionClosedError());");
       expect(source).toContain("this.enterDisconnectedState(connectionCancelError, closeError);");
       expect(source.match(/this\.detachSerialDriverListeners\(\);/g)).toHaveLength(1);
       expect(source.match(/this\.cancelConnectionOperations\(connectionError\);/g)).toHaveLength(1);
+      expect(source).toContain("private createConnectionClosedError(): Error");
+      expect(source.match(/this\.createConnectionClosedError\(\)/g)).toHaveLength(4);
+      expect(source).toContain("private createConnectionResetError(): Error");
+      expect(source.match(/this\.createConnectionResetError\(\)/g)).toHaveLength(2);
+      expect(source.match(/new Error\("Connection closed"\)/g)).toHaveLength(1);
+      expect(source.match(/new Error\("Connection reset"\)/g)).toHaveLength(1);
     });
 
     it("centralizes serial runtime cleanup without cancelling connect generation", () => {

@@ -181,6 +181,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver stopped error creation so request, startup,
   channel-change, reset, stop, and ZDO cancellation paths use one fallback
   source.
+- Centralized BLZ connection-state error creation so connect retry, close,
+  reset, watchdog cancellation, and pending command cleanup paths share the same
+  connection failure sources.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

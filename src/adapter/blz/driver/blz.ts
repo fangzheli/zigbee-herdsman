@@ -349,7 +349,7 @@ export class Blz extends EventEmitter {
 
     try {
       if (this.serialDriver.isInitialized()) {
-        const reconnectError = new Error("Connection closed");
+        const reconnectError = this.createConnectionClosedError();
         this.clearSerialRuntimeState(reconnectError);
         await this.runConnectOperation(
           () => this.serialDriver.close(false),
@@ -358,7 +358,7 @@ export class Blz extends EventEmitter {
       }
 
       const resetForReconnect = (): void => {
-        this.cancelConnectResetOperations(new Error("Failure to connect"));
+        this.cancelConnectResetOperations(this.createFailureToConnectError());
       };
       this.attachConnectResetListener(resetForReconnect);
 
@@ -398,7 +398,7 @@ export class Blz extends EventEmitter {
         await this.runSerialConnectAttempt(options, connectGeneration);
 
         if (this.isConnectCancelled(connectGeneration)) {
-          throw new Error("Connection cancelled by close");
+          throw this.createConnectionCancelledByCloseError();
         }
 
         // Verify connection is actually established
@@ -433,7 +433,7 @@ export class Blz extends EventEmitter {
           );
 
           if (!continueRetry) {
-            throw new Error("Connection cancelled by close");
+            throw this.createConnectionCancelledByCloseError();
           }
         }
       }
@@ -455,7 +455,7 @@ export class Blz extends EventEmitter {
         this.connectResetOperations.run(
           () => this.serialDriver.connect(options),
           () => this.isConnectGenerationActive(connectGeneration),
-          () => new Error("Connection cancelled by close"),
+          () => this.createConnectionCancelledByCloseError(),
         ),
       connectGeneration,
     );
@@ -464,7 +464,7 @@ export class Blz extends EventEmitter {
   private async cleanupFailedConnectAttempt(
     connectGeneration: number,
   ): Promise<void> {
-    const connectFailureError = new Error("Failure to connect");
+    const connectFailureError = this.createFailureToConnectError();
     this.clearSerialRuntimeState(connectFailureError);
 
     try {
@@ -491,7 +491,7 @@ export class Blz extends EventEmitter {
 
   private throwIfConnectionChanged(connectGeneration: number): void {
     if (this.isConnectCancelled(connectGeneration)) {
-      throw new Error("Connection closed");
+      throw this.createConnectionClosedError();
     }
   }
 
@@ -502,7 +502,7 @@ export class Blz extends EventEmitter {
     return await this.connectOperations.run(
       operation,
       () => this.isConnectGenerationActive(connectGeneration),
-      () => new Error("Connection cancelled by close"),
+      () => this.createConnectionCancelledByCloseError(),
     );
   }
 
@@ -585,13 +585,13 @@ export class Blz extends EventEmitter {
   private onSerialReset(): void {
     logger.debug("onSerialReset()", NS);
     this.inResetingProcess = true;
-    this.enterDisconnectedState(new Error("Connection reset"));
+    this.enterDisconnectedState(this.createConnectionResetError());
     this.emit("reset");
   }
 
   private onSerialClose(): void {
     logger.debug("onSerialClose()", NS);
-    this.enterDisconnectedState(new Error("Connection closed"));
+    this.enterDisconnectedState(this.createConnectionClosedError());
 
     if (!this.inResetingProcess) {
       this.emit("close");
@@ -616,6 +616,22 @@ export class Blz extends EventEmitter {
 
   private cancelConnectRetryDelay(): void {
     this.connectRetryDelay.cancel();
+  }
+
+  private createConnectionClosedError(): Error {
+    return new Error("Connection closed");
+  }
+
+  private createConnectionResetError(): Error {
+    return new Error("Connection reset");
+  }
+
+  private createConnectionCancelledByCloseError(): Error {
+    return new Error("Connection cancelled by close");
+  }
+
+  private createFailureToConnectError(): Error {
+    return new Error("Failure to connect");
   }
 
   private clearPendingCommands(error: Error): void {
@@ -658,8 +674,8 @@ export class Blz extends EventEmitter {
   private async performClose(emitClose: boolean): Promise<void> {
     logger.debug("Closing Blz", NS);
 
-    const connectionCancelError = new Error("Connection cancelled by close");
-    const closeError = new Error("Connection closed");
+    const connectionCancelError = this.createConnectionCancelledByCloseError();
+    const closeError = this.createConnectionClosedError();
     this.enterDisconnectedState(connectionCancelError, closeError);
     try {
       await this.serialDriver.close(emitClose);
@@ -687,7 +703,7 @@ export class Blz extends EventEmitter {
 
     this.inResetingProcess = true;
     this.throwIfConnectionChanged(resetConnectGeneration);
-    const resetError = new Error("Connection reset");
+    const resetError = this.createConnectionResetError();
     this.clearPendingCommands(resetError);
     this.throwIfConnectionChanged(resetConnectGeneration);
 
