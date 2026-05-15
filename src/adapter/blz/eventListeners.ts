@@ -25,9 +25,14 @@ export function attachListenersOrRollback(target: ListenerTarget, listeners: rea
 
             attached.push(registration);
         }
-    } catch (error) {
-        detachListeners(target, attached);
-        throw error;
+    } catch (attachError) {
+        try {
+            detachListeners(target, attached);
+        } catch (rollbackError) {
+            throw new AggregateError([attachError, rollbackError], "Failed to attach event listeners and rollback cleanup failed");
+        }
+
+        throw attachError;
     }
 }
 

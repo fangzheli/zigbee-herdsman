@@ -37,6 +37,48 @@ describe("BLZ event listener ownership helpers", () => {
         expect(off).toHaveBeenCalledWith("first", first);
     });
 
+    it("reports both attach and rollback failures", () => {
+        const first = vi.fn();
+        const second = vi.fn();
+        const third = vi.fn();
+        const attachError = new Error("third attach failed");
+        const rollbackError = new Error("first detach failed");
+        const on = vi.fn((event: string | symbol) => {
+            if (event === "third") {
+                throw attachError;
+            }
+        });
+        const once = vi.fn();
+        const off = vi.fn((event: string | symbol) => {
+            if (event === "first") {
+                throw rollbackError;
+            }
+        });
+        const target = {
+            on,
+            once,
+            off,
+        };
+        const listeners: readonly OwnedEventListener[] = [
+            {event: "first", listener: first},
+            {event: "second", listener: second},
+            {event: "third", listener: third},
+        ];
+
+        let thrown: unknown;
+        try {
+            attachListenersOrRollback(target, listeners);
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(AggregateError);
+        expect((thrown as AggregateError).errors).toEqual([attachError, rollbackError]);
+        expect(off).toHaveBeenCalledTimes(2);
+        expect(off).toHaveBeenNthCalledWith(1, "first", first);
+        expect(off).toHaveBeenNthCalledWith(2, "second", second);
+    });
+
     it("detaches every listener even when one detach throws", () => {
         const first = vi.fn();
         const second = vi.fn();
