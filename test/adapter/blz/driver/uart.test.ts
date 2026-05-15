@@ -359,6 +359,23 @@ describe("BLZ Serial Driver", () => {
       expect(serialPortMock.destroy).toHaveBeenCalled();
     });
 
+    it("should clean serial resources when parser attachment fails before open", async () => {
+      writerMock.pipe.mockImplementation(() => {
+        throw new Error("pipe failed");
+      });
+
+      await expect(driver.connect(serialPortOptions)).rejects.toThrow("pipe failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should reject pending serial connect when closing before open finishes", async () => {
       const connect = driver.connect(serialPortOptions);
       const connectResult = connect.then(
@@ -535,6 +552,23 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(socketPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
+
+    it("should clean TCP resources when parser attachment fails before connect", async () => {
+      writerMock.pipe.mockImplementation(() => {
+        throw new Error("pipe failed");
+      });
+
+      await expect(driver.connect(tcpPortOptions)).rejects.toThrow("pipe failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {socketPort?: unknown}).socketPort,
+      ).toBeUndefined();
     });
 
     it("should reject pending TCP connect when closing before ready", async () => {

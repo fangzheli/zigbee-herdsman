@@ -139,7 +139,12 @@ export class SerialDriver extends EventEmitter {
     this.serialPort = new SerialPort(options);
     const serialPort = this.serialPort;
 
-    this.attachParserToPort(serialPort);
+    try {
+      this.attachParserToPort(serialPort);
+    } catch (error) {
+      this.cleanupFailedOpenPort(serialPort);
+      throw error;
+    }
 
     let opened = false;
 
@@ -180,10 +185,15 @@ export class SerialDriver extends EventEmitter {
     this.socketPort.setNoDelay(true);
     this.socketPort.setKeepAlive(true, 15000);
 
-    this.attachParserToPort(this.socketPort);
+    const socketPort = this.socketPort!;
+    try {
+      this.attachParserToPort(socketPort);
+    } catch (error) {
+      this.cleanupFailedOpenPort(socketPort);
+      throw error;
+    }
 
     let settled = false;
-    const socketPort = this.socketPort!;
 
     const openSocket = (): Promise<void> =>
       new Promise<void>((resolve, reject): void => {
