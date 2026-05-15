@@ -1006,6 +1006,9 @@ Future BLZ refactors should follow these rules:
   preserving internal reset stops.
 - Centralized UART runtime close/error listener binding so serial and TCP ports
   use the same attach/detach helpers for owned runtime listeners.
+- Centralized high-level driver network-parameter snapshot capture so startup
+  records BLZ network identity through the same state update helper instead of
+  constructing cached snapshot fields inline.
 
 ## Next Steps
 

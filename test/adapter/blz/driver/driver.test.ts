@@ -87,6 +87,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("switch (true)");
         expect(source).toContain("private updateNetworkParametersSnapshot(");
         expect(source).not.toContain("public updateNetworkParametersSnapshot(");
+        expect(source).toContain("private setNetworkParametersSnapshot(netParams: BLZFrameData): BlzNetworkParameters");
+        expect(source).toContain("const networkParams = this.setNetworkParametersSnapshot(netParams);");
         expect(source).toContain("private async leaveNetwork(");
         expect(source).not.toContain("public async leaveNetwork(");
         expect(source).toContain("private async formNetworkWithParameters(");

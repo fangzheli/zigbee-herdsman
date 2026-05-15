@@ -263,6 +263,25 @@ export class Driver extends EventEmitter {
     networkParams.channels = channelToMask(channel);
   }
 
+  private setNetworkParametersSnapshot(netParams: BLZFrameData): BlzNetworkParameters {
+    const networkParams = new BlzNetworkParameters();
+    const extendedPanId = Buffer.allocUnsafe(8);
+    const rawExtendedPanId =
+      typeof netParams.extPanId === "bigint"
+        ? netParams.extPanId
+        : BigInt(netParams.extPanId);
+
+    extendedPanId.writeBigUInt64BE(rawExtendedPanId);
+    networkParams.extendedPanId = extendedPanId;
+    networkParams.panId = netParams.panId;
+    networkParams.Channel = netParams.channel;
+    networkParams.nwkUpdateId = netParams.nwkUpdateId;
+    networkParams.channels = netParams.channelMask;
+    this.networkParams = networkParams;
+
+    return networkParams;
+  }
+
   public async changeChannel(
     newChannel: number,
     nwkUpdateId: number,
@@ -653,20 +672,7 @@ export class Driver extends EventEmitter {
       }
       logger.info(`PanId: ${netParams.panId.toString(16)}`, NS);
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
-      const networkParams = new BlzNetworkParameters();
-      // Convert number/bigint to 8-byte Buffer in big-endian format
-      const buf = Buffer.allocUnsafe(8);
-      if (typeof netParams.extPanId === "bigint") {
-        buf.writeBigUInt64BE(netParams.extPanId);
-      } else {
-        buf.writeBigUInt64BE(BigInt(netParams.extPanId));
-      }
-      networkParams.extendedPanId = buf;
-      networkParams.panId = netParams.panId;
-      networkParams.Channel = netParams.channel;
-      networkParams.nwkUpdateId = netParams.nwkUpdateId;
-      networkParams.channels = netParams.channelMask;
-      this.networkParams = networkParams;
+      const networkParams = this.setNetworkParametersSnapshot(netParams);
       logger.debug(
         `Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`,
         NS,
