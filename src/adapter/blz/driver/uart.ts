@@ -110,10 +110,7 @@ export class SerialDriver extends EventEmitter {
     this.serialPort = new SerialPort(options);
     const serialPort = this.serialPort;
 
-    this.writer.pipe(serialPort);
-
-    serialPort.pipe(this.parser);
-    this.parser.on("parsed", this.onParsedHandler);
+    this.attachParserToPort(serialPort);
 
     let opened = false;
     const cleanupOpen = (): void => {
@@ -166,10 +163,7 @@ export class SerialDriver extends EventEmitter {
     this.socketPort.setNoDelay(true);
     this.socketPort.setKeepAlive(true, 15000);
 
-    this.writer.pipe(this.socketPort);
-
-    this.socketPort.pipe(this.parser);
-    this.parser.on("parsed", this.onParsedHandler);
+    this.attachParserToPort(this.socketPort);
 
     let settled = false;
     const socketPort = this.socketPort!;
@@ -446,6 +440,12 @@ export class SerialDriver extends EventEmitter {
   private cleanupParser(): void {
     this.parser.off("parsed", this.onParsedHandler);
     this.parser.reset();
+  }
+
+  private attachParserToPort(port: SerialPort | net.Socket): void {
+    this.writer.pipe(port);
+    port.pipe(this.parser);
+    this.parser.on("parsed", this.onParsedHandler);
   }
 
   private cancelPendingOperations(error: Error): void {

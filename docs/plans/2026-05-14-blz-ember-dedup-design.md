@@ -991,6 +991,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART active-port teardown so serial error closes and TCP/serial
   destroy paths release pipes, owned listeners, and port references through one
   helper while preserving graceful serial `asyncFlushAndClose()` on normal stop.
+- Centralized UART parser/port pipe setup so serial and TCP opens register the
+  writer pipe, parser pipe, and parsed-frame listener through one helper matched
+  by the existing parser cleanup path.
 
 ## Next Steps
 
