@@ -1249,6 +1249,8 @@ Future BLZ refactors should follow these rules:
   the delay and release tracked waiters instead of leaving hung lifecycle waits.
 - Hardened shared `Waitress` timeout formatter failures so unprintable
   formatter errors reject waiters and clear their timeout entries.
+- Hardened shared `Waitress` validator failures so one bad matcher rejects and
+  releases its waiter without interrupting later waiter resolution.
 - Hardened malformed ZDO response logging at the high-level BLZ receive
   boundary so unprintable parser errors still emit the raw incoming message.
 - Normalized shared `Queue` concurrency to at least one worker, preventing

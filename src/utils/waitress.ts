@@ -124,7 +124,20 @@ export class Waitress<TPayload, TMatcher> {
         for (const [index, waiter] of this.waiters.entries()) {
             if (waiter.timedout) {
                 this.waiters.delete(index);
-            } else if (this.validator(payload, waiter.matcher)) {
+                continue;
+            }
+
+            let matches = false;
+            try {
+                matches = this.validator(payload, waiter.matcher);
+            } catch (error) {
+                clearTimeout(waiter.timer);
+                this.waiters.delete(index);
+                this.rejectWaiter(waiter, errorFromUnknown(error));
+                continue;
+            }
+
+            if (matches) {
                 clearTimeout(waiter.timer);
                 waiter.resolved = true;
                 this.waiters.delete(index);

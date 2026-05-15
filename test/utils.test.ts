@@ -311,6 +311,33 @@ describe("Utils", () => {
         vi.useRealTimers();
     });
 
+    it("Test waitress releases validator failures and continues matching waiters", async () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            if (matcher === 2) {
+                throw new Error("validator failed");
+            }
+
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const rejectedWaiter = waitress.waitFor(2, 5000).start();
+        const resolvedWaiter = waitress.waitFor(3, 5000).start();
+        const rejectedResult = rejectedWaiter.promise.then(
+            () => "resolved",
+            (error: Error) => `rejected:${error.message}`,
+        );
+        const resolvedResult = resolvedWaiter.promise.then(
+            (payload) => `resolved:${payload}`,
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        expect(() => waitress.resolve("hey")).not.toThrow();
+
+        await expect(rejectedResult).resolves.toBe("rejected:validator failed");
+        await expect(resolvedResult).resolves.toBe("resolved:hey");
+        expect(waitress.count()).toStrictEqual(0);
+    });
+
     it("Test waitress defers timeout formatting for waiters that resolve", async () => {
         vi.useFakeTimers();
         const validator = (payload: string, matcher: number): boolean => {
