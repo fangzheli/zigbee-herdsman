@@ -25,7 +25,7 @@ import {
 import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
 import { Driver, BlzIncomingMessage } from "../driver";
-import { BlzEUI64, BlzOutgoingMessageType, BlzStatus } from "../driver/types";
+import { BlzEUI64, BlzOutgoingMessageType } from "../driver/types";
 import { formatIeeeAddress } from "../ieee";
 import { parseNwkUpdateChannelChange } from "./nwkUpdate";
 
@@ -383,15 +383,10 @@ export class BLZAdapter extends Adapter {
         throw new Zdo.StatusError(result[0]);
       }
     } else {
-      const result = await this.runOperationWhileRunning(
+      await this.runOperationWhileRunning(
         () => this.driver.permitJoining(seconds),
         generation,
       );
-      if (result.status !== BlzStatus.SUCCESS) {
-        throw new Error(
-          `[ZDO] Failed coordinator permit joining request with status=${result.status}.`,
-        );
-      }
 
       logger.debug(`Permit joining on coordinator for ${seconds} sec.`, NS);
 

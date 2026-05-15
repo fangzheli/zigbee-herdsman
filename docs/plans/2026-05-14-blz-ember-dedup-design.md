@@ -1170,6 +1170,9 @@ Future BLZ refactors should follow these rules:
 - Routed coordinator permit-join commands through the same checked driver-command
   path, keeping BLZ command status ownership in the driver instead of the
   adapter.
+- Removed the adapter's redundant coordinator permit-join BLZ status inspection,
+  so the adapter now treats `Driver.permitJoining()` as the ownership boundary
+  for command success or failure.
 
 ## Next Steps
 

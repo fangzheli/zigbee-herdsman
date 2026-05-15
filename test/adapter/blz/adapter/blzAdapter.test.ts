@@ -574,7 +574,7 @@ describe("BLZ Adapter", () => {
   describe("Network operations", () => {
     it("should permit joining on coordinator", async () => {
       driverMock.blz.isInitialized.mockReturnValue(true);
-      driverMock.permitJoining.mockResolvedValue({ status: BlzStatus.SUCCESS });
+      driverMock.permitJoining.mockResolvedValue(undefined);
       driverMock.brequest.mockResolvedValue(true);
       driverMock.makeApsFrame.mockImplementation(() => {
         const frame = new BlzApsFrame();
@@ -592,10 +592,19 @@ describe("BLZ Adapter", () => {
       expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
     }, 60000);
 
+    it("should leave coordinator permit join status handling to the driver", async () => {
+      driverMock.blz.isInitialized.mockReturnValue(true);
+      driverMock.permitJoining.mockResolvedValue(undefined);
+
+      await expect(adapter.permitJoin(60)).resolves.toBeUndefined();
+      expect(driverMock.permitJoining).toHaveBeenCalledWith(60);
+      expect(driverMock.sendZdo).toHaveBeenCalledTimes(1);
+    });
+
     it("should check permit join initialization through the driver API", async () => {
       (driverMock as unknown as {blz?: unknown}).blz = undefined;
       driverMock.isInitialized.mockReturnValue(true);
-      driverMock.permitJoining.mockResolvedValue({ status: BlzStatus.SUCCESS });
+      driverMock.permitJoining.mockResolvedValue(undefined);
 
       await adapter.permitJoin(60, 0x0000);
 
