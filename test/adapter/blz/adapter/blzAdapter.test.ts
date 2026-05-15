@@ -1150,6 +1150,52 @@ describe("BLZ Adapter", () => {
       }
     });
 
+    it("should not stringify endpoint ZCL timeout details unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      try {
+        driverMock.sendZclEndpoint.mockResolvedValue(true);
+        const zclFrame = Zcl.Frame.create(
+          Zcl.FrameType.GLOBAL,
+          Zcl.Direction.CLIENT_TO_SERVER,
+          false,
+          undefined,
+          7,
+          "read",
+          Zcl.Clusters.genOnOff.ID,
+          [{attrId: 0x0000}],
+          {},
+        );
+        const ieeeAddr = {
+          toString: () => {
+            throw new Error("eager endpoint ZCL timeout detail string");
+          },
+        } as unknown as string;
+
+        const send = adapter.sendZclFrameToEndpoint(
+          ieeeAddr,
+          0x1234,
+          1,
+          zclFrame,
+          1000,
+          false,
+          true,
+        );
+        const sendResult = send.then(
+          () => "resolved",
+          (error: Error) => `rejected:${error.message}`,
+        );
+        await vi.advanceTimersByTimeAsync(1000);
+
+        await expect(sendResult).resolves.not.toBe(
+          "rejected:eager endpoint ZCL timeout detail string",
+        );
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        void send.catch(() => {});
+      } finally {
+        debug.mockRestore();
+      }
+    });
+
     it("should use source endpoint and profile ID for group ZCL sends", async () => {
       driverMock.sendZclMulticast.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(

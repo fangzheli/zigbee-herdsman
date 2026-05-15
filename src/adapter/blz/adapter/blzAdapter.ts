@@ -655,7 +655,8 @@ export class BLZAdapter extends Adapter {
         return result;
       } catch (error) {
         logger.debug(
-          `Response timeout (${ieeeAddr}:${networkAddress},${responseAttempt})`,
+          () =>
+            `Response timeout (${ieeeAddr}:${networkAddress},${responseAttempt})`,
           NS,
         );
         this.throwIfStopped(generation);
