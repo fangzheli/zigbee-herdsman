@@ -178,6 +178,9 @@ Future BLZ refactors should follow these rules:
 - Reset the BLZ watchdog failure counter after a successful heartbeat, so
   intermittent heartbeat misses do not accumulate across healthy checks and
   trigger unnecessary reset/startup cleanup cycles.
+- Centralized high-level driver stopped error creation so request, startup,
+  channel-change, reset, stop, and ZDO cancellation paths use one fallback
+  source.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

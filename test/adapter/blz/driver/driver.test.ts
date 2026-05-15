@@ -119,6 +119,11 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private isStartupGenerationActive(startupStopGeneration: number): boolean");
         expect(source.match(/this\.isStartupGenerationActive\(startupStopGeneration\)/g)).toHaveLength(3);
         expect(source.match(/this\.stopGeneration === startupStopGeneration/g)).toHaveLength(1);
+        expect(source).toContain("private getStartupCancellationError(): Error");
+        expect(source.match(/this\.getStartupCancellationError\(\)/g)).toHaveLength(3);
+        expect(source).toContain("private createDriverStoppedError(): Error");
+        expect(source.match(/this\.createDriverStoppedError\(\)/g)).toHaveLength(8);
+        expect(source.match(/new Error\("Driver stopped"\)/g)).toHaveLength(1);
         expect(source).toContain("private attachBlzCloseListener(blz: Blz): void");
         expect(source).toContain("private attachBlzRuntimeListeners(blz: Blz): void");
         expect(source).toContain("private detachBlzCloseListener(blz: Blz): void");

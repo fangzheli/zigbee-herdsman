@@ -387,7 +387,7 @@ export class Driver extends EventEmitter {
         await this.resetForceOperations.run(
           () => resettingBlz.forceReset({ holdResetState: true }),
           () => this.isResetGenerationActive(resetStopGeneration),
-          () => new Error("Driver stopped"),
+          () => this.createDriverStoppedError(),
         );
       }
 
@@ -470,7 +470,7 @@ export class Driver extends EventEmitter {
 
   private prepareStop(internalReset: boolean): void {
     logger.debug("Stopping driver", NS);
-    const stopError = new Error("Driver stopped");
+    const stopError = this.createDriverStoppedError();
     this.cancelDriverRequests(stopError);
     if (!internalReset) {
       this.cancelDriverLifecycle(stopError);
@@ -478,7 +478,7 @@ export class Driver extends EventEmitter {
   }
 
   private async performStop(emitClose: boolean): Promise<void> {
-    const stopError = new Error("Driver stopped");
+    const stopError = this.createDriverStoppedError();
 
     try {
       if (this.blz) {
@@ -1213,7 +1213,7 @@ export class Driver extends EventEmitter {
     return await this.requestOperations.run(
       operation,
       () => this.isRequestGenerationActive(requestGeneration),
-      () => new Error("Driver stopped"),
+      () => this.createDriverStoppedError(),
     );
   }
 
@@ -1247,7 +1247,7 @@ export class Driver extends EventEmitter {
     );
 
     if (!completed) {
-      throw new Error("Driver stopped");
+      throw this.createDriverStoppedError();
     }
   }
 
@@ -1278,12 +1278,20 @@ export class Driver extends EventEmitter {
 
   private throwIfStartupCancelled(startupStopGeneration: number): void {
     if (!this.isStartupGenerationActive(startupStopGeneration)) {
-      throw this.startupCancellationError ?? new Error("Driver stopped");
+      throw this.getStartupCancellationError();
     }
   }
 
   private isStartupGenerationActive(startupStopGeneration: number): boolean {
     return this.stopGeneration === startupStopGeneration;
+  }
+
+  private getStartupCancellationError(): Error {
+    return this.startupCancellationError ?? this.createDriverStoppedError();
+  }
+
+  private createDriverStoppedError(): Error {
+    return new Error("Driver stopped");
   }
 
   private async waitForStartupDelay(
@@ -1298,7 +1306,7 @@ export class Driver extends EventEmitter {
     );
 
     if (!stillActive) {
-      throw this.startupCancellationError ?? new Error("Driver stopped");
+      throw this.getStartupCancellationError();
     }
   }
 
@@ -1323,7 +1331,7 @@ export class Driver extends EventEmitter {
     return await this.startupOperations.run(
       operation,
       () => this.isStartupGenerationActive(startupStopGeneration),
-      () => this.startupCancellationError ?? new Error("Driver stopped"),
+      () => this.getStartupCancellationError(),
     );
   }
 
@@ -1538,7 +1546,7 @@ export class Driver extends EventEmitter {
         : this.request(networkAddress, frame, payload));
 
       if (this.isRequestCancelled(requestGeneration)) {
-        throw new Error("Driver stopped");
+        throw this.createDriverStoppedError();
       }
 
       logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
@@ -1550,7 +1558,7 @@ export class Driver extends EventEmitter {
       this.cancelZdoResponseWaiter(waiter);
 
       if (this.isRequestCancelled(requestGeneration)) {
-        throw new Error("Driver stopped");
+        throw this.createDriverStoppedError();
       }
 
       throw error;
