@@ -2,7 +2,7 @@
 
 import { EventEmitter } from "events";
 
-import { Queue, Waitress } from "../../../utils";
+import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { bufferFromBytes, bytesToHex } from "../byteUtils";
 import {
@@ -11,9 +11,13 @@ import {
   type OwnedEventListener,
 } from "../eventListeners";
 import { SerialPortOptions } from "../../tstype";
+import {
+  BlzCommandWaiters,
+  type BlzCommandWaiter,
+} from "./blzCommandWaiters";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
-import { FRAME_NAMES_BY_ID, FRAMES, ParamsDesc } from "./commands";
+import { FRAMES, ParamsDesc } from "./commands";
 import { BLZFrameData } from "./frameData";
 import * as t from "./types";
 import { BlzOutgoingMessageType, BlzStatus } from "./types/named";
@@ -49,21 +53,6 @@ function errorFromUnknown(error: unknown): Error {
   }
 }
 
-/**
- * Type-specific for BLZ Frames.
- */
-type BLZFrame = {
-  sequence: number;
-  frameId: number;
-  frameName: string;
-  payload: BLZFrameData;
-};
-
-type BLZWaitressMatcher = {
-  // sequence: number | null;
-  frameId: number | string;
-};
-
 type ForceResetOptions = {
   holdResetState?: boolean;
 };
@@ -78,7 +67,7 @@ export type BlzVersion = {
 
 export class Blz extends EventEmitter {
   private serialDriver: SerialDriver;
-  private waitress: Waitress<BLZFrame, BLZWaitressMatcher>;
+  private readonly commandWaiters = new BlzCommandWaiters();
   private queue: Queue;
   private watchdogTimer?: NodeJS.Timeout;
   private failures = 0;
@@ -108,10 +97,6 @@ export class Blz extends EventEmitter {
   constructor() {
     super();
     this.queue = new Queue();
-    this.waitress = new Waitress<BLZFrame, BLZWaitressMatcher>(
-      this.waitressValidator,
-      this.waitressTimeoutFormatter,
-    );
 
     this.serialDriver = new SerialDriver();
     this.attachSerialDriverEventBridge();
@@ -456,7 +441,7 @@ export class Blz extends EventEmitter {
 
   private clearPendingCommands(error: Error): void {
     this.queue.clear(error);
-    this.waitress.clear(error);
+    this.commandWaiters.clear(error);
   }
 
   private clearSerialRuntimeState(error: Error): void {
@@ -582,7 +567,7 @@ export class Blz extends EventEmitter {
       NS,
     );
 
-    const handled = this.waitress.resolve({
+    const handled = this.commandWaiters.resolve({
       frameId,
       frameName: frm.name,
       sequence,
@@ -615,7 +600,8 @@ export class Blz extends EventEmitter {
       async (): Promise<BLZFrameData> => {
         const commandConnectGeneration = this.connectGeneration;
         const data = this.makeFrame(name, params);
-        const waiter = name === "reset" ? undefined : this.waitFor(name);
+        const waiter: BlzCommandWaiter | undefined =
+          name === "reset" ? undefined : this.commandWaiters.waitFor(name);
         try {
           await this.serialDriver.sendDATA(data, FRAMES[name].ID);
           this.throwIfConnectionChanged(commandConnectGeneration);
@@ -630,7 +616,7 @@ export class Blz extends EventEmitter {
             return new BLZFrameData("reset", false, {});
           }
         } catch (error) {
-          this.cancelWaiter(waiter);
+          this.commandWaiters.cancel(waiter);
           this.throwIfConnectionChanged(commandConnectGeneration);
           throw new Error(`Failure send ${name}: ${bytesToHex(data)}`, {
             cause: error,
@@ -815,38 +801,6 @@ export class Blz extends EventEmitter {
     );
 
     return status; // Return the status of the operation
-  }
-
-  private waitFor(
-    frameId: string | number,
-    timeout = 10000,
-  ): { start: () => { promise: Promise<BLZFrame>; ID: number }; ID: number } {
-    return this.waitress.waitFor({ frameId }, timeout);
-  }
-
-  private cancelWaiter(waiter: ReturnType<typeof this.waitFor> | undefined): void {
-    if (waiter) {
-      this.waitress.remove(waiter.ID);
-    }
-  }
-
-  private waitressTimeoutFormatter(
-    matcher: BLZWaitressMatcher,
-    timeout: number,
-  ): string {
-    return `${JSON.stringify(matcher)} after ${timeout}ms`;
-  }
-
-  private waitressValidator(
-    payload: BLZFrame,
-    matcher: BLZWaitressMatcher,
-  ): boolean {
-    if (typeof matcher.frameId === "string") {
-      return payload.frameName === matcher.frameId;
-    }
-
-    const frameNames = FRAME_NAMES_BY_ID[matcher.frameId];
-    return frameNames ? frameNames.includes(payload.frameName) : false;
   }
 
   private async watchdogHandler(): Promise<void> {

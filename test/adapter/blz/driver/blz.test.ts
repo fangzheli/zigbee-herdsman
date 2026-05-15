@@ -92,10 +92,14 @@ describe("BLZ Driver", () => {
   describe("Connection", () => {
     it("should keep cached version behind defensive snapshots", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+      const waiterSource = fs.readFileSync("src/adapter/blz/driver/blzCommandWaiters.ts", "utf8");
 
       expect(source).toContain("private version:");
       expect(source).not.toContain("public version:");
-      expect(source).toContain("private waitFor(");
+      expect(source).toContain("private readonly commandWaiters = new BlzCommandWaiters();");
+      expect(source).not.toContain("private waitress:");
+      expect(source).not.toContain("new Waitress<BLZFrame, BLZWaitressMatcher>");
+      expect(source).not.toContain("private waitFor(");
       expect(source).not.toContain("public waitFor(");
       expect(source).not.toContain("cmdSeq");
       expect(source).not.toContain("makeZDOframe(");
@@ -130,8 +134,13 @@ describe("BLZ Driver", () => {
       expect(source).toContain("private isWatchdogGenerationActive(watchdogGeneration: number): boolean");
       expect(source.match(/this\.isWatchdogGenerationActive\(watchdogGeneration\)/g)).toHaveLength(2);
       expect(source.match(/watchdogGeneration !== this\.watchdogGeneration/g) ?? []).toHaveLength(0);
-      expect(source).toContain("private cancelWaiter(");
-      expect(source).toContain("this.cancelWaiter(waiter);");
+      expect(source).not.toContain("private cancelWaiter(");
+      expect(source).toContain("this.commandWaiters.waitFor(");
+      expect(source).toContain("this.commandWaiters.cancel(waiter);");
+      expect(source).toContain("this.commandWaiters.resolve(");
+      expect(waiterSource).toContain("export class BlzCommandWaiters");
+      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("public cancel(waiter: BlzCommandWaiter | undefined): void");
 
       const version = blz.getVersionSnapshot();
       version.product = 99;
@@ -169,7 +178,7 @@ describe("BLZ Driver", () => {
 
       expect(source).toContain("private clearPendingCommands(error: Error): void");
       expect(source.match(/this\.queue\.clear\(/g)).toHaveLength(1);
-      expect(source.match(/this\.waitress\.clear\(/g)).toHaveLength(1);
+      expect(source.match(/this\.commandWaiters\.clear\(/g)).toHaveLength(1);
     });
 
     it("centralizes disconnected-state cleanup", () => {
@@ -1123,19 +1132,21 @@ describe("BLZ Driver", () => {
       await blz.execCommand("reset");
 
       expect(
-        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (blz as unknown as {commandWaiters: {count: () => number}}).commandWaiters.count(),
       ).toBe(0);
     });
 
     it("should not throw when matching an unknown numeric frame waiter", () => {
       const result = (
         blz as unknown as {
-          waitressValidator: (
+          commandWaiters: {
+            matches: (
             payload: {frameName: string},
             matcher: {frameId: number},
           ) => boolean;
+          };
         }
-      ).waitressValidator(
+      ).commandWaiters.matches(
         {frameName: "getValue"},
         {frameId: 0xffff},
       );
@@ -1152,12 +1163,14 @@ describe("BLZ Driver", () => {
       try {
         result = (
           blz as unknown as {
-            waitressValidator: (
+            commandWaiters: {
+              matches: (
               payload: {frameName: string},
               matcher: {frameId: number},
             ) => boolean;
+            };
           }
-        ).waitressValidator(
+        ).commandWaiters.matches(
           {frameName: "getValue"},
           {frameId: 0xffff},
         );
@@ -1178,12 +1191,14 @@ describe("BLZ Driver", () => {
       try {
         result = (
           blz as unknown as {
-            waitressValidator: (
+            commandWaiters: {
+              matches: (
               payload: {frameName: string},
               matcher: {frameId: string},
             ) => boolean;
+            };
           }
-        ).waitressValidator(
+        ).commandWaiters.matches(
           {frameName: "getValue"},
           {frameId: "getValue"},
         );
@@ -1329,12 +1344,14 @@ describe("BLZ Driver", () => {
     } =>
       (
         blz as unknown as {
-          waitFor: (
+          commandWaiters: {
+            waitFor: (
             frameId: string,
             timeout?: number,
           ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          };
         }
-      ).waitFor("getValue", 1000);
+      ).commandWaiters.waitFor("getValue", 1000);
 
     it("should handle close events", () => {
       const callback = vi.fn();
@@ -1461,7 +1478,7 @@ describe("BLZ Driver", () => {
       expect(observed).toBe("rejected:Connection closed");
       expect(clearIntervalSpy).toHaveBeenCalled();
       expect(
-        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (blz as unknown as {commandWaiters: {count: () => number}}).commandWaiters.count(),
       ).toBe(0);
     });
 
@@ -1497,7 +1514,7 @@ describe("BLZ Driver", () => {
       expect(clearIntervalSpy).toHaveBeenCalled();
       expect(reset).toHaveBeenCalledTimes(1);
       expect(
-        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (blz as unknown as {commandWaiters: {count: () => number}}).commandWaiters.count(),
       ).toBe(0);
     });
 
