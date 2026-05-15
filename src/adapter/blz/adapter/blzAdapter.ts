@@ -78,6 +78,7 @@ export class BLZAdapter extends Adapter {
   private startPromise?: Promise<StartResult>;
   private stopPromise?: Promise<void>;
   private runningCancellationError?: Error;
+  private driverStopCloseExpected = false;
   private readonly onDriverCloseHandler = this.onDriverClose.bind(this);
   private readonly onDeviceJoinedHandler = this.handleDeviceJoin.bind(this);
   private readonly onDeviceLeftHandler = this.handleDeviceLeft.bind(this);
@@ -258,25 +259,27 @@ export class BLZAdapter extends Adapter {
   private async performStop(): Promise<void> {
     const stopError = this.createAdapterStoppedError();
     this.enterStoppedState(stopError);
+    this.driverStopCloseExpected = true;
 
     try {
       await this.driver.stop(false);
       this.detachDriverListeners();
     } catch (error) {
-      this.closing = false;
       throw error;
+    } finally {
+      this.driverStopCloseExpected = false;
     }
   }
 
   private onDriverClose(): void {
     logger.debug("onDriverClose()", NS);
 
-    const wasClosing = this.closing;
+    const emitDisconnected = !this.driverStopCloseExpected;
     const closeError = new Error("Adapter disconnected");
     this.enterStoppedState(closeError);
     this.detachDriverListeners();
 
-    if (!wasClosing) {
+    if (emitDisconnected) {
       this.emit("disconnected");
     }
   }

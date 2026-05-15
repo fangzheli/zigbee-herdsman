@@ -532,6 +532,39 @@ describe("BLZ Adapter", () => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
+    it("should keep rejecting new adapter requests after a failed stop", async () => {
+      driverMock.stop.mockRejectedValue(new Error("stop failed"));
+      driverMock.sendZclMulticast.mockResolvedValue(true);
+      const zclFrame = Zcl.Frame.create(
+        Zcl.FrameType.GLOBAL,
+        Zcl.Direction.CLIENT_TO_SERVER,
+        true,
+        undefined,
+        7,
+        "read",
+        Zcl.Clusters.genOnOff.ID,
+        [{attrId: 0x0000}],
+        {},
+      );
+
+      await expect(adapter.stop()).rejects.toThrow("stop failed");
+
+      const send = adapter.sendZclFrameToGroup(1, zclFrame);
+      const result = send.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      const observed = await Promise.race([
+        result,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      void send.catch(() => {});
+
+      expect(observed).toBe("rejected:Adapter stopped");
+      expect(driverMock.sendZclMulticast).not.toHaveBeenCalled();
+    });
+
     it("should clear adapter state when the driver closes unexpectedly", async () => {
       const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
       const waiter = adapter.waitFor(

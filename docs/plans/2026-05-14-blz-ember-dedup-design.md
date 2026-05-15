@@ -1281,6 +1281,9 @@ Future BLZ refactors should follow these rules:
 - Routed high-level Adapter startup failures through the stopped-state cleanup
   path, so pre-existing ZCL waiters are rejected with the startup failure
   instead of waiting for timeout.
+- Split high-level Adapter stopped-state guarding from expected driver-close
+  suppression, so a failed stop keeps rejecting new adapter requests while a
+  later lower close still emits `disconnected`.
 
 ## Next Steps
 
