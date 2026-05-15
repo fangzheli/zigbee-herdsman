@@ -1024,7 +1024,7 @@ describe("BLZ Adapter", () => {
       ).rejects.toThrow("driver endpoint send failed");
 
       expect(
-        (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (adapter as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 
@@ -2118,7 +2118,7 @@ describe("BLZ Adapter", () => {
         ),
       ).rejects.toThrow("driver request failed");
       expect(
-        (adapter as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (adapter as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 

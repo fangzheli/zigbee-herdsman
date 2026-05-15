@@ -1192,6 +1192,9 @@ Future BLZ refactors should follow these rules:
 - Deferred shared `Waitress` timeout-message formatting until the timeout
   actually fires, so BLZ ZCL/ZDO/transport waiters that resolve normally do not
   allocate or stringify timeout diagnostics.
+- Added a read-only `Waitress.count()` API and moved BLZ waiter-leak assertions
+  off direct private `waiters` map access, matching the existing queue and
+  cancellable-operation observability pattern.
 
 ## Next Steps
 

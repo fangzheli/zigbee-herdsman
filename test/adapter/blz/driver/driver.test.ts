@@ -846,7 +846,7 @@ describe("BLZ high-level driver lifecycle", () => {
             ),
         ).rejects.toThrow("driver send failed");
 
-        expect((driver as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size).toBe(0);
+        expect((driver as unknown as {waitress: {count: () => number}}).waitress.count()).toBe(0);
     });
 
     it("does not mutate or clone caller-owned ZDO payload buffers through Buffer.from when assigning TSN", async () => {

@@ -139,8 +139,7 @@ describe("Utils", () => {
         waitress.clear();
         await vi.advanceTimersByTimeAsync(12000);
 
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
 
         vi.useRealTimers();
     });
@@ -164,6 +163,24 @@ describe("Utils", () => {
                 new Promise((resolve) => setImmediate(() => resolve("pending"))),
             ]),
         ).toBe("rejected:Waitress cleared");
+    });
+
+    it("Test waitress exposes pending waiter count without private state access", () => {
+        const validator = (payload: string, matcher: number): boolean => {
+            return payload.length === matcher;
+        };
+        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
+        const first = waitress.waitFor(2, 10000);
+        const second = waitress.waitFor(3, 10000);
+
+        expect(waitress.count()).toBe(2);
+        waitress.remove(first.ID);
+
+        expect(waitress.count()).toBe(1);
+        waitress.clear();
+
+        expect(waitress.count()).toBe(0);
+        void second.start().promise.catch(() => {});
     });
 
     it("Test waitress clear preserves custom rejection reasons", async () => {
@@ -219,8 +236,7 @@ describe("Utils", () => {
         await new Promise((resolve) => setImmediate(resolve));
 
         await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress removed"));
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
     });
 
     it("Test waitress clear rejects unstarted waiters without unhandled rejection", async () => {
@@ -234,8 +250,7 @@ describe("Utils", () => {
         await new Promise((resolve) => setImmediate(resolve));
 
         await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress cleared"));
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
     });
 
     it("Test waitress reject rejects unstarted waiters without unhandled rejection", async () => {
@@ -250,8 +265,7 @@ describe("Utils", () => {
 
         expect(handled).toBe(true);
         await expect(waiter.start().promise).rejects.toEqual(new Error("drop"));
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
     });
 
     it("Test waitress removes timed out waiters immediately", async () => {
@@ -266,8 +280,7 @@ describe("Utils", () => {
         await vi.advanceTimersByTimeAsync(6000);
 
         await expect(result).resolves.toEqual(new Error("Timedout '5000'"));
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
         vi.useRealTimers();
     });
 
@@ -285,8 +298,7 @@ describe("Utils", () => {
 
         await expect(waiter.promise).resolves.toBe("up");
         expect(timeoutFormatter).not.toHaveBeenCalled();
-        // @ts-expect-error private
-        expect(waitress.waiters.size).toStrictEqual(0);
+        expect(waitress.count()).toStrictEqual(0);
         vi.useRealTimers();
     });
 

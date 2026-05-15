@@ -879,7 +879,7 @@ describe("BLZ Driver", () => {
       await blz.execCommand("reset");
 
       expect(
-        (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 
@@ -1171,7 +1171,7 @@ describe("BLZ Driver", () => {
       expect(observed).toBe("rejected:Connection closed");
       expect(clearIntervalSpy).toHaveBeenCalled();
       expect(
-        (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 
@@ -1207,7 +1207,7 @@ describe("BLZ Driver", () => {
       expect(clearIntervalSpy).toHaveBeenCalled();
       expect(reset).toHaveBeenCalledTimes(1);
       expect(
-        (blz as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (blz as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 

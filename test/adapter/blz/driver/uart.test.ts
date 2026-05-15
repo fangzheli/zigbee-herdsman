@@ -1160,7 +1160,7 @@ describe("BLZ Serial Driver", () => {
       await driver.sendDATA(Buffer.from([1, 2, 3]), 0x0003);
 
       expect(
-        (driver as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size,
+        (driver as unknown as {waitress: {count: () => number}}).waitress.count(),
       ).toBe(0);
     });
 

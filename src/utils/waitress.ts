@@ -129,4 +129,8 @@ export class Waitress<TPayload, TMatcher> {
             waiter.promise.catch(() => {});
         }
     }
+
+    public count(): number {
+        return this.waiters.size;
+    }
 }
