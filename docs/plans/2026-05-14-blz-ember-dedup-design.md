@@ -1127,6 +1127,9 @@ Future BLZ refactors should follow these rules:
   delays use one active-operation predicate.
 - Centralized BLZ watchdog generation checks so successful and failed
   heartbeat paths share one active-watchdog predicate.
+- Centralized BLZ connect generation active checks so connect operations,
+  reset-interrupted attempts, and retry delays avoid negated cancellation
+  predicates.
 
 ## Next Steps
 

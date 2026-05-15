@@ -454,7 +454,7 @@ export class Blz extends EventEmitter {
       () =>
         this.connectResetOperations.run(
           () => this.serialDriver.connect(options),
-          () => !this.isConnectCancelled(connectGeneration),
+          () => this.isConnectGenerationActive(connectGeneration),
           () => new Error("Connection cancelled by close"),
         ),
       connectGeneration,
@@ -482,7 +482,11 @@ export class Blz extends EventEmitter {
   }
 
   private isConnectCancelled(connectGeneration: number): boolean {
-    return this.connectGeneration !== connectGeneration;
+    return !this.isConnectGenerationActive(connectGeneration);
+  }
+
+  private isConnectGenerationActive(connectGeneration: number): boolean {
+    return this.connectGeneration === connectGeneration;
   }
 
   private throwIfConnectionChanged(connectGeneration: number): void {
@@ -497,7 +501,7 @@ export class Blz extends EventEmitter {
   ): Promise<T> {
     return await this.connectOperations.run(
       operation,
-      () => !this.isConnectCancelled(connectGeneration),
+      () => this.isConnectGenerationActive(connectGeneration),
       () => new Error("Connection cancelled by close"),
     );
   }
@@ -508,7 +512,7 @@ export class Blz extends EventEmitter {
   ): Promise<boolean> {
     return await this.connectRetryDelay.wait(
       milliseconds,
-      () => !this.isConnectCancelled(connectGeneration),
+      () => this.isConnectGenerationActive(connectGeneration),
     );
   }
 
