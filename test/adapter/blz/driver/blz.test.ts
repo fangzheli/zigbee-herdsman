@@ -989,6 +989,17 @@ describe("BLZ Driver", () => {
       expect(observed).toBe("rejected:Connection reset");
     });
 
+    it("should release reset close suppression after a successful standalone force reset", async () => {
+      const callback = vi.fn();
+      blz.on("close", callback);
+      serialDriverMock.reset.mockResolvedValue(undefined);
+
+      await blz.forceReset();
+      serialDriverMock.on.mock.calls.find((call) => call[0] === "close")?.[1]();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it("should suppress serial close events while force reset owns the reset state", async () => {
       const callback = vi.fn();
       blz.on("close", callback);

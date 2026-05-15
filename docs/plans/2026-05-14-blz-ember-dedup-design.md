@@ -964,6 +964,9 @@ Future BLZ refactors should follow these rules:
   structural mock type instead of importing BLZ backup internals.
 - Moved BLZ reset-state suppression into `Blz.forceReset()`, so the high-level
   driver no longer mutates low-level transport reset flags during recovery.
+- Split direct UART reset suppression into short-lived standalone resets and
+  high-level reset recovery that explicitly holds the suppression until close,
+  avoiding suppressed watchdog/close handling after normal startup reset.
 
 ## Next Steps
 

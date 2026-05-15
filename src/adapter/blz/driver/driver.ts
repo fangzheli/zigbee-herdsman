@@ -409,7 +409,7 @@ export class Driver extends EventEmitter {
       // await wait(10000);
       if (resettingBlz) {
         await this.resetForceOperations.run(
-          () => resettingBlz.forceReset(),
+          () => resettingBlz.forceReset({ holdResetState: true }),
           () => this.stopGeneration === resetStopGeneration,
           () => new Error("Driver stopped"),
         );

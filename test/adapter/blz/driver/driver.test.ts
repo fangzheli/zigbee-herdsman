@@ -1233,7 +1233,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(3000);
         await Promise.all([firstReset, secondReset]);
 
-        expect(blzMock.forceReset).toHaveBeenCalledTimes(1);
+        expect(blzMock.forceReset).toHaveBeenCalledWith({holdResetState: true});
         expect(stop).toHaveBeenCalledTimes(1);
         expect(startup).toHaveBeenCalledTimes(1);
     });

@@ -59,6 +59,10 @@ type BLZWaitressMatcher = {
   frameId: number | string;
 };
 
+type ForceResetOptions = {
+  holdResetState?: boolean;
+};
+
 export type BlzVersion = {
   product: number;
   major: string;
@@ -613,7 +617,9 @@ export class Blz extends EventEmitter {
   /**
    * Force a direct UART-level reset, bypassing the normal command queue.
    */
-  public async forceReset(): Promise<void> {
+  public async forceReset({
+    holdResetState = false,
+  }: ForceResetOptions = {}): Promise<void> {
     logger.debug("Forcing direct UART reset", NS);
     const resetConnectGeneration = this.connectGeneration;
     const wasResetingProcess = this.inResetingProcess;
@@ -633,6 +639,9 @@ export class Blz extends EventEmitter {
       await this.serialDriver.reset();
       this.throwIfConnectionChanged(resetConnectGeneration);
       logger.debug("Direct UART reset sent successfully", NS);
+      if (!holdResetState) {
+        this.inResetingProcess = wasResetingProcess;
+      }
     } catch (error) {
       this.inResetingProcess = wasResetingProcess;
       logger.error(`Direct UART reset failed: ${error}`, NS);
