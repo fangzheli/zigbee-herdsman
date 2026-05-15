@@ -583,13 +583,13 @@ export class Blz extends EventEmitter {
   private onSerialReset(): void {
     logger.debug("onSerialReset()", NS);
     this.inResetingProcess = true;
-    this.cleanupSerialState(new Error("Connection reset"));
+    this.enterDisconnectedState(new Error("Connection reset"));
     this.emit("reset");
   }
 
   private onSerialClose(): void {
     logger.debug("onSerialClose()", NS);
-    this.cleanupSerialState(new Error("Connection closed"));
+    this.enterDisconnectedState(new Error("Connection closed"));
 
     if (!this.inResetingProcess) {
       this.emit("close");
@@ -621,9 +621,9 @@ export class Blz extends EventEmitter {
     this.waitress.clear(error);
   }
 
-  private cleanupSerialState(error: Error): void {
-    this.cancelConnectionOperations(error);
-    this.clearPendingCommands(error);
+  private enterDisconnectedState(connectionError: Error, commandError = connectionError): void {
+    this.cancelConnectionOperations(connectionError);
+    this.clearPendingCommands(commandError);
     this.detachSerialDriverListeners();
   }
 
@@ -652,10 +652,8 @@ export class Blz extends EventEmitter {
     logger.debug("Closing Blz", NS);
 
     const connectionCancelError = new Error("Connection cancelled by close");
-    this.cancelConnectionOperations(connectionCancelError);
     const closeError = new Error("Connection closed");
-    this.clearPendingCommands(closeError);
-    this.detachSerialDriverListeners();
+    this.enterDisconnectedState(connectionCancelError, closeError);
     try {
       await this.serialDriver.close(emitClose);
     } finally {

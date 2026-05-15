@@ -1093,6 +1093,9 @@ Future BLZ refactors should follow these rules:
 - Centralized UART closed-state cleanup so explicit close and port close clear
   pending operations, parser state, and initialization state through one helper
   while preserving graceful serial flush-close decisions.
+- Centralized low-level BLZ disconnected-state cleanup so serial reset, serial
+  close, and explicit close clear connection operations, pending commands, and
+  serial listeners through one helper.
 
 ## Next Steps
 
