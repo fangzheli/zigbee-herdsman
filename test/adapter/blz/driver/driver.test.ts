@@ -1838,6 +1838,27 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(sendApsData).toHaveBeenCalledTimes(1);
     });
 
+    it("continues APS request retries when send errors cannot be stringified", async () => {
+        vi.useFakeTimers();
+        const sendFailure = {
+            toString: () => {
+                throw new Error("send failure stringification failed");
+            },
+        };
+        const sendApsData = vi.fn().mockRejectedValue(sendFailure);
+        const driver = makeDriverWithApsSender(sendApsData);
+        const request = driverRequest(driver, 0x3344, makeApsFrame(), Buffer.from([0x0c]));
+        const requestResult = request.then(
+            (value) => `resolved:${value}`,
+            (error: Error) => `rejected:${error.message}`,
+        );
+
+        await vi.advanceTimersByTimeAsync(3000);
+
+        await expect(requestResult).resolves.toBe("resolved:false");
+        expect(sendApsData).toHaveBeenCalledTimes(3);
+    });
+
     it("stops active APS requests when driver stop interrupts the lower send", async () => {
         vi.useFakeTimers();
         const sendApsData = vi.fn().mockReturnValue(new Promise(() => {}));

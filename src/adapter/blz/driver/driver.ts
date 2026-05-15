@@ -1181,7 +1181,7 @@ export class Driver extends EventEmitter {
         );
       } catch (e) {
         logger.debug(
-          `Request attempt ${attempt + 1}/${REQUEST_ATTEMPT_DELAYS.length} error: ${e}`,
+          () => `Request attempt ${attempt + 1}/${REQUEST_ATTEMPT_DELAYS.length} error: ${e}`,
           NS,
         );
       }

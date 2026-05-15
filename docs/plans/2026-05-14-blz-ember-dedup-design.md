@@ -1257,6 +1257,8 @@ Future BLZ refactors should follow these rules:
 - Extended shared `AsyncMutex.clear()` to reject queued jobs instead of only
   dropping their resolvers, preventing shutdown/reset paths from leaving
   callers pending after a mutex wait is cleared.
+- Deferred high-level APS request retry error logging so send errors with
+  throwing stringifiers do not interrupt retry exhaustion or cancellation paths.
 
 ## Next Steps
 
