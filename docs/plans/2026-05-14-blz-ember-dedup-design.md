@@ -199,6 +199,8 @@ Future BLZ refactors should follow these rules:
   shared byte-to-hex helper for extended PAN ID formatting.
 - Made startup network validation extended PAN ID logging lazy, keeping the
   restart/resume path from stringifying buffers when debug logging is disabled.
+- Made startup network snapshot logging lazy so `BlzNetworkParameters.toString()`
+  is only evaluated when debug logging consumes the message.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

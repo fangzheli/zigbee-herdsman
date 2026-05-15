@@ -659,7 +659,8 @@ export class Driver extends EventEmitter {
       logger.info(`extendedPanId: ${netParams.extPanId.toString(16)}`, NS);
       const networkParams = this.setNetworkParametersSnapshot(netParams);
       logger.debug(
-        `Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`,
+        () =>
+          `Node type: ${netParams.nodeType}, Network parameters: ${networkParams}`,
         NS,
       );
 
