@@ -1085,6 +1085,8 @@ Future BLZ refactors should follow these rules:
   as reset attempts and retry delays.
 - Centralized high-level driver startup-delay cancellation so stop/reset
   interrupts startup timers through a dedicated helper.
+- Centralized high-level driver startup-operation cancellation so stop/reset
+  interrupts in-flight startup work through a dedicated helper.
 
 ## Next Steps
 
