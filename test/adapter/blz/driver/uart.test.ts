@@ -571,6 +571,19 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should clean TCP resources when socket option setup fails", async () => {
+      socketPortMock.setNoDelay.mockImplementation(() => {
+        throw new Error("socket option failed");
+      });
+
+      await expect(driver.connect(tcpPortOptions)).rejects.toThrow("socket option failed");
+
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {socketPort?: unknown}).socketPort,
+      ).toBeUndefined();
+    });
+
     it("should reject pending TCP connect when closing before ready", async () => {
       const connect = driver.connect(tcpPortOptions);
       const connectResult = connect.then(

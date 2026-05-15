@@ -182,11 +182,10 @@ export class SerialDriver extends EventEmitter {
     logger.debug(`Opening TCP socket with ${info.host}:${info.port}`, NS);
 
     this.socketPort = new net.Socket();
-    this.socketPort.setNoDelay(true);
-    this.socketPort.setKeepAlive(true, 15000);
-
     const socketPort = this.socketPort!;
     try {
+      socketPort.setNoDelay(true);
+      socketPort.setKeepAlive(true, 15000);
       this.attachParserToPort(socketPort);
     } catch (error) {
       this.cleanupFailedOpenPort(socketPort);
