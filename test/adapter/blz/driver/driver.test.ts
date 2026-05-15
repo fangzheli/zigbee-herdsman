@@ -1014,6 +1014,28 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(getCachedDriverNodeId(driver, "0102030405060708")).toBeUndefined();
     });
 
+    it("clears ZDO response waiters when leave notification listeners fail before waiter start", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const listenerError = new Error("device left listener failed");
+        setDriverBlz(driver, {});
+        vi.spyOn(driver, "request").mockResolvedValue(true);
+        driver.on("deviceLeft", () => {
+            throw listenerError;
+        });
+
+        await expect(
+            driver.sendZdo(
+                "0x0102030405060708",
+                0x1234,
+                Zdo.ClusterId.LEAVE_REQUEST,
+                Buffer.from([0x00]),
+                false,
+            ),
+        ).rejects.toThrow(listenerError);
+
+        expect((driver as unknown as {zdoResponseWaiters: {count: () => number}}).zdoResponseWaiters.count()).toBe(0);
+    });
+
     it("does not remove reassigned address cache entries for a stale leave event", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
 

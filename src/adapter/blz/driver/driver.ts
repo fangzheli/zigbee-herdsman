@@ -1701,24 +1701,29 @@ export class Driver extends EventEmitter {
       requestGeneration,
     );
 
-    if (clusterId === Zdo.ClusterId.LEAVE_REQUEST) {
-      logger.info(
-        `[BLZ] LEAVE_REQUEST sent to ${ieeeAddress}:${networkAddress}, emitting deviceLeave`,
-        NS,
-      );
-      this.handleNodeLeft(networkAddress, ieeeAddress);
-    }
+    try {
+      if (clusterId === Zdo.ClusterId.LEAVE_REQUEST) {
+        logger.info(
+          `[BLZ] LEAVE_REQUEST sent to ${ieeeAddress}:${networkAddress}, emitting deviceLeave`,
+          NS,
+        );
+        this.handleNodeLeft(networkAddress, ieeeAddress);
+      }
 
-    if (waiter && responseClusterId !== undefined) {
-      const response = await waiter.start().promise;
+      if (waiter && responseClusterId !== undefined) {
+        const response = await waiter.start().promise;
 
-      logger.debug(
-        () =>
-          `<~~ [ZDO ${Zdo.ClusterId[responseClusterId]} ${JSON.stringify(response.zdoResponse!)}]`,
-        NS,
-      );
+        logger.debug(
+          () =>
+            `<~~ [ZDO ${Zdo.ClusterId[responseClusterId]} ${JSON.stringify(response.zdoResponse!)}]`,
+          NS,
+        );
 
-      return response.zdoResponse! as RequestToResponseMap[K];
+        return response.zdoResponse! as RequestToResponseMap[K];
+      }
+    } catch (error) {
+      this.zdoResponseWaiters.cancel(waiter);
+      throw error;
     }
   }
 
