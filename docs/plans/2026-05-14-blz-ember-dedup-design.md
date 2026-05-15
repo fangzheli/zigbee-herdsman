@@ -1110,6 +1110,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver reset-generation checks so force-reset work,
   reset delay waits, and post-stop restart decisions share one stop-cancellation
   predicate.
+- Centralized high-level driver request-generation checks so request
+  operations, retry delays, and channel-change delays share one active-request
+  predicate while cancelled paths keep their existing false/throw behavior.
 
 ## Next Steps
 

@@ -1208,7 +1208,11 @@ export class Driver extends EventEmitter {
   }
 
   private isRequestCancelled(requestGeneration: number): boolean {
-    return this.requestGeneration !== requestGeneration || !this.blz;
+    return !this.isRequestGenerationActive(requestGeneration);
+  }
+
+  private isRequestGenerationActive(requestGeneration: number): boolean {
+    return this.requestGeneration === requestGeneration && this.blz !== undefined;
   }
 
   private cancelDriverRequests(error: Error): void {
@@ -1243,7 +1247,7 @@ export class Driver extends EventEmitter {
   ): Promise<T> {
     return await this.requestOperations.run(
       operation,
-      () => !this.isRequestCancelled(requestGeneration),
+      () => this.isRequestGenerationActive(requestGeneration),
       () => new Error("Driver stopped"),
     );
   }
@@ -1266,7 +1270,7 @@ export class Driver extends EventEmitter {
   ): Promise<boolean> {
     return await this.requestRetryDelay.wait(
       milliseconds,
-      () => !this.isRequestCancelled(requestGeneration),
+      () => this.isRequestGenerationActive(requestGeneration),
     );
   }
 
@@ -1274,7 +1278,7 @@ export class Driver extends EventEmitter {
     const requestGeneration = this.requestGeneration;
     const completed = await this.channelChangeDelay.wait(
       milliseconds,
-      () => !this.isRequestCancelled(requestGeneration),
+      () => this.isRequestGenerationActive(requestGeneration),
     );
 
     if (!completed) {
