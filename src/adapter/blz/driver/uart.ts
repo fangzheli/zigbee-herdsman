@@ -377,11 +377,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   async reset(): Promise<void> {
-    this.parser.reset();
-    this.throwIfClosing();
-    this.cancelPendingOperations(this.createConnectionResetError());
-    this.sendSeq = 0;
-    this.recvSeq = 0;
+    this.prepareReset();
 
     return this.queue.execute(async () => {
       this.throwIfClosing();
@@ -399,6 +395,25 @@ export class SerialDriver extends EventEmitter {
         throw new Error(`Reset error: ${errorMessage}`);
       }
     });
+  }
+
+  private prepareReset(): void {
+    const resetError = this.createConnectionResetError();
+    runCleanupSteps([
+      () => {
+        this.parser.reset();
+      },
+      () => {
+        this.throwIfClosing();
+      },
+      () => {
+        this.cancelPendingOperations(resetError);
+      },
+      () => {
+        this.sendSeq = 0;
+        this.recvSeq = 0;
+      },
+    ]);
   }
 
   private throwIfClosing(): void {

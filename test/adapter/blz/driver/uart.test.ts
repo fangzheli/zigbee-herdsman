@@ -1340,6 +1340,26 @@ describe("BLZ Serial Driver", () => {
       expect(observed).toBe("rejected:Connection reset");
     });
 
+    it("should clear UART waiters when parser reset cleanup fails during reset", async () => {
+      const cleanupError = new Error("parser reset failed");
+      const waiter = waitForDataAck();
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+      parserMock.reset.mockImplementationOnce(() => {
+        throw cleanupError;
+      });
+
+      await expect(driver.reset()).rejects.toThrow(cleanupError);
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection reset");
+    });
+
     it("should clear UART waiters with the close reason when closing", async () => {
       serialPortMock.asyncFlushAndClose.mockResolvedValue(undefined);
       const waiter = waitForDataAck();
