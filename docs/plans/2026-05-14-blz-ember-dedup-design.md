@@ -967,6 +967,9 @@ Future BLZ refactors should follow these rules:
 - Split direct UART reset suppression into short-lived standalone resets and
   high-level reset recovery that explicitly holds the suppression until close,
   avoiding suppressed watchdog/close handling after normal startup reset.
+- Split high-level driver incoming frame dispatch so APS indication frame
+  construction and waiter/event resolution are owned by private helpers instead
+  of a broad `switch (true)` block.
 
 ## Next Steps
 

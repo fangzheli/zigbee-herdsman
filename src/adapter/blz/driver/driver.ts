@@ -880,103 +880,12 @@ export class Driver extends EventEmitter {
   }
 
   private handleFrame(frameName: string, frame: BLZFrameData): void {
-    switch (true) {
-      case frameName === "apsDataIndication": {
-        const apsFrame: BlzApsFrame = new BlzApsFrame();
-        apsFrame.profileId = frame.profileId;
-        apsFrame.clusterId = frame.clusterId;
-        apsFrame.sourceEndpoint = frame.srcEp;
-        apsFrame.destinationEndpoint = frame.dstEp;
-        apsFrame.sequence = 0;
-        apsFrame.groupId = frame.dstShortAddr;
-
-        if (
-          frame.profileId == Zdo.ZDO_PROFILE_ID &&
-          frame.clusterId >= 0x8000 /* response only */
-        ) {
-          let zdoResponse: GenericZdoResponse | undefined;
-          try {
-            zdoResponse = Zdo.Buffalo.readResponse(
-              true,
-              frame.clusterId,
-              frame.message,
-            );
-          } catch (error) {
-            logger.error(
-              `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${error}`,
-              NS,
-            );
-          }
-
-          if (zdoResponse) {
-            if (frame.clusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE) {
-              // special case to properly resolve a NETWORK_ADDRESS_RESPONSE following a NETWORK_ADDRESS_REQUEST (based on EUI64 from ZDO payload)
-              // NOTE: if response has invalid status (no EUI64 available), response waiter will eventually time out
-              /* istanbul ignore else */
-              if (
-                Zdo.Buffalo.checkStatus<Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE>(
-                  zdoResponse,
-                )
-              ) {
-                const eui64 = zdoResponse[1].eui64;
-
-                // update cache with new network address
-                this.cacheNodeIeee(frame.srcShortAddr, eui64);
-
-                this.waitress.resolve({
-                  address: eui64,
-                  payload: frame.message,
-                  frame: apsFrame,
-                  zdoResponse,
-                });
-              }
-            } else {
-              this.waitress.resolve({
-                address: frame.srcShortAddr,
-                payload: frame.message,
-                frame: apsFrame,
-                zdoResponse,
-              });
-            }
-          }
-
-          // always pass ZDO to bubble up to controller
-          this.emit("incomingMessage", {
-            messageType: frame.msgType,
-            apsFrame,
-            lqi: frame.lqi,
-            rssi: frame.rssi,
-            sender: frame.srcShortAddr,
-            bindingIndex: null,
-            addressIndex: null,
-            message: frame.message,
-            senderEui64: this.getCachedEui64(frame.srcShortAddr),
-            zdoResponse,
-          });
-        } else {
-          const handled = this.waitress.resolve({
-            address: frame.srcShortAddr,
-            payload: frame.message,
-            frame: apsFrame,
-          });
-
-          if (!handled) {
-            this.emit("incomingMessage", {
-              messageType: frame.msgType,
-              apsFrame,
-              lqi: frame.lqi,
-              rssi: frame.rssi,
-              sender: frame.srcShortAddr,
-              bindingIndex: null,
-              addressIndex: null,
-              message: frame.message,
-              senderEui64: this.getCachedEui64(frame.srcShortAddr),
-            });
-          }
-        }
+    switch (frameName) {
+      case "apsDataIndication": {
+        this.handleApsDataIndication(frame);
         break;
       }
-      case frameName === "deviceJoinCallback": {
+      case "deviceJoinCallback": {
         // NCP sends both join and leave through the same frame ID (0x0036).
         // status=0x00: UNSECURED_JOIN, status=0x01: REJOIN, status=0x03: LEAVE
         if (frame.status === 0x03) {
@@ -995,12 +904,12 @@ export class Driver extends EventEmitter {
         }
         break;
       }
-      case frameName === "nwkStatusCallback": {
+      case "nwkStatusCallback": {
         logger.debug(`Network status callback called is received`, NS);
         this.handleNetworkStatus(frame.status);
         break;
       }
-      case frameName === "apsDataConfirm": {
+      case "apsDataConfirm": {
         if (frame.status === BlzStatus.SUCCESS) {
           logger.debug(`APS confirmed`, NS);
         } else {
@@ -1008,7 +917,7 @@ export class Driver extends EventEmitter {
         }
         break;
       }
-      case frameName === "stackStatusHandler": {
+      case "stackStatusHandler": {
         if (frame.status === BlzStatus.SUCCESS) {
           logger.debug(`Stack status is success`, NS);
         } else {
@@ -1018,6 +927,107 @@ export class Driver extends EventEmitter {
       }
       default:
         logger.debug(`Unhandled frame ${frameName}`, NS);
+    }
+  }
+
+  private makeIncomingApsFrame(frame: BLZFrameData): BlzApsFrame {
+    const apsFrame = new BlzApsFrame();
+    apsFrame.profileId = frame.profileId;
+    apsFrame.clusterId = frame.clusterId;
+    apsFrame.sourceEndpoint = frame.srcEp;
+    apsFrame.destinationEndpoint = frame.dstEp;
+    apsFrame.sequence = 0;
+    apsFrame.groupId = frame.dstShortAddr;
+    return apsFrame;
+  }
+
+  private handleApsDataIndication(frame: BLZFrameData): void {
+    const apsFrame = this.makeIncomingApsFrame(frame);
+
+    if (
+      frame.profileId == Zdo.ZDO_PROFILE_ID &&
+      frame.clusterId >= 0x8000 /* response only */
+    ) {
+      let zdoResponse: GenericZdoResponse | undefined;
+      try {
+        zdoResponse = Zdo.Buffalo.readResponse(
+          true,
+          frame.clusterId,
+          frame.message,
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${error}`,
+          NS,
+        );
+      }
+
+      if (zdoResponse) {
+        if (frame.clusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE) {
+          // special case to properly resolve a NETWORK_ADDRESS_RESPONSE following a NETWORK_ADDRESS_REQUEST (based on EUI64 from ZDO payload)
+          // NOTE: if response has invalid status (no EUI64 available), response waiter will eventually time out
+          /* istanbul ignore else */
+          if (
+            Zdo.Buffalo.checkStatus<Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE>(
+              zdoResponse,
+            )
+          ) {
+            const eui64 = zdoResponse[1].eui64;
+
+            // update cache with new network address
+            this.cacheNodeIeee(frame.srcShortAddr, eui64);
+
+            this.waitress.resolve({
+              address: eui64,
+              payload: frame.message,
+              frame: apsFrame,
+              zdoResponse,
+            });
+          }
+        } else {
+          this.waitress.resolve({
+            address: frame.srcShortAddr,
+            payload: frame.message,
+            frame: apsFrame,
+            zdoResponse,
+          });
+        }
+      }
+
+      // always pass ZDO to bubble up to controller
+      this.emit("incomingMessage", {
+        messageType: frame.msgType,
+        apsFrame,
+        lqi: frame.lqi,
+        rssi: frame.rssi,
+        sender: frame.srcShortAddr,
+        bindingIndex: null,
+        addressIndex: null,
+        message: frame.message,
+        senderEui64: this.getCachedEui64(frame.srcShortAddr),
+        zdoResponse,
+      });
+      return;
+    }
+
+    const handled = this.waitress.resolve({
+      address: frame.srcShortAddr,
+      payload: frame.message,
+      frame: apsFrame,
+    });
+
+    if (!handled) {
+      this.emit("incomingMessage", {
+        messageType: frame.msgType,
+        apsFrame,
+        lqi: frame.lqi,
+        rssi: frame.rssi,
+        sender: frame.srcShortAddr,
+        bindingIndex: null,
+        addressIndex: null,
+        message: frame.message,
+        senderEui64: this.getCachedEui64(frame.srcShortAddr),
+      });
     }
   }
 
