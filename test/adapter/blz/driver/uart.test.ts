@@ -1123,6 +1123,22 @@ describe("BLZ Serial Driver", () => {
       expect(writerMock.sendReset).not.toHaveBeenCalled();
     });
 
+    it("should emit reset when UART reset logging sees an unstringifiable error", async () => {
+      const resetCallback = vi.fn();
+      const resetError = new Error("reset failed");
+      resetError.toString = () => {
+        throw new Error("reset stringification failed");
+      };
+      writerMock.sendReset.mockImplementation(() => {
+        throw resetError;
+      });
+      driver.on("reset", resetCallback);
+
+      await expect(driver.reset()).rejects.toThrow("Reset error: reset failed");
+
+      expect(resetCallback).toHaveBeenCalledTimes(1);
+    });
+
     it("should not retry pending sends after reset clears waiters", async () => {
       vi.useFakeTimers();
       try {

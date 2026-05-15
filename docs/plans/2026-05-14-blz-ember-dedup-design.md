@@ -1214,6 +1214,8 @@ Future BLZ refactors should follow these rules:
 - Deferred BLZ UART parse-error formatting until error logging evaluates the
   message, keeping malformed-frame handling from throwing again before it
   returns control to the serial receive loop.
+- Added safe UART reset error text formatting so a writer reset failure cannot
+  prevent the UART layer from emitting its reset notification before rejecting.
 
 ## Next Steps
 

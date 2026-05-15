@@ -25,6 +25,18 @@ type BLZPacketMatcher = {
   frameId: number;
 };
 
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  try {
+    return String(error);
+  } catch {
+    return "<unprintable error>";
+  }
+}
+
 export class SerialDriver extends EventEmitter {
   private serialPort?: SerialPort;
   private socketPort?: net.Socket;
@@ -348,9 +360,10 @@ export class SerialDriver extends EventEmitter {
         this.writer.sendReset(this.sendSeq, this.recvSeq);
         logger.debug("UART reset frame sent successfully", NS);
       } catch (e) {
-        logger.error(`Reset failed: ${e}`, NS);
+        const errorMessage = formatErrorMessage(e);
+        logger.error(() => `Reset failed: ${errorMessage}`, NS);
         this.emit("reset");
-        throw new Error(`Reset error: ${e}`);
+        throw new Error(`Reset error: ${errorMessage}`);
       }
     });
   }
