@@ -3,7 +3,6 @@
 import assert from "node:assert";
 
 import * as Models from "../../../models";
-import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import * as Zcl from "../../../zspec/zcl";
@@ -19,6 +18,7 @@ import {
   SerialPortOptions,
   StartResult,
 } from "../../tstype";
+import { CancellableQueue } from "../cancellableQueue";
 import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
 import {
@@ -84,7 +84,7 @@ export class BLZAdapter extends Adapter {
   private driver: Driver;
   private readonly zclResponseWaiters = new ZclResponseWaiters();
   private interpanLock: boolean;
-  private queue: Queue;
+  private queue: CancellableQueue;
   private closing: boolean;
   private stopGeneration: number;
   private readonly stopDelay = new CancellableDelay();
@@ -121,7 +121,7 @@ export class BLZAdapter extends Adapter {
 
     const concurrent = adapterOptions?.concurrent ?? 8;
     logger.debug(`Adapter concurrent: ${concurrent}`, NS);
-    this.queue = new Queue(concurrent);
+    this.queue = new CancellableQueue(concurrent);
 
     this.driver = new Driver(
       this.serialPortOptions,

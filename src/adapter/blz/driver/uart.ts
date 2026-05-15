@@ -3,11 +3,11 @@
 import { EventEmitter } from "events";
 import net from "net";
 
-import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { SerialPort } from "../../serialPort";
 import { isTcpPath, parseTcpPath } from "../../utils";
 import { SerialPortOptions } from "../../tstype";
+import { CancellableQueue } from "../cancellableQueue";
 import {
   attachListenersOrRollback,
   detachListeners,
@@ -68,7 +68,7 @@ export class SerialDriver extends EventEmitter {
   private sendSeq = 0; // next frame number to send
   private recvSeq = 0; // next frame number to receive
   private readonly frameWaiters = new UartFrameWaiters();
-  private queue: Queue;
+  private queue: CancellableQueue;
   private operationGeneration = 0;
   private readonly sendRetryDelay = new CancellableDelay();
   private connectPromise?: Promise<void>;
@@ -88,7 +88,7 @@ export class SerialDriver extends EventEmitter {
   constructor() {
     super();
     this.initialized = false;
-    this.queue = new Queue(1);
+    this.queue = new CancellableQueue(1);
     this.writer = new Writer();
     this.parser = new Parser();
   }

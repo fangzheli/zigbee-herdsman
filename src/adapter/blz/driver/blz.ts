@@ -2,9 +2,9 @@
 
 import { EventEmitter } from "events";
 
-import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { bufferFromBytes, bytesToHex } from "../byteUtils";
+import { CancellableQueue } from "../cancellableQueue";
 import {
   attachListenersOrRollback,
   detachListeners,
@@ -82,7 +82,7 @@ export class Blz extends EventEmitter {
   private serialDriver: SerialDriver;
   private readonly commandWaiters = new BlzCommandWaiters();
   private readonly watchdog: BlzWatchdog;
-  private queue: Queue;
+  private queue: CancellableQueue;
   private inResetingProcess = false;
   private connectGeneration = 0;
   private connectPromise?: Promise<void>;
@@ -105,7 +105,7 @@ export class Blz extends EventEmitter {
 
   constructor() {
     super();
-    this.queue = new Queue();
+    this.queue = new CancellableQueue();
 
     this.serialDriver = new SerialDriver();
     this.watchdog = new BlzWatchdog({
