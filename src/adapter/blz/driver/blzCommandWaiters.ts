@@ -1,4 +1,4 @@
-import {Waitress} from "../../../utils";
+import {WaitressBackedWaiters} from "../waitressBackedWaiters";
 import {FRAME_NAMES_BY_ID} from "./commands";
 import type {BLZFrameData} from "./frameData";
 
@@ -32,31 +32,32 @@ function blzCommandWaitressTimeoutFormatter(matcher: BlzCommandMatcher, timeout:
 }
 
 export class BlzCommandWaiters {
-    private readonly waitress = new Waitress<BlzCommandFrame, BlzCommandMatcher>(blzCommandWaitressValidator, blzCommandWaitressTimeoutFormatter);
+    private readonly waiters = new WaitressBackedWaiters<BlzCommandFrame, BlzCommandMatcher>(
+        blzCommandWaitressValidator,
+        blzCommandWaitressTimeoutFormatter,
+    );
 
     public waitFor(frameId: string | number, timeout = 10000): BlzCommandWaiter {
-        return this.waitress.waitFor({frameId}, timeout);
+        return this.waiters.waitFor({frameId}, timeout);
     }
 
     public resolve(frame: BlzCommandFrame): boolean {
-        return this.waitress.resolve(frame);
+        return this.waiters.resolve(frame);
     }
 
     public cancel(waiter: BlzCommandWaiter | undefined): void {
-        if (waiter) {
-            this.waitress.remove(waiter.ID);
-        }
+        this.waiters.cancel(waiter);
     }
 
     public clear(error: Error): void {
-        this.waitress.clear(error);
+        this.waiters.clear(error);
     }
 
     public count(): number {
-        return this.waitress.count();
+        return this.waiters.count();
     }
 
     public matches(payload: BlzCommandFrame, matcher: BlzCommandMatcher): boolean {
-        return blzCommandWaitressValidator(payload, matcher);
+        return this.waiters.matches(payload, matcher);
     }
 }

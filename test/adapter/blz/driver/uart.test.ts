@@ -182,7 +182,7 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("this.frameWaiters.cancel(waiter);");
       expect(source).toContain("this.frameWaiters.resolve(");
       expect(waiterSource).toContain("export class UartFrameWaiters");
-      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("private readonly waiters = new WaitressBackedWaiters");
       expect(waiterSource).toContain("public cancel(waiter: UartFrameWaiter | undefined): void");
       expect(source).toContain("private cancelSendRetryDelay(): void");
       expect(source).toContain("this.cancelSendRetryDelay();");

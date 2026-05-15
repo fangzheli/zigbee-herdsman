@@ -1,7 +1,7 @@
-import {Waitress} from "../../../utils";
 import {logger} from "../../../utils/logger";
 import type {GenericZdoResponse} from "../../../zspec/zdo/definition/tstypes";
 import {normalizeIeeeAddress} from "../ieee";
+import {WaitressBackedWaiters} from "../waitressBackedWaiters";
 import type {BlzApsFrame} from "./types/struct";
 
 const NS = "zh:blz:driv";
@@ -45,32 +45,32 @@ function zdoResponseWaitressTimeoutFormatter(matcher: ZdoResponseMatcher, timeou
 }
 
 export class ZdoResponseWaiters {
-    private readonly waitress = new Waitress<ZdoResponseFrame, ZdoResponseMatcher>(zdoResponseWaitressValidator, zdoResponseWaitressTimeoutFormatter);
+    private readonly waiters = new WaitressBackedWaiters<ZdoResponseFrame, ZdoResponseMatcher>(
+        zdoResponseWaitressValidator,
+        zdoResponseWaitressTimeoutFormatter,
+    );
 
     public waitFor(address: number | string, clusterId: number, timeout = 10000): ZdoResponseWaiter {
-        const waiter = this.waitress.waitFor({address, clusterId}, timeout);
-        const cancel = (): void => this.waitress.remove(waiter.ID);
-
-        return {start: waiter.start, cancel};
+        return this.waiters.waitForCancellable({address, clusterId}, timeout);
     }
 
     public resolve(frame: ZdoResponseFrame): boolean {
-        return this.waitress.resolve(frame);
+        return this.waiters.resolve(frame);
     }
 
     public cancel(waiter: ZdoResponseWaiter | undefined): void {
-        waiter?.cancel();
+        this.waiters.cancel(waiter);
     }
 
     public clear(error: Error): void {
-        this.waitress.clear(error);
+        this.waiters.clear(error);
     }
 
     public count(): number {
-        return this.waitress.count();
+        return this.waiters.count();
     }
 
     public matches(payload: ZdoResponseFrame, matcher: ZdoResponseMatcher): boolean {
-        return zdoResponseWaitressValidator(payload, matcher);
+        return this.waiters.matches(payload, matcher);
     }
 }

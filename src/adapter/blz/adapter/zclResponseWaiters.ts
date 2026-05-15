@@ -1,6 +1,6 @@
-import {Waitress} from "../../../utils";
 import Adapter, {type ClusterWaitressMatcher, type ZclWaitressPayload} from "../../adapter";
 import type {ZclPayload} from "../../events";
+import {WaitressBackedWaiters} from "../waitressBackedWaiters";
 
 export interface ZclResponseWaiter {
     start: () => {promise: Promise<ZclPayload>};
@@ -8,7 +8,7 @@ export interface ZclResponseWaiter {
 }
 
 export class ZclResponseWaiters {
-    private readonly waitress = new Waitress<ZclWaitressPayload, ClusterWaitressMatcher>(
+    private readonly waiters = new WaitressBackedWaiters<ZclWaitressPayload, ClusterWaitressMatcher>(
         Adapter.zclWaitressValidator,
         Adapter.clusterWaitressTimeoutFormatter,
     );
@@ -21,7 +21,7 @@ export class ZclResponseWaiters {
         commandIdentifier: number,
         timeout: number,
     ): ZclResponseWaiter {
-        const waiter = this.waitress.waitFor(
+        return this.waiters.waitForCancellable(
             {
                 address: networkAddress,
                 endpoint,
@@ -31,9 +31,6 @@ export class ZclResponseWaiters {
             },
             timeout,
         );
-        const cancel = (): void => this.waitress.remove(waiter.ID);
-
-        return {start: waiter.start, cancel};
     }
 
     public resolve(payload: ZclPayload): boolean {
@@ -41,19 +38,19 @@ export class ZclResponseWaiters {
             return false;
         }
 
-        return this.waitress.resolve(payload);
+        return this.waiters.resolve(payload);
     }
 
     public cancel(waiter: ZclResponseWaiter | null): void {
-        waiter?.cancel();
+        this.waiters.cancel(waiter);
     }
 
     public clear(error: Error): void {
-        this.waitress.clear(error);
+        this.waiters.clear(error);
     }
 
     public count(): number {
-        return this.waitress.count();
+        return this.waiters.count();
     }
 
     private hasHeader(payload: ZclPayload): payload is ZclWaitressPayload {

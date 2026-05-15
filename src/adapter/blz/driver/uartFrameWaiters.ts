@@ -1,4 +1,4 @@
-import {Waitress} from "../../../utils";
+import {WaitressBackedWaiters} from "../waitressBackedWaiters";
 
 interface UartFrame {
     frameId: number;
@@ -22,27 +22,25 @@ function uartFrameWaitressTimeoutFormatter(matcher: UartFrameMatcher, timeout: n
 }
 
 export class UartFrameWaiters {
-    private readonly waitress = new Waitress<UartFrame, UartFrameMatcher>(uartFrameWaitressValidator, uartFrameWaitressTimeoutFormatter);
+    private readonly waiters = new WaitressBackedWaiters<UartFrame, UartFrameMatcher>(uartFrameWaitressValidator, uartFrameWaitressTimeoutFormatter);
 
     public waitFor(frameId: number, timeout = 3000): UartFrameWaiter {
-        return this.waitress.waitFor({frameId}, timeout);
+        return this.waiters.waitFor({frameId}, timeout);
     }
 
     public resolve(frameId: number): boolean {
-        return this.waitress.resolve({frameId});
+        return this.waiters.resolve({frameId});
     }
 
     public cancel(waiter: UartFrameWaiter | undefined): void {
-        if (waiter) {
-            this.waitress.remove(waiter.ID);
-        }
+        this.waiters.cancel(waiter);
     }
 
     public clear(error: Error): void {
-        this.waitress.clear(error);
+        this.waiters.clear(error);
     }
 
     public count(): number {
-        return this.waitress.count();
+        return this.waiters.count();
     }
 }

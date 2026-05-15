@@ -181,7 +181,7 @@ describe("BLZ Adapter", () => {
       expect(adapterSource.match(/this\.zclResponseWaiters\.cancel\(response\);/g)).toHaveLength(2);
       expect(adapterSource).toContain("this.zclResponseWaiters.clear(error);");
       expect(waiterSource).toContain("export class ZclResponseWaiters");
-      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("private readonly waiters = new WaitressBackedWaiters");
       expect(waiterSource).toContain("public cancel(waiter: ZclResponseWaiter | null): void");
     });
 

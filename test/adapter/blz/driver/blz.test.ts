@@ -160,7 +160,7 @@ describe("BLZ Driver", () => {
       expect(source).toContain("this.commandWaiters.cancel(waiter);");
       expect(source).toContain("this.commandWaiters.resolve(");
       expect(waiterSource).toContain("export class BlzCommandWaiters");
-      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("private readonly waiters = new WaitressBackedWaiters");
       expect(waiterSource).toContain("public cancel(waiter: BlzCommandWaiter | undefined): void");
 
       const version = blz.getVersionSnapshot();
