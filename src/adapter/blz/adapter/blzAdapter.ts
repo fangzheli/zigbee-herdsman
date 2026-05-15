@@ -628,15 +628,13 @@ export class BLZAdapter extends Adapter {
         generation,
       );
     } catch (error) {
-      response?.cancel();
+      this.cancelZclResponseWaiter(response);
       throw error;
     }
     this.throwIfStopped(generation);
 
     if (!dataConfirmResult) {
-      if (response != null) {
-        response.cancel();
-      }
+      this.cancelZclResponseWaiter(response);
       throw Error("sendZclFrameToEndpointInternal error");
     }
     if (response !== null) {
@@ -839,6 +837,12 @@ export class BLZAdapter extends Adapter {
     }, timeout);
     const cancel = (): void => this.waitress.remove(waiter.ID);
     return { start: waiter.start, cancel };
+  }
+
+  private cancelZclResponseWaiter(
+    waiter: ReturnType<typeof this.waitForInternal> | null,
+  ): void {
+    waiter?.cancel();
   }
 
   public waitFor(

@@ -166,6 +166,8 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain("public onDriverClose(): void");
       expect(source).toContain("private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void");
       expect(source).not.toContain("private async handleDeviceJoin");
+      expect(source).toContain("private cancelZclResponseWaiter(");
+      expect(source.match(/this\.cancelZclResponseWaiter\(response\);/g)).toHaveLength(2);
       expect(source).not.toContain('return await Promise.reject(new Error("Not supported"));');
     });
 

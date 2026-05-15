@@ -1023,6 +1023,9 @@ Future BLZ refactors should follow these rules:
   removal in the command path.
 - Centralized UART DATA waiter cancellation so retry failures remove ACK
   waiters through the same helper pattern used by BLZ command waiters.
+- Centralized adapter ZCL response waiter cancellation so endpoint send
+  failures and negative data-confirm paths release pending ZCL waiters through
+  the same helper.
 
 ## Next Steps
 
