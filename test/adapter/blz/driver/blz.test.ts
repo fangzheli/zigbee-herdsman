@@ -166,6 +166,15 @@ describe("BLZ Driver", () => {
       expect(source.match(/this\.cancelConnectionOperations\(connectionError\);/g)).toHaveLength(1);
     });
 
+    it("centralizes serial runtime cleanup without cancelling connect generation", () => {
+      const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+      expect(source).toContain("private clearSerialRuntimeState(error: Error): void");
+      expect(source).toContain("this.clearSerialRuntimeState(reconnectError);");
+      expect(source).toContain("this.clearSerialRuntimeState(connectFailureError);");
+      expect(source.match(/this\.clearWatchdogTimer\(\);/g)).toHaveLength(3);
+    });
+
     it("should connect successfully", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

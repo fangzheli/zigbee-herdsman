@@ -350,8 +350,7 @@ export class Blz extends EventEmitter {
     try {
       if (this.serialDriver.isInitialized()) {
         const reconnectError = new Error("Connection closed");
-        this.clearWatchdogTimer();
-        this.clearPendingCommands(reconnectError);
+        this.clearSerialRuntimeState(reconnectError);
         await this.runConnectOperation(
           () => this.serialDriver.close(false),
           connectGeneration,
@@ -466,8 +465,7 @@ export class Blz extends EventEmitter {
     connectGeneration: number,
   ): Promise<void> {
     const connectFailureError = new Error("Failure to connect");
-    this.clearWatchdogTimer();
-    this.clearPendingCommands(connectFailureError);
+    this.clearSerialRuntimeState(connectFailureError);
 
     try {
       await this.runConnectOperation(
@@ -619,6 +617,11 @@ export class Blz extends EventEmitter {
   private clearPendingCommands(error: Error): void {
     this.queue.clear(error);
     this.waitress.clear(error);
+  }
+
+  private clearSerialRuntimeState(error: Error): void {
+    this.clearWatchdogTimer();
+    this.clearPendingCommands(error);
   }
 
   private enterDisconnectedState(connectionError: Error, commandError = connectionError): void {

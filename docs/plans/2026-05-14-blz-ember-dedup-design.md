@@ -1096,6 +1096,9 @@ Future BLZ refactors should follow these rules:
 - Centralized low-level BLZ disconnected-state cleanup so serial reset, serial
   close, and explicit close clear connection operations, pending commands, and
   serial listeners through one helper.
+- Centralized low-level BLZ serial runtime cleanup so reconnect and failed
+  connect attempts clear watchdog state and pending commands through one helper
+  without cancelling the active connect generation.
 
 ## Next Steps
 
