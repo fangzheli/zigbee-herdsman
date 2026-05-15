@@ -211,10 +211,13 @@ export class SerialDriver extends EventEmitter {
           });
         };
         const detachOpenListeners = (): void => {
-          socketPort.off("connect", onConnect);
-          socketPort.off("ready", onReady);
-          socketPort.off("error", openError);
-          socketPort.off("close", openClose);
+          this.detachSocketOpenListeners(
+            socketPort,
+            onConnect,
+            onReady,
+            openError,
+            openClose,
+          );
         };
         const detachRuntimeListeners = (): void => {
           this.detachRuntimePortListeners(socketPort);
@@ -223,10 +226,13 @@ export class SerialDriver extends EventEmitter {
           detachOpenListeners();
           detachRuntimeListeners();
         };
-        socketPort.on("connect", onConnect);
-        socketPort.on("ready", onReady);
-        socketPort.once("error", openError);
-        socketPort.once("close", openClose);
+        this.attachSocketOpenListeners(
+          socketPort,
+          onConnect,
+          onReady,
+          openError,
+          openClose,
+        );
 
         socketPort.connect(info.port, info.host);
       });
@@ -441,6 +447,32 @@ export class SerialDriver extends EventEmitter {
   private detachRuntimePortListeners(port: SerialPort | net.Socket): void {
     port.off("close", this.onPortCloseHandler);
     port.off("error", this.onPortErrorHandler);
+  }
+
+  private attachSocketOpenListeners(
+    port: net.Socket,
+    onConnect: () => void,
+    onReady: () => void,
+    onError: (error: Error) => void,
+    onClose: () => void,
+  ): void {
+    port.on("connect", onConnect);
+    port.on("ready", onReady);
+    port.once("error", onError);
+    port.once("close", onClose);
+  }
+
+  private detachSocketOpenListeners(
+    port: net.Socket,
+    onConnect: () => void,
+    onReady: () => void,
+    onError: (error: Error) => void,
+    onClose: () => void,
+  ): void {
+    port.off("connect", onConnect);
+    port.off("ready", onReady);
+    port.off("error", onError);
+    port.off("close", onClose);
   }
 
   private cancelPendingOperations(error: Error): void {

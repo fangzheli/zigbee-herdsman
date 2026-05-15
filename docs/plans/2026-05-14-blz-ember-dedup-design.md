@@ -1032,6 +1032,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ connect-time reset listener attach/detach so temporary reset
   listeners installed during reconnect attempts are managed through explicit
   helper methods and removed by the existing `finally` cleanup.
+- Centralized UART TCP open-time listener attach/detach so connect, ready,
+  error, and close listeners used before socket readiness are managed through
+  helper methods before runtime listeners take over.
 
 ## Next Steps
 
