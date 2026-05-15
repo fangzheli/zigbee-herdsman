@@ -1,6 +1,6 @@
 import {vi, describe, it, expect, beforeEach} from 'vitest';
 import * as fs from 'fs';
-import {BLZAdapterBackup, type BlzBackupProvider} from '../../../../src/adapter/blz/adapter/backup';
+import {BLZAdapterBackup} from '../../../../src/adapter/blz/adapter/backup';
 import * as BackupUtils from '../../../../src/utils/backup';
 
 vi.mock('fs', async (importOriginal) => ({
@@ -14,7 +14,7 @@ vi.mock('../../../../src/utils/backup');
 
 describe('BLZ Adapter Backup', () => {
     let backup: BLZAdapterBackup;
-    let providerMock: BlzBackupProvider & {
+    let providerMock: {
         getCoordinatorVersion: ReturnType<typeof vi.fn>;
         getGlobalTcLinkKey: ReturnType<typeof vi.fn>;
         getNetworkKeyInfo: ReturnType<typeof vi.fn>;
@@ -46,6 +46,7 @@ describe('BLZ Adapter Backup', () => {
             const source = fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8');
 
             expect(source).toContain('interface BlzBackupProvider');
+            expect(source).not.toContain('export interface BlzBackupProvider');
             expect(source).toContain('private provider: BlzBackupProvider;');
             expect(source).not.toContain('import type { Driver }');
             expect(source).not.toContain('private driver: Driver;');

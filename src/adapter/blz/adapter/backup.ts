@@ -12,7 +12,7 @@ import type { BLZFrameData } from "../driver/blz";
 
 const NS = "zh:blz:backup";
 
-export interface BlzBackupProvider {
+interface BlzBackupProvider {
   getCoordinatorVersion: () => CoordinatorVersion;
   getGlobalTcLinkKey: () => Promise<BLZFrameData>;
   getCurrentNetworkParameters: () => Promise<BLZFrameData>;

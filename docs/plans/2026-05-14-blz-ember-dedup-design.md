@@ -960,6 +960,8 @@ Future BLZ refactors should follow these rules:
   inside driver send/cache paths instead of exposing another lookup command API.
 - Made endpoint registration private; production add-endpoint commands now stay
   inside driver startup instead of exposing a lower BLZ command wrapper.
+- Kept the backup provider interface module-private; tests use a local
+  structural mock type instead of importing BLZ backup internals.
 
 ## Next Steps
 
