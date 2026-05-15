@@ -1029,6 +1029,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver ZDO response waiter cancellation so failed
   lower APS sends release driver-owned ZDO waiters through the same helper
   pattern as the other BLZ layers.
+- Centralized BLZ connect-time reset listener attach/detach so temporary reset
+  listeners installed during reconnect attempts are managed through explicit
+  helper methods and removed by the existing `finally` cleanup.
 
 ## Next Steps
 

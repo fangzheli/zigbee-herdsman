@@ -361,7 +361,7 @@ export class Blz extends EventEmitter {
     const resetForReconnect = (): void => {
       this.connectResetOperations.cancel(new Error("Failure to connect"));
     };
-    this.serialDriver.on("reset", resetForReconnect);
+    this.attachConnectResetListener(resetForReconnect);
 
     try {
       for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
@@ -415,7 +415,7 @@ export class Blz extends EventEmitter {
         }
       }
     } finally {
-      this.serialDriver.off("reset", resetForReconnect);
+      this.detachConnectResetListener(resetForReconnect);
     }
 
     if (!connected) {
@@ -534,6 +534,14 @@ export class Blz extends EventEmitter {
   private attachSerialDriverResetListener(): void {
     this.serialDriver.off("reset", this.onSerialResetHandler);
     this.serialDriver.on("reset", this.onSerialResetHandler);
+  }
+
+  private attachConnectResetListener(listener: () => void): void {
+    this.serialDriver.on("reset", listener);
+  }
+
+  private detachConnectResetListener(listener: () => void): void {
+    this.serialDriver.off("reset", listener);
   }
 
   private detachSerialDriverListeners(): void {
