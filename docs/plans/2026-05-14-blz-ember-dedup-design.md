@@ -197,6 +197,8 @@ Future BLZ refactors should follow these rules:
   stringify caller-owned buffers before sending.
 - Made high-level channel-change network parameter logging lazy and reused the
   shared byte-to-hex helper for extended PAN ID formatting.
+- Made startup network validation extended PAN ID logging lazy, keeping the
+  restart/resume path from stringifying buffers when debug logging is disabled.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

@@ -757,8 +757,14 @@ export class Driver extends EventEmitter {
 
     const extPanIdBytes = uint64ToLittleEndianBuffer(netParams.extPanId);
     const sameExtendedPanId = bytesEqual(options.extendedPanID!, extPanIdBytes);
-    logger.debug(`options.extendedPanID: ${options.extendedPanID}`, NS);
-    logger.debug(`current extendedPanID: ${extPanIdBytes}`, NS);
+    logger.debug(
+      () => `options.extendedPanID: ${bytesToHex(options.extendedPanID!)}`,
+      NS,
+    );
+    logger.debug(
+      () => `current extendedPanID: ${bytesToHex(extPanIdBytes)}`,
+      NS,
+    );
     logger.debug(
       `needToBeInitialized same extended PanID: ${sameExtendedPanId}`,
       NS,

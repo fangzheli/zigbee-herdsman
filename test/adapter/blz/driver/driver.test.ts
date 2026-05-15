@@ -15,7 +15,7 @@ vi.mock("../../../../src/adapter/blz/driver/blz", async (importOriginal) => {
 
 import type {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
 import {Driver} from "../../../../src/adapter/blz/driver/driver";
-import {BlzEUI64, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
+import {BlzEUI64, BlzNodeType, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "../../../../src/adapter/blz/driver/types";
 import {BlzApsFrame, BlzNetworkParameters} from "../../../../src/adapter/blz/driver/types/struct";
 import type {NetworkOptions, SerialPortOptions} from "../../../../src/adapter/tstype";
 import {logger} from "../../../../src/utils/logger";
@@ -382,6 +382,19 @@ describe("BLZ high-level driver lifecycle", () => {
         return (driver as unknown as {
             getMacAddress: () => Promise<Buffer>;
         }).getMacAddress();
+    }
+
+    function driverNeedsToBeInitialised(
+        driver: Driver,
+        options: NetworkOptions,
+        startupStopGeneration = 0,
+    ): Promise<boolean> {
+        return (driver as unknown as {
+            needsToBeInitialised: (
+                options: NetworkOptions,
+                startupStopGeneration: number,
+            ) => Promise<boolean>;
+        }).needsToBeInitialised(options, startupStopGeneration);
     }
 
     function driverNetworkIdToEUI64(driver: Driver, nwk: number): Promise<BlzEUI64> {
@@ -2352,6 +2365,48 @@ describe("BLZ high-level driver lifecycle", () => {
 
         expect(observed).toBe("rejected:Driver stopped");
         expect(blzMock.execCommand).not.toHaveBeenCalled();
+    });
+
+    it("does not stringify startup extended PAN IDs unless debug logging evaluates the message", async () => {
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const extendedPanID = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]);
+        const driver = new Driver(
+            serialPortOptions,
+            {
+                ...networkOptions,
+                extendedPanID,
+            },
+            "/tmp/backup.json",
+        );
+        setDriverBlz(driver, {
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn().mockResolvedValue({
+                status: BlzStatus.SUCCESS,
+                nodeType: BlzNodeType.COORDINATOR,
+                panId: networkOptions.panID,
+                extPanId: 0x0807060504030201n,
+                channel: 11,
+            }),
+        });
+        const toStringSpy = vi.spyOn(Buffer.prototype, "toString").mockImplementation(() => {
+            throw new Error("eager startup extended PAN ID string");
+        });
+
+        try {
+            await expect(
+                driverNeedsToBeInitialised(driver, {
+                    ...networkOptions,
+                    extendedPanID,
+                }),
+            ).resolves.toBe(false);
+            expect(debug).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(String),
+            );
+        } finally {
+            toStringSpy.mockRestore();
+            debug.mockRestore();
+        }
     });
 
     it("forms a new network when initial network parameters return only an error status", async () => {
