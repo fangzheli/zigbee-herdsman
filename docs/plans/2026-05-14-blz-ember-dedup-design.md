@@ -1070,6 +1070,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver request-delay cancellation so APS retry waits
   and channel-change settle waits are cancelled through one request lifecycle
   helper.
+- Centralized high-level driver reset-recovery cancellation so reset retry
+  delays and in-flight force-reset operations are cancelled through one
+  lifecycle helper.
 
 ## Next Steps
 

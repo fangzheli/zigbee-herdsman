@@ -1222,9 +1222,13 @@ export class Driver extends EventEmitter {
 
   private cancelDriverLifecycle(error: Error): void {
     this.stopGeneration += 1;
+    this.cancelResetRecovery(error);
+    this.cancelStartupOperations(error);
+  }
+
+  private cancelResetRecovery(error: Error): void {
     this.resetDelay.cancel();
     this.resetForceOperations.cancel(error);
-    this.cancelStartupOperations(error);
   }
 
   private cancelRequestOperations(error: Error): void {
