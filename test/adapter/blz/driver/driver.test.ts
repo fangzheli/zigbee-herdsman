@@ -128,7 +128,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source.match(/this\.resetDelay\.cancel\(\);/g)).toHaveLength(1);
         expect(source.match(/this\.resetForceOperations\.cancel\(error\);/g)).toHaveLength(1);
         expect(source).toContain("private isResetGenerationActive(resetStopGeneration: number): boolean");
-        expect(source.match(/this\.isResetGenerationActive\(resetStopGeneration\)/g)).toHaveLength(4);
+        expect(source.match(/this\.isResetGenerationActive\(resetStopGeneration\)/g)).toHaveLength(5);
         expect(source.match(/this\.stopGeneration === resetStopGeneration/g)).toHaveLength(1);
         expect(source).toContain("private cancelStartupDelay(): void");
         expect(source).toContain("this.cancelStartupDelay();");
@@ -1740,13 +1740,37 @@ describe("BLZ high-level driver lifecycle", () => {
             );
             await vi.advanceTimersByTimeAsync(3000);
 
-            await expect(resetResult).resolves.toBe("resolved");
+            await expect(resetResult).resolves.toBe("rejected:startup failed after reset");
             expect(stop).toHaveBeenNthCalledWith(1, false, true);
             expect(stop).toHaveBeenNthCalledWith(2);
             expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             debug.mockRestore();
         }
+    });
+
+    it("reports both reset startup failure and failed-reset cleanup failure", async () => {
+        vi.useFakeTimers();
+        const startupFailure = new Error("startup failed after reset");
+        const cleanupFailure = new Error("reset cleanup stop failed");
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const blzMock = {
+            forceReset: vi.fn().mockResolvedValue(undefined),
+        };
+        setDriverBlz(driver, blzMock);
+        const stop = vi.spyOn(driver, "stop")
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(cleanupFailure);
+        vi.spyOn(driver, "startup").mockRejectedValue(startupFailure);
+
+        const resetResult = driver.reset().catch((caught: unknown) => caught);
+        await vi.advanceTimersByTimeAsync(3000);
+
+        const error = await resetResult;
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).errors).toEqual([startupFailure, cleanupFailure]);
+        expect(stop).toHaveBeenNthCalledWith(1, false, true);
+        expect(stop).toHaveBeenNthCalledWith(2);
     });
 
     it("returns false when multicast APS send returns a non-success status", async () => {

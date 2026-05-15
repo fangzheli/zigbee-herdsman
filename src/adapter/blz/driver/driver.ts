@@ -427,18 +427,31 @@ export class Driver extends EventEmitter {
       await this.startup();
     } catch (err) {
       logger.debug(() => `Reset error ${err}`, NS);
-      // Clear reset state on error
-
-      try {
-        // here we let emit
-        await this.stop();
-      } catch (stopErr) {
-        logger.debug(
-          () => `Failed to stop after failed reset ${stopErr}`,
-          NS,
-        );
+      if (!this.isResetGenerationActive(resetStopGeneration)) {
+        logger.debug("Reset cancelled by stop.", NS);
+        return;
       }
+
+      return await this.throwAfterFailedResetCleanup(err);
     }
+  }
+
+  private async throwAfterFailedResetCleanup(error: unknown): Promise<never> {
+    try {
+      // here we let emit
+      await this.stop();
+    } catch (cleanupError) {
+      logger.debug(
+        () => `Failed to stop after failed reset ${cleanupError}`,
+        NS,
+      );
+      throw new AggregateError(
+        [error, cleanupError],
+        "Failed to reset and cleanup BLZ resources",
+      );
+    }
+
+    throw error;
   }
 
   private onBlzReset(): void {
