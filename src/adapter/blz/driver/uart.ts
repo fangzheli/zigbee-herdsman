@@ -118,11 +118,11 @@ export class SerialDriver extends EventEmitter {
       await this.connectOperations.run(
         () => serialPort.asyncOpen(),
         () => this.serialPort === serialPort,
-        () => new Error("Connection closed"),
+        () => this.createConnectionClosedError(),
       );
 
       if (this.serialPort !== serialPort) {
-        throw new Error("Connection closed");
+        throw this.createConnectionClosedError();
       }
 
       opened = true;
@@ -192,7 +192,7 @@ export class SerialDriver extends EventEmitter {
           }
 
           if (settled || this.socketPort !== socketPort) {
-            openError(new Error("Connection closed"));
+            openError(this.createConnectionClosedError());
             return;
           }
 
@@ -241,7 +241,7 @@ export class SerialDriver extends EventEmitter {
       await this.connectOperations.run(
         openSocket,
         () => this.socketPort === socketPort,
-        () => new Error("Connection closed"),
+        () => this.createConnectionClosedError(),
       );
     } catch (error) {
       if (!settled) {
@@ -257,7 +257,7 @@ export class SerialDriver extends EventEmitter {
     await this.connectOperations.run(
       () => this.reset(),
       () => this.socketPort === port,
-      () => new Error("Connection closed"),
+      () => this.createConnectionClosedError(),
     );
   }
 
@@ -334,7 +334,7 @@ export class SerialDriver extends EventEmitter {
   async reset(): Promise<void> {
     this.parser.reset();
     this.throwIfClosing();
-    this.cancelPendingOperations(new Error("Connection reset"));
+    this.cancelPendingOperations(this.createConnectionResetError());
     this.sendSeq = 0;
     this.recvSeq = 0;
 
@@ -357,7 +357,7 @@ export class SerialDriver extends EventEmitter {
 
   private throwIfClosing(): void {
     if (this.closePromise) {
-      throw new Error("Connection closed");
+      throw this.createConnectionClosedError();
     }
   }
 
@@ -388,7 +388,7 @@ export class SerialDriver extends EventEmitter {
 
   private async performClose(): Promise<void> {
     logger.debug("Closing UART", NS);
-    const closeError = new Error("Connection closed");
+    const closeError = this.createConnectionClosedError();
     this.cancelConnectOperations(closeError);
     const wasInitialized = this.initialized;
     this.enterClosedState(closeError);
@@ -495,6 +495,29 @@ export class SerialDriver extends EventEmitter {
     this.connectOperations.cancel(error);
   }
 
+  private createConnectionClosedError(): Error {
+    return new Error("Connection closed");
+  }
+
+  private createConnectionResetError(): Error {
+    return new Error("Connection reset");
+  }
+
+  private createPortCloseError(err: boolean | Error): Error {
+    return err != null && err !== false
+      ? this.createConnectionResetError()
+      : this.createConnectionClosedError();
+  }
+
+  private createSendCancelledError(cause?: unknown): Error {
+    const error = new Error("Send cancelled by driver reset or close");
+    if (cause !== undefined) {
+      error.cause = cause;
+    }
+
+    return error;
+  }
+
   private enterClosedState(error: Error): void {
     this.initialized = false;
     this.cancelPendingOperations(error);
@@ -543,9 +566,7 @@ export class SerialDriver extends EventEmitter {
 
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
-    const closeError = new Error(
-      err != null && err !== false ? "Connection reset" : "Connection closed",
-    );
+    const closeError = this.createPortCloseError(err);
     this.enterClosedState(closeError);
 
     this.destroyActivePort();
@@ -576,9 +597,7 @@ export class SerialDriver extends EventEmitter {
         (error.message === "Connection reset" ||
           error.message === "Connection closed")
       ) {
-        throw new Error("Send cancelled by driver reset or close", {
-          cause: error,
-        });
+        throw this.createSendCancelledError(error);
       }
 
       throw error;
@@ -596,7 +615,7 @@ export class SerialDriver extends EventEmitter {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (!this.isOperationGenerationActive(generation)) {
-        throw new Error("Send cancelled by driver reset or close");
+        throw this.createSendCancelledError();
       }
 
       const isRetransmission = attempt > 0;
@@ -626,7 +645,7 @@ export class SerialDriver extends EventEmitter {
         logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${e}`, NS);
 
         if (!this.isOperationGenerationActive(generation)) {
-          throw new Error("Send cancelled by driver reset or close");
+          throw this.createSendCancelledError();
         }
 
         if (attempt === retries) {
@@ -638,7 +657,7 @@ export class SerialDriver extends EventEmitter {
         const continueRetry = await this.waitForSendRetry(1000, generation);
 
         if (!continueRetry) {
-          throw new Error("Send cancelled by driver reset or close");
+          throw this.createSendCancelledError();
         }
       }
     }

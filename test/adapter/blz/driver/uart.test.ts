@@ -180,6 +180,17 @@ describe("BLZ Serial Driver", () => {
       expect(source.match(/this\.sendRetryDelay\.cancel\(\);/g)).toHaveLength(1);
       expect(source).toContain("private enterClosedState(error: Error): void");
       expect(source.match(/this\.enterClosedState\(closeError\);/g)).toHaveLength(2);
+      expect(source).toContain("private createConnectionClosedError(): Error");
+      expect(source.match(/this\.createConnectionClosedError\(\)/g)).toHaveLength(8);
+      expect(source).toContain("private createConnectionResetError(): Error");
+      expect(source.match(/this\.createConnectionResetError\(\)/g)).toHaveLength(2);
+      expect(source).toContain("private createPortCloseError(err: boolean | Error): Error");
+      expect(source).toContain("const closeError = this.createPortCloseError(err);");
+      expect(source).toContain("private createSendCancelledError(cause?: unknown): Error");
+      expect(source.match(/this\.createSendCancelledError\(/g)).toHaveLength(4);
+      expect(source.match(/new Error\("Connection closed"\)/g)).toHaveLength(1);
+      expect(source.match(/new Error\("Connection reset"\)/g)).toHaveLength(1);
+      expect(source.match(/new Error\("Send cancelled by driver reset or close"\)/g)).toHaveLength(1);
       expect(source).toContain("private cancelConnectOperations(error: Error): void");
       expect(source).toContain("this.cancelConnectOperations(closeError);");
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);

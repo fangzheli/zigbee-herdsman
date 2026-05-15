@@ -184,6 +184,9 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ connection-state error creation so connect retry, close,
   reset, watchdog cancellation, and pending command cleanup paths share the same
   connection failure sources.
+- Centralized UART connection/reset/send-cancelled error creation so serial
+  open, TCP ready reset, close, reset, and DATA retry cancellation paths share
+  the same cleanup reasons.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.
