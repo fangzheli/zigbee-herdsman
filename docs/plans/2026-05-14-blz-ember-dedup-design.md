@@ -1179,6 +1179,9 @@ Future BLZ refactors should follow these rules:
 - Narrowed the BLZ backup provider away from `BLZFrameData` to backup-specific
   key and network-parameter interfaces, so backup creation depends only on the
   fields it serializes.
+- Deferred endpoint ZCL send-detail formatting until debug logging evaluates
+  the message, avoiding per-send IEEE/queue/timeout string construction on the
+  normal debug-disabled path.
 
 ## Next Steps
 

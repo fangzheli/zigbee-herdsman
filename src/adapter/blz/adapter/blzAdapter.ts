@@ -597,7 +597,8 @@ export class BLZAdapter extends Adapter {
       ieeeAddr = formatIeeeAddress(this.driver.getCoordinatorIeee());
     }
     logger.debug(
-      `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +
+      () =>
+        `sendZclFrameToEndpointInternal ${ieeeAddr}:${networkAddress}/${endpoint} ` +
         `(responseAttempt=${responseAttempt}, queue=${this.queue.count()}), timeout=${timeout}`,
       NS,
     );

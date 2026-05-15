@@ -1113,6 +1113,43 @@ describe("BLZ Adapter", () => {
       }
     });
 
+    it("should not stringify endpoint ZCL send details unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      try {
+        driverMock.sendZclEndpoint.mockResolvedValue(true);
+        const zclFrame = Zcl.Frame.create(
+          Zcl.FrameType.GLOBAL,
+          Zcl.Direction.CLIENT_TO_SERVER,
+          true,
+          undefined,
+          7,
+          "read",
+          Zcl.Clusters.genOnOff.ID,
+          [{attrId: 0x0000}],
+          {},
+        );
+        const ieeeAddr = {
+          toString: () => {
+            throw new Error("eager endpoint ZCL send detail string");
+          },
+        } as unknown as string;
+
+        await adapter.sendZclFrameToEndpoint(
+          ieeeAddr,
+          0x1234,
+          1,
+          zclFrame,
+          1000,
+          true,
+          true,
+        );
+
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+      } finally {
+        debug.mockRestore();
+      }
+    });
+
     it("should use source endpoint and profile ID for group ZCL sends", async () => {
       driverMock.sendZclMulticast.mockResolvedValue(true);
       const zclFrame = Zcl.Frame.create(
