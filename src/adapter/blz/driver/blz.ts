@@ -748,7 +748,10 @@ export class Blz extends EventEmitter {
     try {
       frm = BLZFrameData.createFrame(frameId, false, data);
     } catch (error) {
-      logger.error(`Failed to parse BLZ frame 0x${frameId.toString(16)}: ${error}`, NS);
+      logger.error(
+        () => `Failed to parse BLZ frame 0x${frameId.toString(16)}: ${error}`,
+        NS,
+      );
       return;
     }
 

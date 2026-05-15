@@ -1360,11 +1360,43 @@ describe("BLZ Driver", () => {
       try {
         expect(() => receivedHandler(data)).not.toThrow();
         expect(frame).not.toHaveBeenCalled();
-        expect(error).toHaveBeenCalledWith(
-          expect.stringContaining("Failed to parse BLZ frame 0xffff"),
-          NS,
+        expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
+        const [message] = error.mock.calls[0];
+        expect((message as () => string)()).toContain(
+          "Failed to parse BLZ frame 0xffff",
         );
       } finally {
+        error.mockRestore();
+      }
+    });
+
+    it("should ignore received frames whose decode errors cannot be stringified", () => {
+      const frame = vi.fn();
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      const originalErrorToString = Error.prototype.toString;
+      const errorToString = vi
+        .spyOn(Error.prototype, "toString")
+        .mockImplementation(function errorToString() {
+          if (this.message.includes("Unrecognized frame FrameID")) {
+            throw new Error("decode stringification failed");
+          }
+
+          return originalErrorToString.call(this);
+        });
+      blz.on("frame", frame);
+
+      const receivedHandler = serialDriverMock.on.mock.calls.find(
+        (call) => call[0] === "received",
+      )?.[1];
+      const data = Buffer.alloc(6);
+      data.writeUInt16LE(0xffff, 2);
+
+      try {
+        expect(() => receivedHandler(data)).not.toThrow();
+        expect(frame).not.toHaveBeenCalled();
+        expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
+      } finally {
+        errorToString.mockRestore();
         error.mockRestore();
       }
     });

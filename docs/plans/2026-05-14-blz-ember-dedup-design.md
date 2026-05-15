@@ -1229,6 +1229,8 @@ Future BLZ refactors should follow these rules:
   failures cannot mask the original connect failure or short-circuit retries.
 - Deferred direct UART reset failure formatting so reset recovery keeps the
   original lower reset error after restoring BLZ reset state.
+- Deferred low-level BLZ received-frame parse error formatting so malformed or
+  unknown frames with unprintable decode errors are still discarded locally.
 
 ## Next Steps
 
