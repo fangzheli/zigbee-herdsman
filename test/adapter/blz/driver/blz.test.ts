@@ -113,6 +113,16 @@ describe("BLZ Driver", () => {
       expect(blz.getVersionSnapshot().product).toBe(1);
     });
 
+    it("centralizes connection cancellation cleanup", () => {
+      const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+      expect(source).toContain("private cancelConnectionOperations(error: Error): void");
+      expect(source.match(/this\.connectGeneration \+= 1;/g)).toHaveLength(1);
+      expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
+      expect(source.match(/this\.connectResetOperations\.cancel\(error\);/g)).toHaveLength(1);
+      expect(source.match(/this\.connectRetryDelay\.cancel\(\);/g)).toHaveLength(1);
+    });
+
     it("should connect successfully", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

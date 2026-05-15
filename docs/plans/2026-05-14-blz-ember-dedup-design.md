@@ -981,6 +981,10 @@ Future BLZ refactors should follow these rules:
 - Centralized adapter queued-command guards so ZDO sends, channel changes, and
   ZCL endpoint/group/broadcast sends share the same queue, Inter-PAN, and
   stopped-generation checks before running lower driver operations.
+- Centralized low-level BLZ connection cancellation cleanup so serial close,
+  serial reset, and explicit close paths cancel connect attempts, reset-wrapped
+  connect attempts, retry delays, and watchdog state through one helper while
+  preserving their existing command-waiter error reasons.
 
 ## Next Steps
 

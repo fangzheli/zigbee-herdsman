@@ -558,12 +558,16 @@ export class Blz extends EventEmitter {
     }
   }
 
-  private cleanupSerialState(error: Error): void {
+  private cancelConnectionOperations(error: Error): void {
     this.connectGeneration += 1;
     this.connectOperations.cancel(error);
     this.connectResetOperations.cancel(error);
     this.connectRetryDelay.cancel();
     this.clearWatchdogTimer();
+  }
+
+  private cleanupSerialState(error: Error): void {
+    this.cancelConnectionOperations(error);
     this.queue.clear(error);
     this.waitress.clear(error);
     this.detachSerialDriverListeners();
@@ -593,13 +597,8 @@ export class Blz extends EventEmitter {
   private async performClose(emitClose: boolean): Promise<void> {
     logger.debug("Closing Blz", NS);
 
-    this.connectGeneration += 1;
-    this.connectOperations.cancel(new Error("Connection cancelled by close"));
-    this.connectResetOperations.cancel(
-      new Error("Connection cancelled by close"),
-    );
-    this.connectRetryDelay.cancel();
-    this.clearWatchdogTimer();
+    const connectionCancelError = new Error("Connection cancelled by close");
+    this.cancelConnectionOperations(connectionCancelError);
     const closeError = new Error("Connection closed");
     this.queue.clear(closeError);
     this.waitress.clear(closeError);
