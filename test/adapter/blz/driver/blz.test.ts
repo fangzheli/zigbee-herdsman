@@ -123,6 +123,14 @@ describe("BLZ Driver", () => {
       expect(source.match(/this\.connectRetryDelay\.cancel\(\);/g)).toHaveLength(1);
     });
 
+    it("centralizes pending command cleanup", () => {
+      const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
+
+      expect(source).toContain("private clearPendingCommands(error: Error): void");
+      expect(source.match(/this\.queue\.clear\(/g)).toHaveLength(1);
+      expect(source.match(/this\.waitress\.clear\(/g)).toHaveLength(1);
+    });
+
     it("should connect successfully", async () => {
       serialDriverMock.connect.mockResolvedValue(undefined);
       serialDriverMock.isInitialized.mockReturnValue(true);

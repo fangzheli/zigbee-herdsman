@@ -985,6 +985,9 @@ Future BLZ refactors should follow these rules:
   serial reset, and explicit close paths cancel connect attempts, reset-wrapped
   connect attempts, retry delays, and watchdog state through one helper while
   preserving their existing command-waiter error reasons.
+- Centralized low-level BLZ pending-command cleanup so reconnect pre-close,
+  failed-connect cleanup, serial close/reset, explicit close, and force reset
+  all clear the command queue and frame waiters through one helper.
 
 ## Next Steps
 
