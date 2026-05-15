@@ -183,10 +183,23 @@ export class Blz extends EventEmitter {
       logger.debug("Connection established successfully", NS);
     } catch (error) {
       if (!connectionEstablished) {
-        this.detachSerialDriverListeners();
+        this.throwAfterFailedConnectCleanup(error);
       }
       throw error;
     }
+  }
+
+  private throwAfterFailedConnectCleanup(error: unknown): never {
+    try {
+      this.detachSerialDriverListeners();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        "Failed to connect and cleanup serial driver listeners",
+      );
+    }
+
+    throw error;
   }
 
   private async connectWithRetries(
