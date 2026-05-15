@@ -1233,6 +1233,8 @@ Future BLZ refactors should follow these rules:
   unknown frames with unprintable decode errors are still discarded locally.
 - Deferred UART parser invalid-frame error formatting so corrupted serial bytes
   still call the transform callback and do not break stream processing.
+- Deferred BLZ frame-candidate parse error formatting so truncated candidate
+  payloads with unprintable errors still fall through to `undefined`/fallback.
 
 ## Next Steps
 

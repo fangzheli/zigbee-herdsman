@@ -92,7 +92,7 @@ export class BLZFrameData {
       try {
         return new BLZFrameData(frameName, isRequest, params);
       } catch (error) {
-        logger.error(`Frame ${frameName} parsing error: ${error}`, NS);
+        logger.error(() => `Frame ${frameName} parsing error: ${error}`, NS);
       }
     }
 

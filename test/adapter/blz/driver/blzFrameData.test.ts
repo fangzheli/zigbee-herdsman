@@ -1,9 +1,10 @@
 import {describe, expect, it, vi} from "vitest";
 import * as fs from "node:fs";
 
-import {BLZFrameData} from "../../../../src/adapter/blz/driver/blz";
+import {BLZFrameData, NS} from "../../../../src/adapter/blz/driver/blz";
 import {FRAMES} from "../../../../src/adapter/blz/driver/commands";
 import {BlzValueId} from "../../../../src/adapter/blz/driver/types";
+import {logger} from "../../../../src/utils/logger";
 
 describe("BLZFrameData", () => {
     it("uses explicit frame parser fallback without non-null assertions", () => {
@@ -23,6 +24,30 @@ describe("BLZFrameData", () => {
             _cls_: "getNetworkParameters",
             extPanId: "0xdddddddddddddddd",
         });
+    });
+
+    it("returns undefined when candidate frame parse errors cannot be stringified", () => {
+        const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+        const originalErrorToString = Error.prototype.toString;
+        const errorToString = vi
+            .spyOn(Error.prototype, "toString")
+            .mockImplementation(function errorToString() {
+                if (this.message.includes("Buffer too small")) {
+                    throw new Error("frame parse error stringification failed");
+                }
+
+                return originalErrorToString.call(this);
+            });
+
+        try {
+            expect(
+                BLZFrameData.createFrame(FRAMES.getValue.ID, false, Buffer.alloc(0)),
+            ).toBeUndefined();
+            expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
+        } finally {
+            errorToString.mockRestore();
+            error.mockRestore();
+        }
     });
 
     it("serializes command fields without Buffer.concat allocation churn", () => {
