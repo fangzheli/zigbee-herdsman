@@ -201,6 +201,8 @@ Future BLZ refactors should follow these rules:
   restart/resume path from stringifying buffers when debug logging is disabled.
 - Made startup network snapshot logging lazy so `BlzNetworkParameters.toString()`
   is only evaluated when debug logging consumes the message.
+- Made startup coordinator IEEE logging lazy so `BlzEUI64.toString()` is not
+  called on the debug-disabled startup path.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

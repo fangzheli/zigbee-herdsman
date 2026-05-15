@@ -677,7 +677,7 @@ export class Driver extends EventEmitter {
       const ieeeEui64 = this.convertBlzMacToIeeeEui64(ieee);
       this.ieee = new BlzEUI64(ieeeEui64);
       this.attachBlzRuntimeListeners(blz);
-      logger.debug(`BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
+      logger.debug(() => `BLZ nodeid=0x0000, IEEE=0x${this.ieee}`, NS);
       logger.debug("Network ready", NS);
 
       return result;
