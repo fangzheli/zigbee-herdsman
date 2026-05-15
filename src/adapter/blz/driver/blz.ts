@@ -600,12 +600,16 @@ export class Blz extends EventEmitter {
     this.connectGeneration += 1;
     this.connectOperations.cancel(error);
     this.cancelConnectResetOperations(error);
-    this.connectRetryDelay.cancel();
+    this.cancelConnectRetryDelay();
     this.clearWatchdogTimer();
   }
 
   private cancelConnectResetOperations(error: Error): void {
     this.connectResetOperations.cancel(error);
+  }
+
+  private cancelConnectRetryDelay(): void {
+    this.connectRetryDelay.cancel();
   }
 
   private clearPendingCommands(error: Error): void {

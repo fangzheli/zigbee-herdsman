@@ -140,6 +140,8 @@ describe("BLZ Driver", () => {
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
       expect(source.match(/this\.connectResetOperations\.cancel\(error\);/g)).toHaveLength(1);
       expect(source.match(/this\.cancelConnectResetOperations\(error\);/g)).toHaveLength(1);
+      expect(source).toContain("private cancelConnectRetryDelay(): void");
+      expect(source).toContain("this.cancelConnectRetryDelay();");
       expect(source.match(/this\.connectRetryDelay\.cancel\(\);/g)).toHaveLength(1);
     });
 

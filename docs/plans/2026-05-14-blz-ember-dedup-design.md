@@ -1073,6 +1073,8 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver reset-recovery cancellation so reset retry
   delays and in-flight force-reset operations are cancelled through one
   lifecycle helper.
+- Centralized low-level BLZ connect-retry delay cancellation so connection
+  close/reset cleanup cancels retry timers through a dedicated helper.
 
 ## Next Steps
 
