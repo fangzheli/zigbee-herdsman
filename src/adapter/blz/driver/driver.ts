@@ -1212,6 +1212,10 @@ export class Driver extends EventEmitter {
   private cancelDriverRequests(error: Error): void {
     this.requestGeneration += 1;
     this.cancelRequestOperations(error);
+    this.cancelRequestDelays();
+  }
+
+  private cancelRequestDelays(): void {
     this.requestRetryDelay.cancel();
     this.channelChangeDelay.cancel();
   }

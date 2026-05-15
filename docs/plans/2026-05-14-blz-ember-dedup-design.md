@@ -1067,6 +1067,9 @@ Future BLZ refactors should follow these rules:
   driver.
 - Split BLZ connect retries into a dedicated helper so serial event-bridge
   ownership stays separate from per-attempt retry and failed-attempt cleanup.
+- Centralized high-level driver request-delay cancellation so APS retry waits
+  and channel-change settle waits are cancelled through one request lifecycle
+  helper.
 
 ## Next Steps
 
