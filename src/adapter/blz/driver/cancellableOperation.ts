@@ -1,14 +1,12 @@
+import {CallbackRegistry} from "./callbackRegistry";
+
 export class CancellableOperation {
-  private readonly rejecters = new Set<(error: Error) => void>();
+  private readonly rejecters = new CallbackRegistry<(error: Error) => void>();
 
   public cancel(error: Error): void {
-    try {
-      for (const reject of this.rejecters) {
-        reject(error);
-      }
-    } finally {
-      this.rejecters.clear();
-    }
+    this.rejecters.notify((reject) => {
+      reject(error);
+    });
   }
 
   public run<T>(
@@ -53,6 +51,6 @@ export class CancellableOperation {
   }
 
   public count(): number {
-    return this.rejecters.size;
+    return this.rejecters.count();
   }
 }

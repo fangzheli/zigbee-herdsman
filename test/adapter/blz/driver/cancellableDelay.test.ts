@@ -60,10 +60,10 @@ describe("BLZ cancellable delay", () => {
 
     it("notifies active waiters before clearing the tracked set", () => {
         const delay = new CancellableDelay();
-        const waiters = (delay as unknown as {waiters: Set<() => void>}).waiters;
+        const waiters = (delay as unknown as {waiters: {add: (waiter: () => void) => void; count: () => number}}).waiters;
         let sizeWhileCancelling = -1;
         const waiter = vi.fn(() => {
-            sizeWhileCancelling = waiters.size;
+            sizeWhileCancelling = waiters.count();
         });
 
         waiters.add(waiter);
@@ -72,6 +72,6 @@ describe("BLZ cancellable delay", () => {
 
         expect(waiter).toHaveBeenCalledOnce();
         expect(sizeWhileCancelling).toBe(1);
-        expect(waiters.size).toBe(0);
+        expect(waiters.count()).toBe(0);
     });
 });

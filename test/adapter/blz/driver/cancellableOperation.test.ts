@@ -45,10 +45,10 @@ describe("BLZ cancellable operation", () => {
 
     it("notifies active rejecters before clearing the tracked set", () => {
         const operations = new CancellableOperation();
-        const rejecters = (operations as unknown as {rejecters: Set<(error: Error) => void>}).rejecters;
+        const rejecters = (operations as unknown as {rejecters: {add: (rejecter: (error: Error) => void) => void; count: () => number}}).rejecters;
         let sizeWhileRejecting = -1;
         const rejecter = vi.fn(() => {
-            sizeWhileRejecting = rejecters.size;
+            sizeWhileRejecting = rejecters.count();
         });
 
         rejecters.add(rejecter);

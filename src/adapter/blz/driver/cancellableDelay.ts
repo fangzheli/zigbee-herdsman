@@ -1,14 +1,12 @@
+import {CallbackRegistry} from "./callbackRegistry";
+
 export class CancellableDelay {
-  private readonly waiters = new Set<() => void>();
+  private readonly waiters = new CallbackRegistry<() => void>();
 
   public cancel(): void {
-    try {
-      for (const cancel of this.waiters) {
-        cancel();
-      }
-    } finally {
-      this.waiters.clear();
-    }
+    this.waiters.notify((cancel) => {
+      cancel();
+    });
   }
 
   public async wait(
@@ -40,6 +38,6 @@ export class CancellableDelay {
   }
 
   public count(): number {
-    return this.waiters.size;
+    return this.waiters.count();
   }
 }
