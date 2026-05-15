@@ -13,7 +13,11 @@ export class BlzWatchdog {
     private generation = 0;
     private failures = 0;
     private heartbeatPromise?: Promise<void>;
-    private readonly handler = this.run.bind(this);
+    private readonly handler = (): void => {
+        void this.run().catch((error) => {
+            this.options.error(() => `Watchdog handler failed ${error}`);
+        });
+    };
 
     public constructor(private readonly options: BlzWatchdogOptions) {}
 
