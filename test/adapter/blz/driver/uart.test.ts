@@ -741,6 +741,34 @@ describe("BLZ Serial Driver", () => {
       expect(socketPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
       expect(socketPortMock.destroy).toHaveBeenCalled();
     });
+
+    it("should safely wrap non-error TCP ready reset failures before cleanup", async () => {
+      const resetFailure = {
+        toString: () => {
+          throw new Error("ready reset stringification failed");
+        },
+      };
+      vi.spyOn(driver, "reset").mockRejectedValue(resetFailure);
+      const connect = driver.connect(tcpPortOptions);
+
+      socketPortMock.on.mock.calls.find((call) => call[0] === "ready")?.[1]();
+      const result = await Promise.race([
+        connect.then(
+          () => ({ status: "resolved" }),
+          (error: Error) => ({ status: "rejected", message: error.message }),
+        ),
+        new Promise((resolve) => setImmediate(() => resolve({ status: "pending" }))),
+      ]);
+
+      expect(result).toMatchObject({
+        status: "rejected",
+        message: "<unprintable error>",
+      });
+      expect(writerMock.unpipe).toHaveBeenCalledWith(socketPortMock);
+      expect(socketPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(socketPortMock.destroy).toHaveBeenCalled();
+    });
   });
 
   describe("Frame handling", () => {

@@ -41,6 +41,19 @@ function formatErrorMessage(error: unknown): string {
   }
 }
 
+function errorFromUnknown(error: unknown): Error {
+  if (error instanceof Error) {
+    try {
+      void error.message;
+      return error;
+    } catch {
+      return new Error(formatErrorMessage(error), { cause: error });
+    }
+  }
+
+  return new Error(formatErrorMessage(error), { cause: error });
+}
+
 export class SerialDriver extends EventEmitter {
   private serialPort?: SerialPort;
   private socketPort?: net.Socket;
@@ -203,7 +216,7 @@ export class SerialDriver extends EventEmitter {
             // reset
             await this.runSocketReadyReset(socketPort);
           } catch (error) {
-            openError(error instanceof Error ? error : new Error(String(error)));
+            openError(errorFromUnknown(error));
             return;
           }
 
@@ -223,7 +236,7 @@ export class SerialDriver extends EventEmitter {
         };
         const onReady = (): void => {
           void handleSocketReady().catch((error) => {
-            openError(error instanceof Error ? error : new Error(String(error)));
+            openError(errorFromUnknown(error));
           });
         };
         const detachOpenListeners = (): void => {

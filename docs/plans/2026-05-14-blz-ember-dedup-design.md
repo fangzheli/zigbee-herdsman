@@ -1243,6 +1243,8 @@ Future BLZ refactors should follow these rules:
   throwing `toString()` implementations cannot skip failed-attempt close cleanup.
 - Hardened UART error-message formatting for `Error.message` getters that
   throw, preserving reset notification and retry cleanup paths.
+- Wrapped non-`Error` UART TCP ready/open failures with safe fallback text so
+  failed ready-reset cleanup is not replaced by stringification errors.
 
 ## Next Steps
 
