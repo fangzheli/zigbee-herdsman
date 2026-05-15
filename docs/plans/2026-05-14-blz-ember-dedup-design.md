@@ -191,6 +191,8 @@ Future BLZ refactors should follow these rules:
   broadcast, endpoint, and ZDO sends build frames through one factory.
 - Centralized BLZ command status assertions for backup/security/network helper
   commands so status logging and thrown failure messages share one path.
+- Centralized low-level BLZ command success checks so network init, leave,
+  value, form-network, and APS-send helpers use one status predicate.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.

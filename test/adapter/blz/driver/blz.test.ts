@@ -106,6 +106,10 @@ describe("BLZ Driver", () => {
       expect(source).not.toContain("ZDOREQUEST_NAME_BY_ID");
       expect(source).not.toContain("ZDORESPONSES");
       expect(source).not.toContain("ZDORESPONSE_NAME_BY_ID");
+      expect(source).toContain("private isSuccessStatus(status: BlzStatus): boolean");
+      expect(source.match(/this\.isSuccessStatus\(/g)).toHaveLength(7);
+      expect(source.match(/status !== BlzStatus\.SUCCESS/g) ?? []).toHaveLength(0);
+      expect(source.match(/status == BlzStatus\.SUCCESS/g) ?? []).toHaveLength(0);
       expect(source).toContain("private attachSerialDriverResetListener(): void");
       expect(source).toContain("this.attachSerialDriverResetListener();");
       expect(source.match(/this\.serialDriver\.off\("reset", this\.onSerialResetHandler\);/g)).toHaveLength(1);

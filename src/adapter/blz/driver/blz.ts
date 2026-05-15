@@ -817,22 +817,26 @@ export class Blz extends EventEmitter {
     );
   }
 
+  private isSuccessStatus(status: BlzStatus): boolean {
+    return status === BlzStatus.SUCCESS;
+  }
+
   async networkInit(): Promise<boolean> {
     // logger.debug('Set up stack status handler before initial the network', NS);
     const result = await this.execCommand("networkInit");
     logger.debug(() => `Network init result: ${JSON.stringify(result)}`, NS);
-    if (result.status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(result.status)) {
       logger.error("Failure to init network", NS);
       return false;
     }
-    return result.status == BlzStatus.SUCCESS;
+    return this.isSuccessStatus(result.status);
   }
 
   async leaveNetwork(): Promise<number> {
     const result = await this.execCommand("leaveNetwork");
     logger.debug(() => `Network leave result: ${JSON.stringify(result)}`, NS);
 
-    if (result.status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(result.status)) {
       logger.debug("Failure to leave network", NS);
       throw new Error("Failure to leave network: " + JSON.stringify(result));
     }
@@ -868,7 +872,7 @@ export class Blz extends EventEmitter {
       value: valueBuffer,
     });
 
-    if (ret.status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(ret.status)) {
       logger.error(
         `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
@@ -884,7 +888,7 @@ export class Blz extends EventEmitter {
     logger.debug(`Get ${valueName}`, NS);
     const ret = await this.execCommand("getValue", { valueId });
 
-    if (ret.status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(ret.status)) {
       logger.error(
         `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
@@ -908,7 +912,7 @@ export class Blz extends EventEmitter {
     };
 
     const v = await this.execCommand("formNetwork", commandParams);
-    if (v.status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(v.status)) {
       logger.error("Failure forming network: " + JSON.stringify(v), NS);
       throw new Error("Failure forming network: " + JSON.stringify(v));
     }
@@ -967,7 +971,7 @@ export class Blz extends EventEmitter {
     // Extract and validate the status from the response
     const { status } = frameResponse;
 
-    if (status !== BlzStatus.SUCCESS) {
+    if (!this.isSuccessStatus(status)) {
       logger.error(`sendApsData() failed with status: ${status}`, NS);
       throw new Error(`Failed to send APS data: status ${status}`);
     }
