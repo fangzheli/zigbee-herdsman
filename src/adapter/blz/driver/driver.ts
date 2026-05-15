@@ -446,7 +446,7 @@ export class Driver extends EventEmitter {
   private onBlzReset(): void {
     logger.debug("onBlzReset()", NS);
     void this.reset().catch((error) => {
-      logger.error(`BLZ reset recovery failed: ${error}`, NS);
+      logger.error(() => `BLZ reset recovery failed: ${error}`, NS);
     });
   }
 

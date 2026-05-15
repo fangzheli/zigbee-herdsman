@@ -2,7 +2,7 @@ export interface Logger {
     debug: (messageOrLambda: string | (() => string), namespace: string) => void;
     info: (messageOrLambda: string | (() => string), namespace: string) => void;
     warning: (messageOrLambda: string | (() => string), namespace: string) => void;
-    error: (messageOrLambda: string, namespace: string) => void;
+    error: (messageOrLambda: string | (() => string), namespace: string) => void;
 }
 
 export let logger: Logger = {
@@ -12,7 +12,8 @@ export let logger: Logger = {
         console.info(`[${new Date().toISOString()}] ${namespace}: ${typeof messageOrLambda === "function" ? messageOrLambda() : messageOrLambda}`),
     warning: (messageOrLambda, namespace) =>
         console.warn(`[${new Date().toISOString()}] ${namespace}: ${typeof messageOrLambda === "function" ? messageOrLambda() : messageOrLambda}`),
-    error: (message, namespace) => console.error(`[${new Date().toISOString()}] ${namespace}: ${message}`),
+    error: (messageOrLambda, namespace) =>
+        console.error(`[${new Date().toISOString()}] ${namespace}: ${typeof messageOrLambda === "function" ? messageOrLambda() : messageOrLambda}`),
 };
 
 export function setLogger(l: Logger): void {

@@ -1205,6 +1205,9 @@ Future BLZ refactors should follow these rules:
 - Deferred reset-recovery cleanup error formatting until debug logging evaluates
   the message, so reset startup failures cannot be masked by logging before the
   driver performs its follow-up stop cleanup.
+- Extended shared `logger.error()` to accept lazy message lambdas and used that
+  for BLZ reset-recovery failure reporting, so an error object's stringification
+  cannot make the reset error catch path throw again.
 
 ## Next Steps
 
