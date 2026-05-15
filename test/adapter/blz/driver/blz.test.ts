@@ -246,8 +246,9 @@ describe("BLZ Driver", () => {
       const source = fs.readFileSync("src/adapter/blz/driver/blz.ts", "utf8");
 
       expect(source).toContain("private clearSerialRuntimeState(error: Error): void");
-      expect(source).toContain("this.clearSerialRuntimeState(reconnectError);");
-      expect(source).toContain("this.clearSerialRuntimeState(connectFailureError);");
+      expect(source).toContain("private captureSerialRuntimeCleanup(error: Error): unknown");
+      expect(source).toContain("this.captureSerialRuntimeCleanup(reconnectError);");
+      expect(source).toContain("this.captureSerialRuntimeCleanup(connectFailureError);");
       expect(source.match(/this\.clearWatchdogTimer\(\);/g)).toHaveLength(2);
     });
 
@@ -457,6 +458,27 @@ describe("BLZ Driver", () => {
 
       await blz.connect(serialPortOptions);
       await blz.connect(serialPortOptions);
+
+      expect(serialDriverMock.close).toHaveBeenCalledWith(false);
+      expect(serialDriverMock.close).toHaveBeenCalledTimes(1);
+    });
+
+    it("should close the existing serial driver when reconnect runtime cleanup fails", async () => {
+      const cleanupError = new Error("reconnect runtime cleanup failed");
+      const queue = (blz as unknown as {queue: {clear: (error: Error) => void}}).queue;
+      serialDriverMock.connect.mockResolvedValue(undefined);
+      serialDriverMock.isInitialized
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      await blz.connect(serialPortOptions);
+      queue.clear = vi.fn((): void => {
+        throw cleanupError;
+      });
+
+      await expect(blz.connect(serialPortOptions)).rejects.toThrow(cleanupError);
 
       expect(serialDriverMock.close).toHaveBeenCalledWith(false);
       expect(serialDriverMock.close).toHaveBeenCalledTimes(1);

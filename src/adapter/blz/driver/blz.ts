@@ -159,10 +159,22 @@ export class Blz extends EventEmitter {
     try {
       if (this.serialDriver.isInitialized()) {
         const reconnectError = this.createConnectionClosedError();
-        this.clearSerialRuntimeState(reconnectError);
-        await this.runConnectOperation(
-          () => this.serialDriver.close(false),
-          connectGeneration,
+        const runtimeCleanupError =
+          this.captureSerialRuntimeCleanup(reconnectError);
+        let closeError: unknown;
+
+        try {
+          await this.runConnectOperation(
+            () => this.serialDriver.close(false),
+            connectGeneration,
+          );
+        } catch (error) {
+          closeError = error;
+        }
+
+        this.throwIfReconnectCleanupFailed(
+          runtimeCleanupError,
+          closeError,
         );
       }
 
@@ -326,13 +338,8 @@ export class Blz extends EventEmitter {
     connectGeneration: number,
   ): Promise<void> {
     const connectFailureError = this.createFailureToConnectError();
-    let runtimeCleanupError: unknown;
-
-    try {
-      this.clearSerialRuntimeState(connectFailureError);
-    } catch (error) {
-      runtimeCleanupError = error;
-    }
+    const runtimeCleanupError =
+      this.captureSerialRuntimeCleanup(connectFailureError);
 
     try {
       await this.runConnectOperation(
@@ -348,6 +355,36 @@ export class Blz extends EventEmitter {
         () => `Failed to close serial driver after connect failure: ${error}`,
         NS,
       );
+    }
+
+    if (runtimeCleanupError !== undefined) {
+      throw runtimeCleanupError;
+    }
+  }
+
+  private captureSerialRuntimeCleanup(error: Error): unknown {
+    try {
+      this.clearSerialRuntimeState(error);
+    } catch (cleanupError) {
+      return cleanupError;
+    }
+
+    return undefined;
+  }
+
+  private throwIfReconnectCleanupFailed(
+    runtimeCleanupError: unknown,
+    closeError: unknown,
+  ): void {
+    if (runtimeCleanupError !== undefined && closeError !== undefined) {
+      throw new AggregateError(
+        [runtimeCleanupError, closeError],
+        "Failed to cleanup serial runtime state and close serial driver",
+      );
+    }
+
+    if (closeError !== undefined) {
+      throw closeError;
     }
 
     if (runtimeCleanupError !== undefined) {
