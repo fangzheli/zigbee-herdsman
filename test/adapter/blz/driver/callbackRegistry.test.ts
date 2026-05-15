@@ -2,6 +2,23 @@ import {describe, expect, it, vi} from "vitest";
 import {CallbackRegistry} from "../../../../src/adapter/blz/driver/callbackRegistry";
 
 describe("BLZ callback registry", () => {
+    it("does not notify callbacks removed before their turn", () => {
+        const registry = new CallbackRegistry<() => void>();
+        const second = vi.fn();
+        const first = vi.fn(() => {
+            registry.delete(second);
+        });
+
+        registry.add(first);
+        registry.add(second);
+
+        registry.notify((callback) => callback());
+
+        expect(first).toHaveBeenCalledOnce();
+        expect(second).not.toHaveBeenCalled();
+        expect(registry.count()).toBe(0);
+    });
+
     it("keeps callbacks registered during notification for the next notification", () => {
         const registry = new CallbackRegistry<() => void>();
         const registeredDuringNotify = vi.fn();

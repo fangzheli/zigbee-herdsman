@@ -16,6 +16,10 @@ export class CallbackRegistry<T> {
 
         try {
             for (const item of items) {
+                if (!this.items.has(item)) {
+                    continue;
+                }
+
                 try {
                     callback(item);
                 } catch (error) {
