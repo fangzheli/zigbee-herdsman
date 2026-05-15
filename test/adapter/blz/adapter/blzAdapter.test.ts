@@ -186,6 +186,9 @@ describe("BLZ Adapter", () => {
       expect(source).toContain("private isRunningGeneration(generation: number): boolean");
       expect(source.match(/this\.isRunningGeneration\(generation\)/g)).toHaveLength(3);
       expect(source.match(/!this\.closing && generation === this\.stopGeneration/g)).toHaveLength(1);
+      expect(source).toContain("private getRunningCancellationError(): Error");
+      expect(source.match(/this\.getRunningCancellationError\(\)/g)).toHaveLength(3);
+      expect(source.match(/new Error\("Adapter stopped"\)/g)).toHaveLength(1);
     });
 
     it("keeps ZDO response waiter ownership inside the driver API", () => {

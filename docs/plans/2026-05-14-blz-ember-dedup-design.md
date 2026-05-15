@@ -1130,6 +1130,8 @@ Future BLZ refactors should follow these rules:
 - Centralized BLZ connect generation active checks so connect operations,
   reset-interrupted attempts, and retry delays avoid negated cancellation
   predicates.
+- Centralized adapter stopped error creation so running-operation guards,
+  delay cancellation, and stop entry use one adapter-stop error source.
 
 ## Next Steps
 

@@ -240,7 +240,7 @@ export class BLZAdapter extends Adapter {
   }
 
   private async performStop(): Promise<void> {
-    const stopError = new Error("Adapter stopped");
+    const stopError = this.createAdapterStoppedError();
     this.enterStoppedState(stopError);
 
     try {
@@ -276,12 +276,20 @@ export class BLZAdapter extends Adapter {
 
   private throwIfStopped(generation: number): void {
     if (!this.isRunningGeneration(generation)) {
-      throw this.runningCancellationError ?? new Error("Adapter stopped");
+      throw this.getRunningCancellationError();
     }
   }
 
   private isRunningGeneration(generation: number): boolean {
     return !this.closing && generation === this.stopGeneration;
+  }
+
+  private getRunningCancellationError(): Error {
+    return this.runningCancellationError ?? this.createAdapterStoppedError();
+  }
+
+  private createAdapterStoppedError(): Error {
+    return new Error("Adapter stopped");
   }
 
   private cancelRunningOperations(error: Error): void {
@@ -300,7 +308,7 @@ export class BLZAdapter extends Adapter {
     return await this.runningOperations.run(
       operation,
       () => this.isRunningGeneration(generation),
-      () => this.runningCancellationError ?? new Error("Adapter stopped"),
+      () => this.getRunningCancellationError(),
     );
   }
 
@@ -316,7 +324,7 @@ export class BLZAdapter extends Adapter {
     );
 
     if (!completed) {
-      throw this.runningCancellationError ?? new Error("Adapter stopped");
+      throw this.getRunningCancellationError();
     }
 
     this.throwIfStopped(generation);
