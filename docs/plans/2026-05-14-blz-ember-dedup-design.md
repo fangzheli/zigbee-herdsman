@@ -1065,6 +1065,8 @@ Future BLZ refactors should follow these rules:
 - Cleaned up the BLZ serial event bridge on failed connect startup so repeated
   connect failures do not leave received/close listeners attached to the UART
   driver.
+- Split BLZ connect retries into a dedicated helper so serial event-bridge
+  ownership stays separate from per-attempt retry and failed-attempt cleanup.
 
 ## Next Steps
 

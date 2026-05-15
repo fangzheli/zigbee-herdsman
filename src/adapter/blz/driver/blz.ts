@@ -343,8 +343,6 @@ export class Blz extends EventEmitter {
   }
 
   private async performConnect(options: SerialPortOptions): Promise<void> {
-    let lastError: Error | null = null;
-    let connected = false;
     let connectionEstablished = false;
     const connectGeneration = this.connectGeneration;
     this.attachSerialDriverEventBridge();
@@ -366,66 +364,9 @@ export class Blz extends EventEmitter {
       this.attachConnectResetListener(resetForReconnect);
 
       try {
-        for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
-          try {
-            logger.debug(
-              `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
-              NS,
-            );
-            await this.runSerialConnectAttempt(options, connectGeneration);
-
-            if (this.isConnectCancelled(connectGeneration)) {
-              throw new Error("Connection cancelled by close");
-            }
-
-            // Verify connection is actually established
-            if (this.serialDriver.isInitialized()) {
-              connected = true;
-              break;
-            } else {
-              throw new Error("Driver reported connection but is not initialized");
-            }
-          } catch (error) {
-            lastError = error instanceof Error ? error : new Error(String(error));
-            logger.error(
-              `Connection attempt ${i} failed: ${lastError.message}`,
-              NS,
-            );
-
-            if (this.isConnectCancelled(connectGeneration)) {
-              throw lastError;
-            }
-
-            await this.cleanupFailedConnectAttempt(connectGeneration);
-
-            if (this.isConnectCancelled(connectGeneration)) {
-              throw lastError;
-            }
-
-            if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
-              const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
-              logger.debug(`Waiting ${delay}ms before next attempt`, NS);
-              const continueRetry = await this.waitForConnectRetry(
-                delay,
-                connectGeneration,
-              );
-
-              if (!continueRetry) {
-                throw new Error("Connection cancelled by close");
-              }
-            }
-          }
-        }
+        await this.connectWithRetries(options, connectGeneration);
       } finally {
         this.detachConnectResetListener(resetForReconnect);
-      }
-
-      if (!connected) {
-        const error = new Error(
-          `Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`,
-        );
-        error.cause = lastError;
-        throw error;
       }
 
       this.inResetingProcess = false;
@@ -441,6 +382,69 @@ export class Blz extends EventEmitter {
       }
       throw error;
     }
+  }
+
+  private async connectWithRetries(
+    options: SerialPortOptions,
+    connectGeneration: number,
+  ): Promise<void> {
+    let lastError: Error | null = null;
+
+    for (let i = 1; i <= MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+      try {
+        logger.debug(
+          `Attempting connection (attempt ${i}/${MAX_SERIAL_CONNECT_ATTEMPTS})`,
+          NS,
+        );
+        await this.runSerialConnectAttempt(options, connectGeneration);
+
+        if (this.isConnectCancelled(connectGeneration)) {
+          throw new Error("Connection cancelled by close");
+        }
+
+        // Verify connection is actually established
+        if (this.serialDriver.isInitialized()) {
+          return;
+        }
+
+        throw new Error("Driver reported connection but is not initialized");
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        logger.error(
+          `Connection attempt ${i} failed: ${lastError.message}`,
+          NS,
+        );
+
+        if (this.isConnectCancelled(connectGeneration)) {
+          throw lastError;
+        }
+
+        await this.cleanupFailedConnectAttempt(connectGeneration);
+
+        if (this.isConnectCancelled(connectGeneration)) {
+          throw lastError;
+        }
+
+        if (i < MAX_SERIAL_CONNECT_ATTEMPTS) {
+          const delay = SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i;
+          logger.debug(`Waiting ${delay}ms before next attempt`, NS);
+          const continueRetry = await this.waitForConnectRetry(
+            delay,
+            connectGeneration,
+          );
+
+          if (!continueRetry) {
+            throw new Error("Connection cancelled by close");
+          }
+        }
+      }
+    }
+
+    const error = new Error(
+      `Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`,
+    );
+    error.cause = lastError;
+    throw error;
   }
 
   private async runSerialConnectAttempt(
