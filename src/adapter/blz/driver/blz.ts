@@ -598,10 +598,14 @@ export class Blz extends EventEmitter {
 
   private cancelConnectionOperations(error: Error): void {
     this.connectGeneration += 1;
-    this.connectOperations.cancel(error);
+    this.cancelConnectOperations(error);
     this.cancelConnectResetOperations(error);
     this.cancelConnectRetryDelay();
     this.clearWatchdogTimer();
+  }
+
+  private cancelConnectOperations(error: Error): void {
+    this.connectOperations.cancel(error);
   }
 
   private cancelConnectResetOperations(error: Error): void {

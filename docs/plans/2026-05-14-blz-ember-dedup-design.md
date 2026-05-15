@@ -1080,6 +1080,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver stopped-state cleanup so lower-transport close
   and explicit stop clear ZDO waiters, cached coordinator/network state, and
   close emission through one helper.
+- Centralized low-level BLZ connect-operation cancellation so connection
+  close/reset cleanup cancels connect attempts through the same helper pattern
+  as reset attempts and retry delays.
 
 ## Next Steps
 
