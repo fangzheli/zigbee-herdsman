@@ -1139,6 +1139,25 @@ describe("BLZ Serial Driver", () => {
       expect(resetCallback).toHaveBeenCalledTimes(1);
     });
 
+    it("should emit reset when UART reset errors cannot expose a message", async () => {
+      const resetCallback = vi.fn();
+      const resetError = new Error("reset failed");
+      Object.defineProperty(resetError, "message", {
+        configurable: true,
+        get: () => {
+          throw new Error("reset message stringification failed");
+        },
+      });
+      writerMock.sendReset.mockImplementation(() => {
+        throw resetError;
+      });
+      driver.on("reset", resetCallback);
+
+      await expect(driver.reset()).rejects.toThrow("Reset error: <unprintable error>");
+
+      expect(resetCallback).toHaveBeenCalledTimes(1);
+    });
+
     it("should not retry pending sends after reset clears waiters", async () => {
       vi.useFakeTimers();
       try {

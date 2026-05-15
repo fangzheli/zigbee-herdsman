@@ -1241,6 +1241,8 @@ Future BLZ refactors should follow these rules:
   connect error cannot skip failed-attempt close cleanup and retry handling.
 - Wrapped non-`Error` low-level BLZ connect failures with safe fallback text so
   throwing `toString()` implementations cannot skip failed-attempt close cleanup.
+- Hardened UART error-message formatting for `Error.message` getters that
+  throw, preserving reset notification and retry cleanup paths.
 
 ## Next Steps
 

@@ -27,7 +27,11 @@ type BLZPacketMatcher = {
 
 function formatErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    return error.message;
+    try {
+      return error.message;
+    } catch {
+      // Fall through to the generic stringifier below.
+    }
   }
 
   try {
