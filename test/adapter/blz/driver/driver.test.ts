@@ -56,6 +56,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("extPanIdArray.push");
         expect(source).toContain("uint64ToLittleEndianBuffer(netParams.extPanId)");
         expect(source).not.toContain("const extPanIdArray = new Array<number>(8)");
+        expect(source).not.toContain("TODO: IEEE EUI-64 expansion method");
+        expect(source).not.toContain("const macBytes = reversedBuffer.subarray(0, 6)");
+        expect(source).not.toContain("TODO: make sure the stack is running");
         expect(source).not.toContain("function bytesToHex(");
         expect(source).not.toContain("function bytesEqual(");
         expect(source).toContain("bindingIndex: number | null;");

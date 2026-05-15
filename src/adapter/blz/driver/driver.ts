@@ -360,20 +360,6 @@ export class Driver extends EventEmitter {
       reversedBuffer[i] = rawMacBuffer[rawMacBuffer.length - 1 - i];
     }
     return reversedBuffer;
-
-    // TODO: IEEE EUI-64 expansion method (commented out for now)
-    // Extract the 6-byte MAC address (first 6 bytes after reversal, skip last 2 bytes which were 0x0000)
-    // const macBytes = reversedBuffer.subarray(0, 6);
-    //
-    // // Convert 6-byte MAC to 8-byte IEEE EUI-64 by inserting FF FE after 3rd byte
-    // // IEEE standard: MAC[0:3] + FF FE + MAC[3:6] -> EUI-64
-    // const ieeeEui64 = Buffer.alloc(8);
-    // macBytes.copy(ieeeEui64, 0, 0, 3);  // Copy first 3 bytes of MAC
-    // ieeeEui64[3] = 0xFF;                 // Insert FF
-    // ieeeEui64[4] = 0xFE;                 // Insert FE
-    // macBytes.copy(ieeeEui64, 5, 3, 6);  // Copy last 3 bytes of MAC
-    //
-    // return ieeeEui64;
   }
 
   /**
@@ -660,7 +646,6 @@ export class Driver extends EventEmitter {
         }
       }
       await this.waitForStartupDelay(1000, startupStopGeneration);
-      // TODO: make sure the stack is running
       logger.info("The Zigbee network is formed", NS);
 
       const netParams = await this.runCheckedStartupCommand(

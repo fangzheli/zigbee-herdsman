@@ -1182,6 +1182,10 @@ Future BLZ refactors should follow these rules:
 - Deferred endpoint ZCL send-detail and response-timeout formatting until debug
   logging evaluates the message, avoiding per-send IEEE/queue/timeout string
   construction and preventing timeout handling from being masked by logging.
+- Removed stale high-level driver TODOs around coordinator IEEE conversion and
+  post-formation stack readiness; the active startup path now documents those
+  checks through the current byte-reversal implementation and checked
+  `getNetworkParameters` / coordinator IEEE probes.
 
 ## Next Steps
 
