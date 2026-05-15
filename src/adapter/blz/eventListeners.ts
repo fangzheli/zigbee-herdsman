@@ -37,21 +37,21 @@ export function attachListenersOrRollback(target: ListenerTarget, listeners: rea
 }
 
 export function detachListeners(target: DetachListenerTarget, listeners: readonly OwnedEventListener[]): void {
-    let firstError: unknown;
-    let hasError = false;
+    const errors: unknown[] = [];
 
     for (const {event, listener} of listeners) {
         try {
             target.off(event, listener);
         } catch (error) {
-            if (!hasError) {
-                firstError = error;
-                hasError = true;
-            }
+            errors.push(error);
         }
     }
 
-    if (hasError) {
-        throw firstError;
+    if (errors.length === 1) {
+        throw errors[0];
+    }
+
+    if (errors.length > 1) {
+        throw new AggregateError(errors, "Failed to detach event listeners");
     }
 }

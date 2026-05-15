@@ -102,4 +102,38 @@ describe("BLZ event listener ownership helpers", () => {
         expect(off).toHaveBeenNthCalledWith(1, "first", first);
         expect(off).toHaveBeenNthCalledWith(2, "second", second);
     });
+
+    it("reports all detach failures", () => {
+        const first = vi.fn();
+        const second = vi.fn();
+        const firstError = new Error("first detach failed");
+        const secondError = new Error("second detach failed");
+        const off = vi.fn((event: string | symbol) => {
+            if (event === "first") {
+                throw firstError;
+            }
+
+            if (event === "second") {
+                throw secondError;
+            }
+        });
+        const target = {
+            off,
+        };
+        const listeners: readonly OwnedEventListener[] = [
+            {event: "first", listener: first},
+            {event: "second", listener: second},
+        ];
+
+        let thrown: unknown;
+        try {
+            detachListeners(target, listeners);
+        } catch (error) {
+            thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(AggregateError);
+        expect((thrown as AggregateError).errors).toEqual([firstError, secondError]);
+        expect(off).toHaveBeenCalledTimes(2);
+    });
 });
