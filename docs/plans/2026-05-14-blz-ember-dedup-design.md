@@ -919,6 +919,9 @@ Future BLZ refactors should follow these rules:
   logging evaluates the message.
 - Deferred BLZ restore-compatibility raw PAN ID and network-key hex formatting
   until debug logging evaluates the message.
+- Deferred UART parsed-frame debug/warning formatting until logging evaluates
+  the message, so raw frame `toString()` cannot interrupt ACK/reset handling
+  when logs are not consumed.
 
 ## Next Steps
 

@@ -7,6 +7,7 @@ import { Frame } from "../../../../src/adapter/blz/driver/frame";
 import { Parser } from "../../../../src/adapter/blz/driver/parser";
 import { Writer } from "../../../../src/adapter/blz/driver/writer";
 import { SerialPortOptions } from "../../../../src/adapter/tstype";
+import {logger} from "../../../../src/utils/logger";
 
 const socketConstructorMock = vi.hoisted(() => vi.fn());
 
@@ -696,6 +697,27 @@ describe("BLZ Serial Driver", () => {
       expect(callback).toHaveBeenCalledWith(frame.buffer);
     });
 
+    it("should not stringify parsed DATA frames unless debug logging evaluates the message", () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      const frame = createFrame(0x0000, 0x01, 0x00, Buffer.from([1]));
+      const toStringSpy = vi.spyOn(frame, "toString").mockImplementation(() => {
+        throw new Error("eager parsed DATA frame string");
+      });
+
+      try {
+        parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+
+        expect(writerMock.sendACK).toHaveBeenCalledWith(frame.sequence & 0x07);
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(error).not.toHaveBeenCalled();
+      } finally {
+        toStringSpy.mockRestore();
+        debug.mockRestore();
+        error.mockRestore();
+      }
+    });
+
     it("should handle ACK frames", () => {
       const frame = createFrame(0x0001, 0x01, 0x00);
 
@@ -705,6 +727,46 @@ describe("BLZ Serial Driver", () => {
       expect(writerMock.sendACK).not.toHaveBeenCalled();
     });
 
+    it("should not stringify parsed ACK frames unless debug logging evaluates the message", async () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      const frame = createFrame(0x0001, 0x01, 0x00);
+      const waiter = (
+        driver as unknown as {
+          waitFor: (
+            frameId: number,
+            timeout?: number,
+          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+          waitress: { remove: (id: number) => void };
+        }
+      ).waitFor(0x0001, 1000);
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (waitError: Error) => `rejected:${waitError.message}`,
+      );
+      const toStringSpy = vi.spyOn(frame, "toString").mockImplementation(() => {
+        throw new Error("eager parsed ACK frame string");
+      });
+
+      try {
+        parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+        const observed = await Promise.race([
+          waiterResult,
+          new Promise((resolve) => setImmediate(() => resolve("pending"))),
+        ]);
+
+        expect(observed).toBe("resolved");
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(error).not.toHaveBeenCalled();
+      } finally {
+        (driver as unknown as {waitress: { remove: (id: number) => void }}).waitress.remove(waiter.ID);
+        await waiterResult;
+        toStringSpy.mockRestore();
+        debug.mockRestore();
+        error.mockRestore();
+      }
+    });
+
     it("should handle RESET frames", () => {
       const frame = createFrame(0x0003, 0x01, 0x00);
 
@@ -712,6 +774,49 @@ describe("BLZ Serial Driver", () => {
 
       // RESET frames are just logged
       expect(writerMock.sendACK).not.toHaveBeenCalled();
+    });
+
+    it("should not stringify parsed RESET frames unless warning logging evaluates the message", () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const warning = vi.spyOn(logger, "warning").mockImplementation(() => {});
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      const frame = createFrame(0x0003, 0x01, 0x00);
+      const toStringSpy = vi.spyOn(frame, "toString").mockImplementation(() => {
+        throw new Error("eager parsed RESET frame string");
+      });
+
+      try {
+        parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(warning).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(error).not.toHaveBeenCalled();
+      } finally {
+        toStringSpy.mockRestore();
+        debug.mockRestore();
+        warning.mockRestore();
+        error.mockRestore();
+      }
+    });
+
+    it("should not stringify parsed RESET_ACK frames unless debug logging evaluates the message", () => {
+      const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+      const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+      const frame = createFrame(0x0004, 0x01, 0x00);
+      const toStringSpy = vi.spyOn(frame, "toString").mockImplementation(() => {
+        throw new Error("eager parsed RESET_ACK frame string");
+      });
+
+      try {
+        parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
+
+        expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(error).not.toHaveBeenCalled();
+      } finally {
+        toStringSpy.mockRestore();
+        debug.mockRestore();
+        error.mockRestore();
+      }
     });
 
     it("should handle ERROR frames", async () => {

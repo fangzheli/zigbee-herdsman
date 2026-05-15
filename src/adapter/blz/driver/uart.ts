@@ -285,7 +285,7 @@ export class SerialDriver extends EventEmitter {
       const reTx = frame.control & 0x01;
 
       this.recvSeq = (frmNum + 1) & 0x0f;
-      logger.debug(`<-- Frame (${frmNum}, ${reTx}): ${frame}`, NS);
+      logger.debug(() => `<-- Frame (${frmNum}, ${reTx}): ${frame}`, NS);
 
       switch (frame.frameId) {
         case 0x0001:
@@ -334,12 +334,12 @@ export class SerialDriver extends EventEmitter {
     if (!handled) {
       logger.debug(`Unexpected packet sequence ${ackSeq} `, NS);
     } else {
-      logger.debug(`<-- ACK (${ackSeq}): ${frame}`, NS);
+      logger.debug(() => `<-- ACK (${ackSeq}): ${frame}`, NS);
     }
   }
 
   private handleResetAck(frame: Frame): void {
-    logger.debug(`<-- RESET_ACK: ${frame}`, NS);
+    logger.debug(() => `<-- RESET_ACK: ${frame}`, NS);
     // this.waitress.resolve({frameId: -1});
   }
 
@@ -379,7 +379,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   private handleReset(frame: Frame): void {
-    logger.warning(`<-- RST:  ${frame}`, NS);
+    logger.warning(() => `<-- RST:  ${frame}`, NS);
   }
 
   public async close(emitClose: boolean): Promise<void> {
