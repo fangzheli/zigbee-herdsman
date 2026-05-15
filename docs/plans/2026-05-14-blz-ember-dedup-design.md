@@ -1176,6 +1176,9 @@ Future BLZ refactors should follow these rules:
 - Narrowed `Driver.permitJoining()` to return `void` after checking the lower
   command status, avoiding unnecessary exposure of BLZ command-frame payloads
   through the public driver API.
+- Narrowed the BLZ backup provider away from `BLZFrameData` to backup-specific
+  key and network-parameter interfaces, so backup creation depends only on the
+  fields it serializes.
 
 ## Next Steps
 

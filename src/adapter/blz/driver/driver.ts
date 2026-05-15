@@ -160,9 +160,34 @@ export class Driver extends EventEmitter {
     this.backupMan = new BLZAdapterBackup(
       {
         getCoordinatorVersion: () => this.getCoordinatorVersion(),
-        getGlobalTcLinkKey: () => this.getGlobalTcLinkKey(),
-        getCurrentNetworkParameters: () => this.getCurrentNetworkParameters(),
-        getNetworkKeyInfo: () => this.getNetworkKeyInfo(),
+        getGlobalTcLinkKey: async () => {
+          const key = await this.getGlobalTcLinkKey();
+
+          return {
+            linkKey: key.linkKey,
+            outgoingFrameCounter: key.outgoingFrameCounter,
+          };
+        },
+        getCurrentNetworkParameters: async () => {
+          const params = await this.getCurrentNetworkParameters();
+
+          return {
+            panId: params.panId,
+            extPanId: params.extPanId,
+            channel: params.channel,
+            channelMask: params.channelMask,
+            nwkUpdateId: params.nwkUpdateId,
+          };
+        },
+        getNetworkKeyInfo: async () => {
+          const key = await this.getNetworkKeyInfo();
+
+          return {
+            nwkKey: key.nwkKey,
+            nwkKeySeqNum: key.nwkKeySeqNum,
+            outgoingFrameCounter: key.outgoingFrameCounter,
+          };
+        },
         getMacAddress: () => this.getMacAddress(),
       },
       backupPath,

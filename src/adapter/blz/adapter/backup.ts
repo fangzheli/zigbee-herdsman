@@ -8,15 +8,33 @@ import { logger } from "../../../utils/logger";
 import { uint32MaskToChannels } from "../../../zspec/utils";
 import type { CoordinatorVersion } from "../../tstype";
 import { fixedBufferFromBytes, uint64ToLittleEndianBuffer } from "../byteUtils";
-import type { BLZFrameData } from "../driver/blz";
 
 const NS = "zh:blz:backup";
 
+interface BlzBackupTrustCenterKey {
+  linkKey: Buffer;
+  outgoingFrameCounter: number;
+}
+
+interface BlzBackupNetworkParameters {
+  panId: number;
+  extPanId: bigint;
+  channel: number;
+  channelMask: number;
+  nwkUpdateId: number;
+}
+
+interface BlzBackupNetworkKey {
+  nwkKey: Buffer;
+  nwkKeySeqNum: number;
+  outgoingFrameCounter: number;
+}
+
 interface BlzBackupProvider {
   getCoordinatorVersion: () => CoordinatorVersion;
-  getGlobalTcLinkKey: () => Promise<BLZFrameData>;
-  getCurrentNetworkParameters: () => Promise<BLZFrameData>;
-  getNetworkKeyInfo: () => Promise<BLZFrameData>;
+  getGlobalTcLinkKey: () => Promise<BlzBackupTrustCenterKey>;
+  getCurrentNetworkParameters: () => Promise<BlzBackupNetworkParameters>;
+  getNetworkKeyInfo: () => Promise<BlzBackupNetworkKey>;
   getMacAddress: () => Promise<Buffer>;
 }
 
