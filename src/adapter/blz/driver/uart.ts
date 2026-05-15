@@ -146,8 +146,6 @@ export class SerialDriver extends EventEmitter {
       throw error;
     }
 
-    let opened = false;
-
     try {
       await this.connectOperations.run(
         () => serialPort.asyncOpen(),
@@ -159,7 +157,6 @@ export class SerialDriver extends EventEmitter {
         throw this.createConnectionClosedError();
       }
 
-      opened = true;
       logger.debug("Serialport opened", NS);
 
       this.attachRuntimePortListeners(serialPort);
@@ -169,7 +166,7 @@ export class SerialDriver extends EventEmitter {
 
       this.initialized = true;
     } catch (error) {
-      if (!opened) {
+      if (!this.initialized) {
         this.cleanupFailedOpenPort(serialPort);
       }
 

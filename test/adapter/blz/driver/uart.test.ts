@@ -513,6 +513,28 @@ describe("BLZ Serial Driver", () => {
       ).toBeUndefined();
     });
 
+    it("should clean serial resources when runtime listener attachment fails after open", async () => {
+      serialPortMock.asyncOpen.mockResolvedValue(undefined);
+      serialPortMock.on.mockImplementation((event: string) => {
+        if (event === "error") {
+          throw new Error("runtime listener failed");
+        }
+      });
+
+      await expect(driver.connect(serialPortOptions)).rejects.toThrow("runtime listener failed");
+
+      expect(writerMock.unpipe).toHaveBeenCalledWith(serialPortMock);
+      expect(serialPortMock.unpipe).toHaveBeenCalledWith(parserMock);
+      expect(parserMock.off).toHaveBeenCalledWith("parsed", expect.any(Function));
+      expect(parserMock.reset).toHaveBeenCalled();
+      expect(serialPortMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(serialPortMock.off).toHaveBeenCalledWith("error", expect.any(Function));
+      expect(serialPortMock.destroy).toHaveBeenCalled();
+      expect(
+        (driver as unknown as {serialPort?: unknown}).serialPort,
+      ).toBeUndefined();
+    });
+
     it("should clean listeners and pipes when TCP socket open fails", async () => {
       const connect = driver.connect(tcpPortOptions);
       socketPortMock.once.mock.calls.find((call) => call[0] === "error")?.[1](
