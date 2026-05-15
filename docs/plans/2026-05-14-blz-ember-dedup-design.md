@@ -1259,6 +1259,9 @@ Future BLZ refactors should follow these rules:
   callers pending after a mutex wait is cleared.
 - Deferred high-level APS request retry error logging so send errors with
   throwing stringifiers do not interrupt retry exhaustion or cancellation paths.
+- Replaced low-level BLZ command send failure `JSON.stringify(Buffer)` error
+  formatting with byte-safe hex formatting, preserving the original lower send
+  error even if frame data cannot be JSON stringified.
 
 ## Next Steps
 

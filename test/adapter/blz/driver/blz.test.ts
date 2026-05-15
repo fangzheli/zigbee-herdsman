@@ -1168,6 +1168,38 @@ describe("BLZ Driver", () => {
       await expect(command).rejects.toThrow("Failure send getValue");
       await expect(command).rejects.toHaveProperty("cause", sendError);
     });
+
+    it("should preserve send failures when frame data cannot be JSON stringified", async () => {
+      const sendError = new Error("send failed");
+      let sentData: Buffer | undefined;
+      serialDriverMock.sendDATA.mockImplementation(async (data: Buffer) => {
+        sentData = data;
+        Object.defineProperty(data, "toJSON", {
+          configurable: true,
+          value: () => {
+            throw new Error("frame data stringification failed");
+          },
+        });
+        throw sendError;
+      });
+
+      let rejection: unknown;
+      try {
+        await blz.execCommand("getValue", {
+          valueId: BlzValueId.BLZ_VALUE_ID_STACK_VERSION,
+        });
+      } catch (error) {
+        rejection = error;
+      } finally {
+        if (sentData) {
+          Reflect.deleteProperty(sentData, "toJSON");
+        }
+      }
+
+      expect(rejection).toBeInstanceOf(Error);
+      expect((rejection as Error).message).toContain("Failure send getValue");
+      expect(rejection).toHaveProperty("cause", sendError);
+    });
   });
 
   describe("Event handling", () => {

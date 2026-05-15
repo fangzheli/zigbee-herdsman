@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 
 import { Queue, Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
-import { bufferFromBytes } from "../byteUtils";
+import { bufferFromBytes, bytesToHex } from "../byteUtils";
 import { SerialPortOptions } from "../../tstype";
 import { CancellableDelay } from "./cancellableDelay";
 import { CancellableOperation } from "./cancellableOperation";
@@ -828,7 +828,7 @@ export class Blz extends EventEmitter {
         } catch (error) {
           this.cancelWaiter(waiter);
           this.throwIfConnectionChanged(commandConnectGeneration);
-          throw new Error(`Failure send ${name}:` + JSON.stringify(data), {
+          throw new Error(`Failure send ${name}: ${bytesToHex(data)}`, {
             cause: error,
           });
         }
