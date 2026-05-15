@@ -266,7 +266,8 @@ export class Driver extends EventEmitter {
     logger.debug(`[BLZ] Current network parameters:`, NS);
     logger.debug(`[BLZ]   - PanID: 0x${currentParams.panId.toString(16)}`, NS);
     logger.debug(
-      `[BLZ]   - ExtendedPanID: 0x${currentParams.extendedPanId.toString("hex")}`,
+      () =>
+        `[BLZ]   - ExtendedPanID: 0x${bytesToHex(currentParams.extendedPanId)}`,
       NS,
     );
     logger.debug(`[BLZ]   - Channel: ${currentParams.Channel}`, NS);

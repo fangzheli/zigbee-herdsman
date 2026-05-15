@@ -1019,6 +1019,72 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(snapshot.channels).toBe(2 ** 15);
     });
 
+    it("does not stringify channel-change network parameters unless debug logging evaluates the message", async () => {
+        vi.useFakeTimers();
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        seedNetworkSnapshot(driver);
+        const nwkKey = Buffer.alloc(16);
+        const linkKey = Buffer.alloc(16);
+        const execCommand = vi.fn((command: string) => {
+            switch (command) {
+                case "getNwkSecurityInfos":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        nwkKey,
+                        outgoingFrameCounter: 1,
+                        nwkKeySeqNum: 0,
+                    });
+                case "getGlobalTcLinkKey":
+                    return Promise.resolve({
+                        status: BlzStatus.SUCCESS,
+                        linkKey,
+                        outgoingFrameCounter: 1,
+                        trustCenterAddress: 0,
+                    });
+                case "setNwkSecurityInfos":
+                case "setGlobalTcLinkKey":
+                    return Promise.resolve({status: BlzStatus.SUCCESS});
+                default:
+                    throw new Error(`unexpected command ${command}`);
+            }
+        });
+        const leaveNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        const formNetwork = vi.fn().mockResolvedValue(BlzStatus.SUCCESS);
+        setDriverBlz(driver, {execCommand, leaveNetwork, formNetwork});
+        const bufferToString = Buffer.prototype.toString;
+        const toStringSpy = vi.spyOn(Buffer.prototype, "toString").mockImplementation(function (
+            this: Buffer,
+            encoding?: BufferEncoding,
+            start?: number,
+            end?: number,
+        ) {
+            if (encoding === "hex") {
+                throw new Error("eager channel extended PAN ID string");
+            }
+
+            return bufferToString.call(this, encoding, start, end);
+        });
+
+        try {
+            const change = driver.changeChannel(15, 1);
+            const changeResult = change.then(
+                () => "resolved",
+                (error: Error) => `rejected:${error.message}`,
+            );
+            await vi.advanceTimersByTimeAsync(24000);
+
+            await expect(changeResult).resolves.toBe("resolved");
+            expect(debug).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(String),
+            );
+        } finally {
+            toStringSpy.mockRestore();
+            debug.mockRestore();
+        }
+    });
+
     it("cancels a driver-owned channel change delay when stopping", async () => {
         vi.useFakeTimers();
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");

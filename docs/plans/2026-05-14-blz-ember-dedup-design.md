@@ -195,6 +195,8 @@ Future BLZ refactors should follow these rules:
   value, form-network, and APS-send helpers use one status predicate.
 - Made low-level `setValue()` buffer logging lazy so debug-disabled paths do not
   stringify caller-owned buffers before sending.
+- Made high-level channel-change network parameter logging lazy and reused the
+  shared byte-to-hex helper for extended PAN ID formatting.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.
