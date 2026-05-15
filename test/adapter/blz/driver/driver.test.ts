@@ -924,6 +924,20 @@ describe("BLZ high-level driver lifecycle", () => {
         expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.has("0102030405060708")).toBe(false);
     });
 
+    it("does not remove reassigned address cache entries for a stale leave event", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+
+        handleDriverNodeJoined(driver, 0x1234, 0x0102030405060708n);
+        handleDriverNodeJoined(driver, 0x1234, 0x1112131415161718n);
+        handleDriverNodeJoined(driver, 0x5678, 0x0102030405060708n);
+        handleDriverNodeLeft(driver, 0x1234, "0x0102030405060708");
+
+        expect((driver as unknown as {nodeIdToEui64: Map<number, BlzEUI64>}).nodeIdToEui64.get(0x1234)?.toString()).toBe("1112131415161718");
+        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.get("1112131415161718")).toBe(0x1234);
+        expect((driver as unknown as {nodeIdToEui64: Map<number, BlzEUI64>}).nodeIdToEui64.get(0x5678)?.toString()).toBe("0102030405060708");
+        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.get("0102030405060708")).toBe(0x5678);
+    });
+
     it("clears address cache when stopping", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         handleDriverNodeJoined(driver, 0x3344, 0x1111);

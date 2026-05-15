@@ -1135,13 +1135,19 @@ export class Driver extends EventEmitter {
   }
 
   private removeCachedNode(nwk: number, ieeeAddr: string): void {
+    const normalized = normalizeIeeeAddress(ieeeAddr);
+    const cachedNwk = this.eui64ToNodeId.get(normalized);
+    if (cachedNwk !== undefined && cachedNwk !== nwk) {
+      return;
+    }
+
     const cachedEui64 = this.nodeIdToEui64.get(nwk);
     if (cachedEui64) {
       this.eui64ToNodeId.delete(normalizeIeeeAddress(cachedEui64));
     }
 
     this.nodeIdToEui64.delete(nwk);
-    this.eui64ToNodeId.delete(normalizeIeeeAddress(ieeeAddr));
+    this.eui64ToNodeId.delete(normalized);
   }
 
   private handleNodeJoined(nwk: number, ieee: number | bigint): void {
