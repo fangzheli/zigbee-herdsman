@@ -3331,6 +3331,40 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     });
 
+    it("emits malformed ZDO responses when parser errors cannot be stringified", () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        const incomingMessage = vi.fn();
+        const message = Buffer.from([0x00]);
+        const parseFailure = {
+            toString: () => {
+                throw new Error("parse failure stringification failed");
+            },
+        };
+        const readResponse = vi.spyOn(Zdo.Buffalo, "readResponse").mockImplementation(() => {
+            throw parseFailure;
+        });
+        driver.on("incomingMessage", incomingMessage);
+
+        try {
+            expect(() =>
+                (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+                    "apsDataIndication",
+                    makeIncomingZdoResponseFrame(0x3344, message),
+                ),
+            ).not.toThrow();
+        } finally {
+            readResponse.mockRestore();
+        }
+
+        expect(incomingMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sender: 0x3344,
+                message,
+                zdoResponse: undefined,
+            }),
+        );
+    });
+
     it("handles bigint EUI64 values from device join callbacks", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const deviceJoined = vi.fn();

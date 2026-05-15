@@ -73,6 +73,14 @@ type ApsFrameOverrides = Partial<Pick<
   "profileId" | "sourceEndpoint" | "destinationEndpoint" | "groupId"
 >>;
 
+function formatUnknownError(error: unknown): string {
+  try {
+    return String(error);
+  } catch {
+    return "<unprintable error>";
+  }
+}
+
 function channelToMask(channel: number): number {
   return 2 ** channel;
 }
@@ -980,7 +988,8 @@ export class Driver extends EventEmitter {
         );
       } catch (error) {
         logger.error(
-          `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${error}`,
+          () =>
+            `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${formatUnknownError(error)}`,
           NS,
         );
       }
