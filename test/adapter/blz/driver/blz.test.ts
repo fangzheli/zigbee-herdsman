@@ -435,6 +435,43 @@ describe("BLZ Driver", () => {
       expect(errorLog).toHaveBeenCalledWith(expect.any(Function), NS);
     });
 
+    it("should preserve failed-attempt cleanup when non-error connect failures cannot be stringified", async () => {
+      vi.spyOn(logger, "error").mockImplementation(() => {});
+      const connectFailure = {
+        toString: () => {
+          throw new Error("connect object stringification failed");
+        },
+      };
+      serialDriverMock.connect.mockRejectedValue(connectFailure);
+      serialDriverMock.isInitialized.mockReturnValue(false);
+      serialDriverMock.close.mockResolvedValue(undefined);
+
+      const connect = blz
+        .connect(serialPortOptions)
+        .catch((caught: Error) => caught);
+
+      for (let i = 1; i < MAX_SERIAL_CONNECT_ATTEMPTS; i++) {
+        await vi.advanceTimersByTimeAsync(
+          SERIAL_CONNECT_NEW_ATTEMPT_MIN_DELAY * i,
+        );
+      }
+
+      const error = await connect;
+      const cause = error.cause as Error & { cause?: unknown };
+
+      expect(error.message).toBe(
+        `Failed to connect after ${MAX_SERIAL_CONNECT_ATTEMPTS} attempts`,
+      );
+      expect(cause.message).toBe("<unprintable error>");
+      expect(cause.cause).toBe(connectFailure);
+      expect(serialDriverMock.connect).toHaveBeenCalledTimes(
+        MAX_SERIAL_CONNECT_ATTEMPTS,
+      );
+      expect(serialDriverMock.close).toHaveBeenCalledTimes(
+        MAX_SERIAL_CONNECT_ATTEMPTS,
+      );
+    });
+
     it("should preserve connect retry handling when failed-attempt close errors cannot be stringified", async () => {
       const closeError = new Error("close failed");
       closeError.toString = () => {

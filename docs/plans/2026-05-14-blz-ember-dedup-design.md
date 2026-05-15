@@ -1239,6 +1239,8 @@ Future BLZ refactors should follow these rules:
   errors do not mask the original startup failure or cleanup path.
 - Deferred low-level BLZ connect-attempt failure formatting so an unprintable
   connect error cannot skip failed-attempt close cleanup and retry handling.
+- Wrapped non-`Error` low-level BLZ connect failures with safe fallback text so
+  throwing `toString()` implementations cannot skip failed-attempt close cleanup.
 
 ## Next Steps
 

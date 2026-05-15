@@ -44,6 +44,18 @@ const WORD_LIST_FIELD_LENGTHS: Record<string, string> = {
   outputClusterList: "outputClusterCount",
 };
 
+function errorFromUnknown(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  try {
+    return new Error(String(error), { cause: error });
+  } catch {
+    return new Error("<unprintable error>", { cause: error });
+  }
+}
+
 /**
  * Type-specific for BLZ Frames.
  */
@@ -408,8 +420,7 @@ export class Blz extends EventEmitter {
 
         throw new Error("Driver reported connection but is not initialized");
       } catch (error) {
-        const attemptError =
-          error instanceof Error ? error : new Error(String(error));
+        const attemptError = errorFromUnknown(error);
         lastError = attemptError;
         logger.error(
           () => `Connection attempt ${i} failed: ${attemptError.message}`,
