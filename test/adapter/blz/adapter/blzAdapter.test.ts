@@ -314,6 +314,29 @@ describe("BLZ Adapter", () => {
       expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
     });
 
+    it("should report both stop and driver listener cleanup failures", async () => {
+      const stopError = new Error("stop failed");
+      const detachError = new Error("driver listener detach failed");
+      driverMock.stop.mockRejectedValue(stopError);
+      driverMock.off.mockImplementation((event: string) => {
+        if (event === "close") {
+          throw detachError;
+        }
+      });
+
+      const error = await adapter.stop().catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AggregateError);
+      const aggregateError = error as AggregateError;
+      expect(aggregateError.errors).toEqual([stopError, detachError]);
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
+      expect((adapter as unknown as {driverStopCloseExpected: boolean}).driverStopCloseExpected).toBe(false);
+    });
+
     it("should emit disconnected when unexpected driver close listener cleanup fails", () => {
       const disconnected = vi.fn();
       driverMock.off.mockImplementation((event: string) => {
@@ -390,6 +413,28 @@ describe("BLZ Adapter", () => {
       ]);
 
       expect(observed).toBe("rejected:startup failed");
+    });
+
+    it("should report both startup and driver listener cleanup failures", async () => {
+      const startupError = new Error("startup failed");
+      const detachError = new Error("driver listener detach failed");
+      driverMock.startup.mockRejectedValue(startupError);
+      driverMock.off.mockImplementation((event: string) => {
+        if (event === "close") {
+          throw detachError;
+        }
+      });
+
+      const error = await adapter.start().catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AggregateError);
+      const aggregateError = error as AggregateError;
+      expect(aggregateError.errors).toEqual([startupError, detachError]);
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
     });
 
     it("should cancel the startup settle delay when stopping", async () => {
