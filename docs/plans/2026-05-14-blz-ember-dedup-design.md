@@ -1116,6 +1116,9 @@ Future BLZ refactors should follow these rules:
 - Centralized form-network startup-aware operation wrapping so backup reads,
   key updates, and form commands share one helper for optional startup
   cancellation.
+- Moved uint64 little-endian conversion into shared byte utilities so backup
+  serialization, startup validation, and restore comparison do not carry
+  separate conversion loops.
 
 ## Next Steps
 

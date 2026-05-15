@@ -1,7 +1,6 @@
 /* istanbul ignore file */
 
 import { EventEmitter } from "events";
-import equals from "fast-deep-equal/es6";
 import type * as Models from "../../../models";
 import { Waitress } from "../../../utils";
 import { logger } from "../../../utils/logger";
@@ -13,7 +12,12 @@ import type {
   RequestToResponseMap,
 } from "../../../zspec/zdo/definition/tstypes";
 import { BLZAdapterBackup } from "../adapter/backup";
-import { fixedBufferFromBytes, fixedBufferFromHex } from "../byteUtils";
+import {
+  fixedBufferFromBytes,
+  fixedBufferFromHex,
+  uint64FromLittleEndianBytes,
+  uint64ToLittleEndianBuffer,
+} from "../byteUtils";
 import { normalizeIeeeAddress } from "../ieee";
 import * as TsType from "./../../tstype";
 import { ParamsDesc } from "./commands";
@@ -62,21 +66,6 @@ type IeeeMfg = {
 
 function channelToMask(channel: number): number {
   return 2 ** channel;
-}
-
-function uint64FromLittleEndianBytes(value: ArrayLike<number>): bigint {
-  if (value.length < 8) {
-    throw new RangeError(
-      `Buffer too small. Expected at least 8 bytes, received ${value.length}`,
-    );
-  }
-
-  let result = 0n;
-  for (let i = 7; i >= 0; i--) {
-    result = (result << 8n) | BigInt(value[i] & 0xff);
-  }
-
-  return result;
 }
 
 function bytesToHex(value: ArrayLike<number>): string {
@@ -789,19 +778,10 @@ export class Driver extends EventEmitter {
       return true;
     }
 
-    // Convert bigint extPanId to 8-byte array in little-endian order
-    const extPanIdArray = new Array<number>(8);
-    let extPanId =
-      typeof netParams.extPanId === "bigint"
-        ? netParams.extPanId
-        : BigInt(netParams.extPanId);
-    for (let i = 0; i < 8; i++) {
-      extPanIdArray[i] = Number(extPanId & 0xffn);
-      extPanId >>= 8n;
-    }
-    const sameExtendedPanId = equals(options.extendedPanID, extPanIdArray);
+    const extPanIdBytes = uint64ToLittleEndianBuffer(netParams.extPanId);
+    const sameExtendedPanId = bytesEqual(options.extendedPanID!, extPanIdBytes);
     logger.debug(`options.extendedPanID: ${options.extendedPanID}`, NS);
-    logger.debug(`current extendedPanID: ${extPanIdArray}`, NS);
+    logger.debug(`current extendedPanID: ${extPanIdBytes}`, NS);
     logger.debug(
       `needToBeInitialized same extended PanID: ${sameExtendedPanId}`,
       NS,

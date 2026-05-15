@@ -77,3 +77,30 @@ export function fixedBufferFromHex(
 
   return result;
 }
+
+export function uint64FromLittleEndianBytes(value: ArrayLike<number>): bigint {
+  if (value.length < 8) {
+    throw new RangeError(
+      `Buffer too small. Expected at least 8 bytes, received ${value.length}`,
+    );
+  }
+
+  let result = 0n;
+  for (let i = 7; i >= 0; i--) {
+    result = (result << 8n) | BigInt(value[i] & 0xff);
+  }
+
+  return result;
+}
+
+export function uint64ToLittleEndianBuffer(value: bigint | number | string): Buffer {
+  const result = Buffer.allocUnsafe(8);
+  let remaining = typeof value === "bigint" ? value : BigInt(value);
+
+  for (let i = 0; i < result.length; i++) {
+    result[i] = Number(remaining & 0xffn);
+    remaining >>= 8n;
+  }
+
+  return result;
+}

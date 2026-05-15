@@ -50,6 +50,8 @@ describe('BLZ Adapter Backup', () => {
             expect(source).toContain('private provider: BlzBackupProvider;');
             expect(source).not.toContain('import type { Driver }');
             expect(source).not.toContain('private driver: Driver;');
+            expect(source).toContain('uint64ToLittleEndianBuffer(netParams.extPanId)');
+            expect(source).not.toContain('function extendedPanIdToBackupBuffer');
         });
 
         it('should create backup successfully', async () => {

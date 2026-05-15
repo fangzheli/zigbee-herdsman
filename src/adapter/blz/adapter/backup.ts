@@ -7,7 +7,7 @@ import { BackupUtils } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import { uint32MaskToChannels } from "../../../zspec/utils";
 import type { CoordinatorVersion } from "../../tstype";
-import { fixedBufferFromBytes } from "../byteUtils";
+import { fixedBufferFromBytes, uint64ToLittleEndianBuffer } from "../byteUtils";
 import type { BLZFrameData } from "../driver/blz";
 
 const NS = "zh:blz:backup";
@@ -18,18 +18,6 @@ interface BlzBackupProvider {
   getCurrentNetworkParameters: () => Promise<BLZFrameData>;
   getNetworkKeyInfo: () => Promise<BLZFrameData>;
   getMacAddress: () => Promise<Buffer>;
-}
-
-function extendedPanIdToBackupBuffer(value: bigint): Buffer {
-  const result = Buffer.allocUnsafe(8);
-  let extPanId = value;
-
-  for (let i = 0; i < result.length; i++) {
-    result[i] = Number(extPanId & 0xffn);
-    extPanId >>= 8n;
-  }
-
-  return result;
 }
 
 export class BLZAdapterBackup {
@@ -81,7 +69,7 @@ export class BLZAdapterBackup {
       networkOptions: {
         panId: netParams.panId,
         // in zigpy/open-coordinator-backup, all binary sequences in this format need to be stored MSB-LSB (big endian)
-        extendedPanId: extendedPanIdToBackupBuffer(netParams.extPanId),
+        extendedPanId: uint64ToLittleEndianBuffer(netParams.extPanId),
         channelList: uint32MaskToChannels(netParams.channelMask),
         networkKey: netKey,
         networkKeyDistribute: true,
