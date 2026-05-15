@@ -357,7 +357,7 @@ export class SerialDriver extends EventEmitter {
 
   private handleError(frame: Frame): void {
     logger.error(`<-- Error: NCP is in error state`, NS);
-    // await this.reset();
+    this.handleResetFrame();
   }
 
   async reset(): Promise<void> {
@@ -393,6 +393,10 @@ export class SerialDriver extends EventEmitter {
 
   private handleReset(frame: Frame): void {
     logger.warning(() => `<-- RST:  ${frame}`, NS);
+    this.handleResetFrame();
+  }
+
+  private handleResetFrame(): void {
     const resetError = this.createConnectionResetError();
     this.enterClosedState(resetError);
     this.destroyActivePort();

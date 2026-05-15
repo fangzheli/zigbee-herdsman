@@ -947,9 +947,38 @@ describe("BLZ Serial Driver", () => {
 
       parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame);
 
-      // ERROR frames are just logged (reset is commented out in the actual code)
-      // The frame is handled but no ACK is sent
+      // ERROR frames are handled by the reset lifecycle path.
       expect(writerMock.sendACK).not.toHaveBeenCalled();
+    });
+
+    it("should clear pending waiters and emit reset when an ERROR frame is received", async () => {
+      const callback = vi.fn();
+      driver.on("reset", callback);
+      const waiter = (
+        driver as unknown as {
+          waitFor: (
+            frameId: number,
+            timeout?: number,
+          ) => { start: () => { promise: Promise<unknown>; ID: number }; ID: number };
+        }
+      ).waitFor(0x0001, 1000);
+      const waiterResult = waiter.start().promise.then(
+        () => "resolved",
+        (error: Error) => `rejected:${error.message}`,
+      );
+
+      parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](
+        createFrame(0x0002, 0x01, 0x00),
+      );
+      const observed = await Promise.race([
+        waiterResult,
+        new Promise((resolve) => setImmediate(() => resolve("pending"))),
+      ]);
+
+      expect(observed).toBe("rejected:Connection reset");
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(driver.isInitialized()).toBe(false);
+      expect(serialPortMock.destroy).toHaveBeenCalled();
     });
 
     it("should not retain unused parser reject state after malformed frames", () => {
