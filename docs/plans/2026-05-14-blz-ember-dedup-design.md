@@ -1012,6 +1012,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver BLZ listener attachment so startup binds
   close/reset/frame listeners through helper methods paired with the existing
   owned-listener detach path.
+- Centralized BLZ serial reset listener attachment so successful reconnects
+  dedupe the reset handler through one helper paired with serial listener
+  cleanup.
 
 ## Next Steps
 

@@ -428,8 +428,7 @@ export class Blz extends EventEmitter {
 
     this.inResetingProcess = false;
     this.failures = 0;
-    this.serialDriver.off("reset", this.onSerialResetHandler);
-    this.serialDriver.on("reset", this.onSerialResetHandler);
+    this.attachSerialDriverResetListener();
 
     this.clearWatchdogTimer();
 
@@ -527,6 +526,11 @@ export class Blz extends EventEmitter {
     this.serialDriver.on("received", this.onFrameReceivedHandler);
     this.serialDriver.on("close", this.onSerialCloseHandler);
     this.serialDriverEventBridgeAttached = true;
+  }
+
+  private attachSerialDriverResetListener(): void {
+    this.serialDriver.off("reset", this.onSerialResetHandler);
+    this.serialDriver.on("reset", this.onSerialResetHandler);
   }
 
   private detachSerialDriverListeners(): void {
