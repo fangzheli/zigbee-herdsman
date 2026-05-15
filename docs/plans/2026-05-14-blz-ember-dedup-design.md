@@ -1262,6 +1262,9 @@ Future BLZ refactors should follow these rules:
 - Replaced low-level BLZ command send failure `JSON.stringify(Buffer)` error
   formatting with byte-safe hex formatting, preserving the original lower send
   error even if frame data cannot be JSON stringified.
+- Replaced low-level BLZ leave/form network status failure messages with
+  status-based formatting, so unprintable command result objects cannot mask
+  the original non-success status failure.
 
 ## Next Steps
 

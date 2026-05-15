@@ -861,7 +861,7 @@ export class Blz extends EventEmitter {
 
     if (!this.isSuccessStatus(result.status)) {
       logger.debug("Failure to leave network", NS);
-      throw new Error("Failure to leave network: " + JSON.stringify(result));
+      throw new Error(`Failure to leave network: status ${result.status}`);
     }
 
     return result.status;
@@ -939,8 +939,9 @@ export class Blz extends EventEmitter {
 
     const v = await this.execCommand("formNetwork", commandParams);
     if (!this.isSuccessStatus(v.status)) {
-      logger.error("Failure forming network: " + JSON.stringify(v), NS);
-      throw new Error("Failure forming network: " + JSON.stringify(v));
+      const message = `Failure forming network: status ${v.status}`;
+      logger.error(message, NS);
+      throw new Error(message);
     }
 
     return v.status;

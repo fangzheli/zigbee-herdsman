@@ -1003,6 +1003,36 @@ describe("BLZ Driver", () => {
       ).rejects.toThrow("Failed to set value BLZ_VALUE_ID_STACK_VERSION: status 1");
     });
 
+    it("should preserve leave network status failures when the result cannot be JSON stringified", async () => {
+      vi.spyOn(logger, "debug").mockImplementation(() => {});
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+        toJSON: () => {
+          throw new Error("leave network result stringification failed");
+        },
+      } as unknown as BLZFrameData);
+
+      await expect(blz.leaveNetwork()).rejects.toThrow("Failure to leave network: status 1");
+    });
+
+    it("should preserve form network status failures when the result cannot be JSON stringified", async () => {
+      vi.spyOn(logger, "error").mockImplementation(() => {});
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+        toJSON: () => {
+          throw new Error("form network result stringification failed");
+        },
+      } as unknown as BLZFrameData);
+
+      await expect(
+        blz.formNetwork(
+          0 as unknown as Parameters<Blz["formNetwork"]>[0],
+          0x1234 as unknown as Parameters<Blz["formNetwork"]>[1],
+          11 as unknown as Parameters<Blz["formNetwork"]>[2],
+        ),
+      ).rejects.toThrow("Failure forming network: status 1");
+    });
+
     it("should not retain waiters for reset commands that do not wait for response", async () => {
       serialDriverMock.sendDATA.mockResolvedValue(undefined);
 
@@ -1172,7 +1202,7 @@ describe("BLZ Driver", () => {
     it("should preserve send failures when frame data cannot be JSON stringified", async () => {
       const sendError = new Error("send failed");
       let sentData: Buffer | undefined;
-      serialDriverMock.sendDATA.mockImplementation(async (data: Buffer) => {
+      serialDriverMock.sendDATA.mockImplementation((data: Buffer) => {
         sentData = data;
         Object.defineProperty(data, "toJSON", {
           configurable: true,
@@ -1180,7 +1210,7 @@ describe("BLZ Driver", () => {
             throw new Error("frame data stringification failed");
           },
         });
-        throw sendError;
+        return Promise.reject(sendError);
       });
 
       let rejection: unknown;
