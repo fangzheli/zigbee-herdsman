@@ -933,6 +933,8 @@ Future BLZ refactors should follow these rules:
 - Moved group and broadcast ZCL APS frame construction into high-level driver
   methods, keeping adapter group/broadcast sends focused on queueing, stop
   guards, and settle-delay behavior.
+- Made the low-level multicast/broadcast APS send helpers private after moving
+  production callers behind the high-level ZCL/ZDO driver APIs.
 
 ## Next Steps
 

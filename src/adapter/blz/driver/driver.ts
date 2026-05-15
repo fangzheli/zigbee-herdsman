@@ -1218,7 +1218,7 @@ export class Driver extends EventEmitter {
     );
   }
 
-  public async mrequest(
+  private async mrequest(
     apsFrame: BlzApsFrame,
     data: Buffer,
   ): Promise<boolean> {
@@ -1245,7 +1245,7 @@ export class Driver extends EventEmitter {
     }
   }
 
-  public async brequest(
+  private async brequest(
     destination: number,
     apsFrame: BlzApsFrame,
     data: Buffer,

@@ -58,6 +58,10 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private async sendZdoFrame(");
         expect(source).toContain("private waitFor(");
         expect(source).not.toContain("public waitFor(");
+        expect(source).toContain("private async mrequest(");
+        expect(source).not.toContain("public async mrequest(");
+        expect(source).toContain("private async brequest(");
+        expect(source).not.toContain("public async brequest(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -174,6 +178,31 @@ describe("BLZ high-level driver lifecycle", () => {
                 cancel: () => void;
             };
         }).waitFor(address, clusterId, timeout);
+    }
+
+    function driverMrequest(
+        driver: Driver,
+        apsFrame: BlzApsFrame,
+        data: Buffer,
+    ): Promise<boolean> {
+        return (driver as unknown as {
+            mrequest: (apsFrame: BlzApsFrame, data: Buffer) => Promise<boolean>;
+        }).mrequest(apsFrame, data);
+    }
+
+    function driverBrequest(
+        driver: Driver,
+        destination: number,
+        apsFrame: BlzApsFrame,
+        data: Buffer,
+    ): Promise<boolean> {
+        return (driver as unknown as {
+            brequest: (
+                destination: number,
+                apsFrame: BlzApsFrame,
+                data: Buffer,
+            ) => Promise<boolean>;
+        }).brequest(destination, apsFrame, data);
     }
 
     function getBackupMan(driver: Driver): {
@@ -1033,7 +1062,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x01, 0x02, 0x03]);
 
-        await expect(driver.mrequest(apsFrame, data)).resolves.toBe(false);
+        await expect(driverMrequest(driver, apsFrame, data)).resolves.toBe(false);
 
         expect(sendApsData).toHaveBeenCalledWith(
             BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
@@ -1056,7 +1085,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x04, 0x05]);
 
-        await expect(driver.brequest(0xfffc, apsFrame, data)).resolves.toBe(false);
+        await expect(driverBrequest(driver, 0xfffc, apsFrame, data)).resolves.toBe(false);
 
         expect(sendApsData).toHaveBeenCalledWith(
             BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
@@ -1134,8 +1163,8 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, blzMock);
         const apsFrame = makeApsFrame();
         const data = Buffer.from([0x06, 0x07]);
-        const multicast = driver.mrequest(apsFrame, data);
-        const broadcast = driver.brequest(0xfffc, apsFrame, data);
+        const multicast = driverMrequest(driver, apsFrame, data);
+        const broadcast = driverBrequest(driver, 0xfffc, apsFrame, data);
         const multicastResult = multicast.then((value) => `resolved:${value}`);
         const broadcastResult = broadcast.then((value) => `resolved:${value}`);
 
