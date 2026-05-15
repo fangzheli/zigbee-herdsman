@@ -1068,6 +1068,20 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.reset).not.toHaveBeenCalled();
     });
 
+    it("should preserve direct UART reset failures that cannot be stringified", async () => {
+      const resetError = new Error("uart reset failed");
+      resetError.toString = () => {
+        throw new Error("reset stringification failed");
+      };
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      serialDriverMock.isInitialized.mockReturnValue(true);
+      serialDriverMock.reset.mockRejectedValue(resetError);
+
+      await expect(blz.forceReset()).rejects.toBe(resetError);
+
+      expect((blz as unknown as {inResetingProcess: boolean}).inResetingProcess).toBe(false);
+    });
+
     it("should handle send failures before command waiters start", async () => {
       const sendError = new Error("send failed");
       serialDriverMock.sendDATA.mockRejectedValue(sendError);

@@ -719,7 +719,7 @@ export class Blz extends EventEmitter {
       }
     } catch (error) {
       this.inResetingProcess = wasResetingProcess;
-      logger.error(`Direct UART reset failed: ${error}`, NS);
+      logger.error(() => `Direct UART reset failed: ${error}`, NS);
       throw error;
     }
   }

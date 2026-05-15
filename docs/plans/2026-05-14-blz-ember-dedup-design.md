@@ -1227,6 +1227,8 @@ Future BLZ refactors should follow these rules:
   heartbeat failures still advance the failure counter and emit reset recovery.
 - Deferred failed-connect serial-close cleanup formatting so unprintable close
   failures cannot mask the original connect failure or short-circuit retries.
+- Deferred direct UART reset failure formatting so reset recovery keeps the
+  original lower reset error after restoring BLZ reset state.
 
 ## Next Steps
 
