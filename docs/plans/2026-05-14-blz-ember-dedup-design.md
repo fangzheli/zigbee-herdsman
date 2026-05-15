@@ -1090,6 +1090,9 @@ Future BLZ refactors should follow these rules:
 - Routed TCP ready-stage UART reset through connect-operation cancellation so
   closing during socket readiness interrupts the reset wait instead of leaving
   the ready handler outside the connect lifecycle.
+- Centralized UART closed-state cleanup so explicit close and port close clear
+  pending operations, parser state, and initialization state through one helper
+  while preserving graceful serial flush-close decisions.
 
 ## Next Steps
 

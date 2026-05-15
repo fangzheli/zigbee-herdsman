@@ -390,11 +390,8 @@ export class SerialDriver extends EventEmitter {
     logger.debug("Closing UART", NS);
     const closeError = new Error("Connection closed");
     this.cancelConnectOperations(closeError);
-    this.cancelPendingOperations(closeError);
-    this.cleanupParser();
-
     const wasInitialized = this.initialized;
-    this.initialized = false;
+    this.enterClosedState(closeError);
 
     const serialPort = this.serialPort;
     if (serialPort) {
@@ -498,6 +495,12 @@ export class SerialDriver extends EventEmitter {
     this.connectOperations.cancel(error);
   }
 
+  private enterClosedState(error: Error): void {
+    this.initialized = false;
+    this.cancelPendingOperations(error);
+    this.cleanupParser();
+  }
+
   private detachSerialPort(): void {
     if (!this.serialPort) {
       return;
@@ -540,12 +543,10 @@ export class SerialDriver extends EventEmitter {
 
   private onPortClose(err: boolean | Error): void {
     logger.debug(`Port closed. Error? ${err}`, NS);
-    this.initialized = false;
     const closeError = new Error(
       err != null && err !== false ? "Connection reset" : "Connection closed",
     );
-    this.cancelPendingOperations(closeError);
-    this.cleanupParser();
+    this.enterClosedState(closeError);
 
     this.destroyActivePort();
 

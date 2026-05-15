@@ -178,6 +178,8 @@ describe("BLZ Serial Driver", () => {
       expect(source).toContain("private cancelSendRetryDelay(): void");
       expect(source).toContain("this.cancelSendRetryDelay();");
       expect(source.match(/this\.sendRetryDelay\.cancel\(\);/g)).toHaveLength(1);
+      expect(source).toContain("private enterClosedState(error: Error): void");
+      expect(source.match(/this\.enterClosedState\(closeError\);/g)).toHaveLength(2);
       expect(source).toContain("private cancelConnectOperations(error: Error): void");
       expect(source).toContain("this.cancelConnectOperations(closeError);");
       expect(source.match(/this\.connectOperations\.cancel\(error\);/g)).toHaveLength(1);
