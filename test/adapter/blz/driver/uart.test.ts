@@ -548,6 +548,7 @@ describe("BLZ Serial Driver", () => {
 
       await expect(driver.close(false)).rejects.toThrow("parser cleanup failed");
 
+      expect(parserMock.reset).toHaveBeenCalled();
       expect(serialPortMock.asyncFlushAndClose).toHaveBeenCalled();
       expect(serialPortMock.destroy).not.toHaveBeenCalled();
       expect((driver as unknown as {serialPort?: unknown}).serialPort).toBeUndefined();

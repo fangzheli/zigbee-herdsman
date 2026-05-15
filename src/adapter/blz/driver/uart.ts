@@ -525,8 +525,14 @@ export class SerialDriver extends EventEmitter {
   }
 
   private cleanupParser(): void {
-    this.parser.off("parsed", this.onParsedHandler);
-    this.parser.reset();
+    runCleanupSteps([
+      () => {
+        this.parser.off("parsed", this.onParsedHandler);
+      },
+      () => {
+        this.parser.reset();
+      },
+    ]);
   }
 
   private attachParserToPort(port: SerialPort | net.Socket): void {
