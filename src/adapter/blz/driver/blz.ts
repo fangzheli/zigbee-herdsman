@@ -509,19 +509,39 @@ export class Blz extends EventEmitter {
   }
 
   private clearPendingCommands(error: Error): void {
-    this.queue.clear(error);
-    this.commandWaiters.clear(error);
+    runCleanupSteps([
+      () => {
+        this.queue.clear(error);
+      },
+      () => {
+        this.commandWaiters.clear(error);
+      },
+    ]);
   }
 
   private clearSerialRuntimeState(error: Error): void {
-    this.clearWatchdogTimer();
-    this.clearPendingCommands(error);
+    runCleanupSteps([
+      () => {
+        this.clearWatchdogTimer();
+      },
+      () => {
+        this.clearPendingCommands(error);
+      },
+    ]);
   }
 
   private enterDisconnectedState(connectionError: Error, commandError = connectionError): void {
-    this.cancelConnectionOperations(connectionError);
-    this.clearPendingCommands(commandError);
-    this.detachSerialDriverListeners();
+    runCleanupSteps([
+      () => {
+        this.cancelConnectionOperations(connectionError);
+      },
+      () => {
+        this.clearPendingCommands(commandError);
+      },
+      () => {
+        this.detachSerialDriverListeners();
+      },
+    ]);
   }
 
   private cleanupAfterSerialDriverEvent(connectionError: Error, commandError = connectionError): void {
