@@ -912,6 +912,21 @@ describe("BLZ Driver", () => {
       ).rejects.toThrow("Failed to get value BLZ_VALUE_ID_STACK_VERSION: status 1");
     });
 
+    it("should preserve getValue status failures when the result cannot be JSON stringified", async () => {
+      vi.spyOn(logger, "error").mockImplementation(() => {});
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+        value: Buffer.from([1, 2]),
+        toJSON: () => {
+          throw new Error("getValue result stringification failed");
+        },
+      } as unknown as BLZFrameData);
+
+      await expect(
+        blz.getValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION),
+      ).rejects.toThrow("Failed to get value BLZ_VALUE_ID_STACK_VERSION: status 1");
+    });
+
     it("should not stringify network command results unless debug logging evaluates the message", async () => {
       const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
       const networkInitResult = {status: BlzStatus.SUCCESS};
@@ -997,6 +1012,20 @@ describe("BLZ Driver", () => {
       vi.spyOn(blz, "execCommand").mockResolvedValue({
         status: BlzStatus.GENERAL_ERROR,
       } as BLZFrameData);
+
+      await expect(
+        blz.setValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION, 0x12345678),
+      ).rejects.toThrow("Failed to set value BLZ_VALUE_ID_STACK_VERSION: status 1");
+    });
+
+    it("should preserve setValue status failures when the result cannot be JSON stringified", async () => {
+      vi.spyOn(logger, "error").mockImplementation(() => {});
+      vi.spyOn(blz, "execCommand").mockResolvedValue({
+        status: BlzStatus.GENERAL_ERROR,
+        toJSON: () => {
+          throw new Error("setValue result stringification failed");
+        },
+      } as unknown as BLZFrameData);
 
       await expect(
         blz.setValue(BlzValueId.BLZ_VALUE_ID_STACK_VERSION, 0x12345678),

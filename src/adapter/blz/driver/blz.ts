@@ -900,7 +900,8 @@ export class Blz extends EventEmitter {
 
     if (!this.isSuccessStatus(ret.status)) {
       logger.error(
-        `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`,
+        () =>
+          `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
       );
       throw new Error(`Failed to set value ${valueName}: status ${ret.status}`);
@@ -916,7 +917,8 @@ export class Blz extends EventEmitter {
 
     if (!this.isSuccessStatus(ret.status)) {
       logger.error(
-        `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`,
+        () =>
+          `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`,
         NS,
       );
       throw new Error(`Failed to get value ${valueName}: status ${ret.status}`);

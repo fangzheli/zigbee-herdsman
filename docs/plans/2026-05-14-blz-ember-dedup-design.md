@@ -1265,6 +1265,8 @@ Future BLZ refactors should follow these rules:
 - Replaced low-level BLZ leave/form network status failure messages with
   status-based formatting, so unprintable command result objects cannot mask
   the original non-success status failure.
+- Deferred low-level BLZ get/set value status failure logging so unprintable
+  command result objects cannot mask the status-specific value errors.
 
 ## Next Steps
 
