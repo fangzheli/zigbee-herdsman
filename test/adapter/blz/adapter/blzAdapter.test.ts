@@ -188,6 +188,14 @@ describe("BLZ Adapter", () => {
       expect(source).toContain("this.driver.sendZdo(");
     });
 
+    it("centralizes queued adapter command guards", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).toContain("private async runQueuedWhileRunning<T>(");
+      expect(source.match(/this\.queue\.execute/g)).toHaveLength(1);
+      expect(source.match(/this\.checkInterpanLock\(\);/g)).toHaveLength(1);
+    });
+
     it("keeps group and broadcast ZCL APS sends inside the driver API", () => {
       const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
 

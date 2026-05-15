@@ -314,6 +314,19 @@ export class BLZAdapter extends Adapter {
     this.throwIfStopped(generation);
   }
 
+  private async runQueuedWhileRunning<T>(
+    operation: (generation: number) => Promise<T>,
+    key?: string | number,
+  ): Promise<T> {
+    return await this.queue.execute<T>(async () => {
+      this.checkInterpanLock();
+      const generation = this.stopGeneration;
+      this.throwIfStopped(generation);
+
+      return await operation(generation);
+    }, key);
+  }
+
   public async getCoordinatorIEEE(): Promise<string> {
     return formatIeeeAddress(this.driver.getCoordinatorIeee());
   }
@@ -438,11 +451,7 @@ export class BLZAdapter extends Adapter {
       return;
     }
 
-    return await this.queue.execute(async () => {
-      this.checkInterpanLock();
-      const generation = this.stopGeneration;
-      this.throwIfStopped(generation);
-
+    return await this.runQueuedWhileRunning(async (generation) => {
       const response = await this.runOperationWhileRunning(
         () =>
           this.driver.sendZdo(
@@ -503,11 +512,7 @@ export class BLZAdapter extends Adapter {
       NS,
     );
 
-    await this.queue.execute(async () => {
-      this.checkInterpanLock();
-      const generation = this.stopGeneration;
-      this.throwIfStopped(generation);
-
+    await this.runQueuedWhileRunning(async (generation) => {
       await this.runOperationWhileRunning(
         () =>
           this.driver.sendZdo(
@@ -544,23 +549,23 @@ export class BLZAdapter extends Adapter {
     sourceEndpoint?: number,
     profileId?: number,
   ): Promise<ZclPayload | undefined> {
-    return await this.queue.execute<ZclPayload | undefined>(async () => {
-      this.checkInterpanLock();
-      const generation = this.stopGeneration;
-      return await this.sendZclFrameToEndpointInternal(
-        ieeeAddr,
-        networkAddress,
-        endpoint,
-        sourceEndpoint ?? 1,
-        zclFrame,
-        timeout,
-        disableResponse,
-        disableRecovery,
-        0,
-        profileId ?? ZSpec.HA_PROFILE_ID,
-        generation,
-      );
-    }, networkAddress);
+    return await this.runQueuedWhileRunning<ZclPayload | undefined>(
+      async (generation) =>
+        await this.sendZclFrameToEndpointInternal(
+          ieeeAddr,
+          networkAddress,
+          endpoint,
+          sourceEndpoint ?? 1,
+          zclFrame,
+          timeout,
+          disableResponse,
+          disableRecovery,
+          0,
+          profileId ?? ZSpec.HA_PROFILE_ID,
+          generation,
+        ),
+      networkAddress,
+    );
   }
 
   private async sendZclFrameToEndpointInternal(
@@ -671,10 +676,7 @@ export class BLZAdapter extends Adapter {
     sourceEndpoint?: number,
     profileId?: number,
   ): Promise<void> {
-    return await this.queue.execute<void>(async () => {
-      const generation = this.stopGeneration;
-      this.checkInterpanLock();
-
+    return await this.runQueuedWhileRunning<void>(async (generation) => {
       const sent = await this.runOperationWhileRunning(
         () =>
           this.driver.sendZclMulticast(
@@ -705,9 +707,7 @@ export class BLZAdapter extends Adapter {
     destination: ZSpec.BroadcastAddress,
     profileId?: number,
   ): Promise<void> {
-    return await this.queue.execute<void>(async () => {
-      const generation = this.stopGeneration;
-      this.checkInterpanLock();
+    return await this.runQueuedWhileRunning<void>(async (generation) => {
       // Green Power is not supported by BLZ
       if (endpoint === ZSpec.GP_ENDPOINT) {
         return;

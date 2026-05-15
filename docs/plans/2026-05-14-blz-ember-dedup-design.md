@@ -978,6 +978,9 @@ Future BLZ refactors should follow these rules:
 - Centralized adapter stop/driver-close pending-operation cleanup so queue
   jobs, ZCL waiters, cancellable lower operations, and settle delays are cleared
   through one stopped-state path.
+- Centralized adapter queued-command guards so ZDO sends, channel changes, and
+  ZCL endpoint/group/broadcast sends share the same queue, Inter-PAN, and
+  stopped-generation checks before running lower driver operations.
 
 ## Next Steps
 
