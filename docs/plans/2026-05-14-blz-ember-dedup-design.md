@@ -1223,6 +1223,10 @@ Future BLZ refactors should follow these rules:
   the handler before the surrounding serial implementation finishes dispatch.
 - Deferred UART send-attempt failure formatting so unprintable writer errors
   cannot replace retry/final send failure handling with a logging exception.
+- Deferred low-level BLZ watchdog heartbeat error formatting so unprintable
+  heartbeat failures still advance the failure counter and emit reset recovery.
+- Deferred failed-connect serial-close cleanup formatting so unprintable close
+  failures cannot mask the original connect failure or short-circuit retries.
 
 ## Next Steps
 

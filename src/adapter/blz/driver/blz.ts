@@ -477,7 +477,10 @@ export class Blz extends EventEmitter {
         throw error;
       }
 
-      logger.debug(`Failed to close serial driver after connect failure: ${error}`, NS);
+      logger.debug(
+        () => `Failed to close serial driver after connect failure: ${error}`,
+        NS,
+      );
     }
   }
 
@@ -1060,7 +1063,7 @@ export class Blz extends EventEmitter {
       if (!this.isWatchdogGenerationActive(watchdogGeneration)) {
         return;
       }
-      logger.error(`Watchdog heartbeat timeout ${error}`, NS);
+      logger.error(() => `Watchdog heartbeat timeout ${error}`, NS);
 
       if (!this.inResetingProcess) {
         this.failures += 1;
