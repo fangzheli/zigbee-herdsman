@@ -166,9 +166,23 @@ describe("BLZ Adapter", () => {
       expect(source).not.toContain("public onDriverClose(): void");
       expect(source).toContain("private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void");
       expect(source).not.toContain("private async handleDeviceJoin");
-      expect(source).toContain("private cancelZclResponseWaiter(");
-      expect(source.match(/this\.cancelZclResponseWaiter\(response\);/g)).toHaveLength(2);
       expect(source).not.toContain('return await Promise.reject(new Error("Not supported"));');
+    });
+
+    it("keeps adapter ZCL response waiter ownership behind a helper", () => {
+      const adapterSource = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+      const waiterSource = fs.readFileSync("src/adapter/blz/adapter/zclResponseWaiters.ts", "utf8");
+
+      expect(adapterSource).toContain("private readonly zclResponseWaiters = new ZclResponseWaiters();");
+      expect(adapterSource).not.toContain("private waitress:");
+      expect(adapterSource).not.toContain("new Waitress<ZclWaitressPayload, ClusterWaitressMatcher>");
+      expect(adapterSource).toContain("this.zclResponseWaiters.resolve(");
+      expect(adapterSource).toContain("this.zclResponseWaiters.waitFor(");
+      expect(adapterSource.match(/this\.zclResponseWaiters\.cancel\(response\);/g)).toHaveLength(2);
+      expect(adapterSource).toContain("this.zclResponseWaiters.clear(error);");
+      expect(waiterSource).toContain("export class ZclResponseWaiters");
+      expect(waiterSource).toContain("private readonly waitress = new Waitress");
+      expect(waiterSource).toContain("public cancel(waiter: ZclResponseWaiter | null): void");
     });
 
     it("centralizes adapter stop and close pending-operation cleanup", () => {
@@ -178,7 +192,7 @@ describe("BLZ Adapter", () => {
       expect(source.match(/this\.queue\.clear\(/g)).toHaveLength(1);
       expect(source).toContain("private clearZclResponseWaiters(error: Error): void");
       expect(source.match(/this\.clearZclResponseWaiters\(/g)).toHaveLength(1);
-      expect(source.match(/this\.waitress\.clear\(error\);/g)).toHaveLength(1);
+      expect(source.match(/this\.zclResponseWaiters\.clear\(error\);/g)).toHaveLength(1);
       expect(source).toContain("private cancelStopDelay(): void");
       expect(source).toContain("this.cancelStopDelay();");
       expect(source.match(/this\.stopDelay\.cancel\(/g)).toHaveLength(1);
@@ -1103,7 +1117,9 @@ describe("BLZ Adapter", () => {
       ).rejects.toThrow("driver endpoint send failed");
 
       expect(
-        (adapter as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (
+          adapter as unknown as {zclResponseWaiters: {count: () => number}}
+        ).zclResponseWaiters.count(),
       ).toBe(0);
     });
 
@@ -2197,7 +2213,9 @@ describe("BLZ Adapter", () => {
         ),
       ).rejects.toThrow("driver request failed");
       expect(
-        (adapter as unknown as {waitress: {count: () => number}}).waitress.count(),
+        (
+          adapter as unknown as {zclResponseWaiters: {count: () => number}}
+        ).zclResponseWaiters.count(),
       ).toBe(0);
     });
 

@@ -3,16 +3,13 @@
 import assert from "node:assert";
 
 import * as Models from "../../../models";
-import { Queue, Waitress } from "../../../utils";
+import { Queue } from "../../../utils";
 import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import * as Zcl from "../../../zspec/zcl";
 import * as Zdo from "../../../zspec/zdo";
 import * as ZdoTypes from "../../../zspec/zdo/definition/tstypes";
-import Adapter, {
-  type ClusterWaitressMatcher,
-  type ZclWaitressPayload,
-} from "../../adapter";
+import Adapter from "../../adapter";
 import type { ZclPayload } from "../../events";
 import {
   AdapterOptions,
@@ -33,6 +30,10 @@ import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType } from "../driver/types";
 import { formatIeeeAddress } from "../ieee";
 import { parseNwkUpdateChannelChange } from "./nwkUpdate";
+import {
+  ZclResponseWaiters,
+  type ZclResponseWaiter,
+} from "./zclResponseWaiters";
 
 const NS = "zh:blz";
 
@@ -72,7 +73,7 @@ function errorFromUnknown(error: unknown): Error {
 
 export class BLZAdapter extends Adapter {
   private driver: Driver;
-  private waitress: Waitress<ZclWaitressPayload, ClusterWaitressMatcher>;
+  private readonly zclResponseWaiters = new ZclResponseWaiters();
   private interpanLock: boolean;
   private queue: Queue;
   private closing: boolean;
@@ -105,10 +106,6 @@ export class BLZAdapter extends Adapter {
     this.hasZdoMessageOverhead = true;
     this.manufacturerID = Zcl.ManufacturerCode.BOUFFALO_LAB_NANJING_CO_LTD;
 
-    this.waitress = new Waitress<ZclWaitressPayload, ClusterWaitressMatcher>(
-      Adapter.zclWaitressValidator,
-      Adapter.clusterWaitressTimeoutFormatter,
-    );
     this.interpanLock = false;
     this.closing = false;
     this.stopGeneration = 0;
@@ -171,7 +168,7 @@ export class BLZAdapter extends Adapter {
       };
 
       if (payload.header !== undefined) {
-        this.waitress.resolve(payload as ZclWaitressPayload);
+        this.zclResponseWaiters.resolve(payload);
       }
       this.emit("zclPayload", payload);
     }
@@ -664,13 +661,13 @@ export class BLZAdapter extends Adapter {
         generation,
       );
     } catch (error) {
-      this.cancelZclResponseWaiter(response);
+      this.zclResponseWaiters.cancel(response);
       throw error;
     }
     this.throwIfStopped(generation);
 
     if (!dataConfirmResult) {
-      this.cancelZclResponseWaiter(response);
+      this.zclResponseWaiters.cancel(response);
       throw Error("sendZclFrameToEndpointInternal error");
     }
     if (response !== null) {
@@ -864,26 +861,19 @@ export class BLZAdapter extends Adapter {
     clusterID: number,
     commandIdentifier: number,
     timeout: number,
-  ): { start: () => { promise: Promise<ZclPayload> }; cancel: () => void } {
-    const waiter = this.waitress.waitFor({
-      address: networkAddress,
+  ): ZclResponseWaiter {
+    return this.zclResponseWaiters.waitFor(
+      networkAddress,
       endpoint,
-      clusterId: clusterID,
-      commandId: commandIdentifier,
       transactionSequenceNumber,
-    }, timeout);
-    const cancel = (): void => this.waitress.remove(waiter.ID);
-    return { start: waiter.start, cancel };
-  }
-
-  private cancelZclResponseWaiter(
-    waiter: ReturnType<typeof this.waitForInternal> | null,
-  ): void {
-    waiter?.cancel();
+      clusterID,
+      commandIdentifier,
+      timeout,
+    );
   }
 
   private clearZclResponseWaiters(error: Error): void {
-    this.waitress.clear(error);
+    this.zclResponseWaiters.clear(error);
   }
 
   public waitFor(
