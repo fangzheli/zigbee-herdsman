@@ -74,6 +74,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async brequest(");
         expect(source).toContain("private async request(");
         expect(source).not.toContain("public async request(");
+        expect(source).toContain("private async sendRoutedApsRequest(");
+        expect(source).toContain("return await this.sendRoutedApsRequest(");
+        expect(source.match(/this\.sendApsDataStatus\(/g)).toHaveLength(1);
         expect(source).toContain("private makeApsFrame(");
         expect(source).not.toContain("public makeApsFrame(");
         expect(source).not.toContain("public setNode(");

@@ -1354,30 +1354,29 @@ export class Driver extends EventEmitter {
     apsFrame: BlzApsFrame,
     data: Buffer,
   ): Promise<boolean> {
-    this.getBlz();
-    const requestGeneration = this.requestGeneration;
-
-    try {
-      return await this.runRequestOperation(
-        () =>
-          this.sendApsDataStatus(
-            BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
-            apsFrame.groupId ?? 0,
-            apsFrame,
-            data,
-          ),
-        requestGeneration,
-      );
-    } catch (error) {
-      if (this.isRequestCancelled(requestGeneration)) {
-        return false;
-      }
-
-      throw error;
-    }
+    return await this.sendRoutedApsRequest(
+      BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
+      apsFrame.groupId ?? 0,
+      apsFrame,
+      data,
+    );
   }
 
   private async brequest(
+    destination: number,
+    apsFrame: BlzApsFrame,
+    data: Buffer,
+  ): Promise<boolean> {
+    return await this.sendRoutedApsRequest(
+      BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+      destination,
+      apsFrame,
+      data,
+    );
+  }
+
+  private async sendRoutedApsRequest(
+    messageType: number,
     destination: number,
     apsFrame: BlzApsFrame,
     data: Buffer,
@@ -1389,7 +1388,7 @@ export class Driver extends EventEmitter {
       return await this.runRequestOperation(
         () =>
           this.sendApsDataStatus(
-            BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
+            messageType,
             destination,
             apsFrame,
             data,

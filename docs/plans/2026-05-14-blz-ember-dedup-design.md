@@ -1099,6 +1099,9 @@ Future BLZ refactors should follow these rules:
 - Centralized low-level BLZ serial runtime cleanup so reconnect and failed
   connect attempts clear watchdog state and pending commands through one helper
   without cancelling the active connect generation.
+- Centralized high-level multicast/broadcast APS request routing so both paths
+  share request-generation capture, stop-cancellation handling, and lower send
+  status conversion.
 
 ## Next Steps
 
