@@ -2285,6 +2285,66 @@ describe("BLZ high-level driver lifecycle", () => {
         }
     });
 
+    it("does not stringify startup validation network parameters unless debug logging evaluates the message", async () => {
+        vi.useFakeTimers();
+        const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+        const initialNetworkParameters = {
+            status: BlzStatus.SUCCESS,
+            nodeType: 0,
+            panId: networkOptions.panID,
+            extPanId: 0x0807060504030201n,
+            channel: 11,
+            nwkUpdateId: 0,
+            toString: () => {
+                throw new Error("eager startup validation network parameter string");
+            },
+        };
+        const blzMock = {
+            on: vi.fn(),
+            off: vi.fn(),
+            connect: vi.fn().mockResolvedValue(undefined),
+            forceReset: vi.fn().mockResolvedValue(undefined),
+            getVersion: vi.fn().mockResolvedValue(undefined),
+            networkInit: vi.fn().mockResolvedValue(true),
+            execCommand: vi.fn()
+                .mockResolvedValueOnce(initialNetworkParameters)
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    panId: networkOptions.panID,
+                    extPanId: 0x0807060504030201n,
+                    channel: 11,
+                    nwkUpdateId: 0,
+                    nodeType: 0,
+                })
+                .mockResolvedValueOnce({
+                    status: BlzStatus.SUCCESS,
+                    value: Buffer.from("000052df5c74e14c", "hex"),
+                }),
+            removeAllListeners: vi.fn(),
+            close: vi.fn().mockResolvedValue(undefined),
+        };
+        blzConstructorMock.mockImplementation(() => blzMock);
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
+
+        try {
+            const startup = driver.startup();
+            const startupResult = startup.then(
+                () => "resolved",
+                (error: Error) => `rejected:${error.message}`,
+            );
+            await vi.advanceTimersByTimeAsync(3000);
+
+            await expect(startupResult).resolves.toBe("resolved");
+            expect(debug).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(String),
+            );
+        } finally {
+            debug.mockRestore();
+        }
+    });
+
     it("does not stringify startup coordinator IEEE unless debug logging evaluates the message", async () => {
         vi.useFakeTimers();
         const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});

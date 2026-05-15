@@ -1186,6 +1186,9 @@ Future BLZ refactors should follow these rules:
   post-formation stack readiness; the active startup path now documents those
   checks through the current byte-reversal implementation and checked
   `getNetworkParameters` / coordinator IEEE probes.
+- Deferred startup validation network-parameter formatting until debug logging
+  evaluates the message, so a discarded debug line cannot call `toString()` on
+  the lower BLZ response object and interrupt startup validation.
 
 ## Next Steps
 

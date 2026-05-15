@@ -722,7 +722,8 @@ export class Driver extends EventEmitter {
       startupStopGeneration,
     );
     logger.debug(
-      `Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`,
+      () =>
+        `Current Node type: ${netParams.nodeType}, Network parameters: ${netParams}`,
       NS,
     );
     const gotParameters = netParams.status === BlzStatus.SUCCESS;
