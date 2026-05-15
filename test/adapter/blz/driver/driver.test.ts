@@ -170,7 +170,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("private assertBlzStatus(");
         expect(source).toContain("errorMessage: string");
         expect(source).toContain("private async runCheckedBlzCommand(");
-        expect(source.match(/this\.runCheckedBlzCommand\(/g)).toHaveLength(7);
+        expect(source.match(/this\.runCheckedBlzCommand\(/g)).toHaveLength(8);
         expect(source.match(/this\.assertBlzStatus\(/g)).toHaveLength(1);
         expect(source.match(/if \(status !== BlzStatus\.SUCCESS\)/g)).toHaveLength(1);
         expect(source).toContain("private async networkIdToEUI64(");
@@ -1311,6 +1311,19 @@ describe("BLZ high-level driver lifecycle", () => {
         } else {
             expect(execCommand).toHaveBeenCalledWith(expectedCommand);
         }
+    });
+
+    it("rejects coordinator permit joining when the lower command reports a non-success status", async () => {
+        const execCommand = vi.fn().mockResolvedValue({
+            status: BlzStatus.GENERAL_ERROR,
+        });
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {
+            execCommand,
+        });
+
+        await expect(driver.permitJoining(60)).rejects.toThrow("Failed to permit joining: status 1");
+        expect(execCommand).toHaveBeenCalledWith("permitJoining", {duration: 60});
     });
 
     it("releases the BLZ instance reference when stopping", async () => {

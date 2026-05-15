@@ -1687,10 +1687,13 @@ export class Driver extends EventEmitter {
   }
 
   public async permitJoining(seconds: number): Promise<BLZFrameData> {
-    return await this.runBlzCommandOperation((blz) =>
-      blz.execCommand("permitJoining", {
+    return await this.runCheckedBlzCommand(
+      "permitJoining",
+      {
         duration: seconds,
-      }),
+      },
+      "permitJoining() returned unexpected BLZ status",
+      "Failed to permit joining",
     );
   }
 

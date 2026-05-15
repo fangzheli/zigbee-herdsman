@@ -1167,6 +1167,9 @@ Future BLZ refactors should follow these rules:
 - Routed startup endpoint registration through the shared checked driver-command
   path, so `addEndpoint` non-success statuses abort startup before later
   initialization steps run.
+- Routed coordinator permit-join commands through the same checked driver-command
+  path, keeping BLZ command status ownership in the driver instead of the
+  adapter.
 
 ## Next Steps
 
