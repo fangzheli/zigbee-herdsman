@@ -265,9 +265,12 @@ export class BLZAdapter extends Adapter {
 
     try {
       await this.driver.stop(false);
-      this.detachDriverListeners();
     } finally {
-      this.driverStopCloseExpected = false;
+      try {
+        this.detachDriverListeners();
+      } finally {
+        this.driverStopCloseExpected = false;
+      }
     }
   }
 
