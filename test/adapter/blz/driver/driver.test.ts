@@ -83,6 +83,14 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source.match(/this\.sendApsDataStatus\(/g)).toHaveLength(1);
         expect(source).toContain("private makeApsFrame(");
         expect(source).not.toContain("public makeApsFrame(");
+        expect(source).toContain("type ApsFrameOverrides = Partial<Pick<");
+        expect(source).toContain("overrides: ApsFrameOverrides = {}");
+        expect(source.match(/this\.makeApsFrame\(clusterId,/g)).toHaveLength(3);
+        expect(source.match(/const frame = this\.makeApsFrame\(clusterId\);/g)).toHaveLength(1);
+        expect(source.match(/^\s*frame\.profileId = /gm)).toHaveLength(1);
+        expect(source.match(/^\s*frame\.sourceEndpoint = /gm)).toHaveLength(1);
+        expect(source.match(/^\s*frame\.destinationEndpoint = /gm)).toHaveLength(1);
+        expect(source.match(/^\s*frame\.groupId = /gm)).toHaveLength(1);
         expect(source).not.toContain("public setNode(");
         expect(source).toContain("private handleNodeJoined(");
         expect(source).not.toContain("public handleNodeJoined(");

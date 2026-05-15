@@ -68,6 +68,11 @@ type IeeeMfg = {
   prefix: number[];
 };
 
+type ApsFrameOverrides = Partial<Pick<
+  BlzApsFrame,
+  "profileId" | "sourceEndpoint" | "destinationEndpoint" | "groupId"
+>>;
+
 function channelToMask(channel: number): number {
   return 2 ** channel;
 }
@@ -1396,11 +1401,12 @@ export class Driver extends EventEmitter {
     sourceEndpoint: number,
     data: Buffer,
   ): Promise<boolean> {
-    const frame = this.makeApsFrame(clusterId);
-    frame.profileId = profileId;
-    frame.sourceEndpoint = sourceEndpoint;
-    frame.destinationEndpoint = 0xff;
-    frame.groupId = groupID;
+    const frame = this.makeApsFrame(clusterId, {
+      profileId,
+      sourceEndpoint,
+      destinationEndpoint: 0xff,
+      groupId: groupID,
+    });
 
     return await this.mrequest(frame, data);
   }
@@ -1413,11 +1419,12 @@ export class Driver extends EventEmitter {
     destinationEndpoint: number,
     data: Buffer,
   ): Promise<boolean> {
-    const frame = this.makeApsFrame(clusterId);
-    frame.profileId = profileId;
-    frame.sourceEndpoint = sourceEndpoint;
-    frame.destinationEndpoint = destinationEndpoint;
-    frame.groupId = destination;
+    const frame = this.makeApsFrame(clusterId, {
+      profileId,
+      sourceEndpoint,
+      destinationEndpoint,
+      groupId: destination,
+    });
 
     return await this.brequest(destination, frame, data);
   }
@@ -1433,11 +1440,12 @@ export class Driver extends EventEmitter {
   ): Promise<boolean> {
     this.cacheNodeIeee(networkAddress, new BlzEUI64(ieeeAddress));
 
-    const frame = this.makeApsFrame(clusterId);
-    frame.profileId = profileId;
-    frame.sourceEndpoint = sourceEndpoint;
-    frame.destinationEndpoint = destinationEndpoint;
-    frame.groupId = 0;
+    const frame = this.makeApsFrame(clusterId, {
+      profileId,
+      sourceEndpoint,
+      destinationEndpoint,
+      groupId: 0,
+    });
 
     return await this.request(networkAddress, frame, data);
   }
@@ -1609,14 +1617,17 @@ export class Driver extends EventEmitter {
     return this.transactionID;
   }
 
-  private makeApsFrame(clusterId: number): BlzApsFrame {
+  private makeApsFrame(
+    clusterId: number,
+    overrides: ApsFrameOverrides = {},
+  ): BlzApsFrame {
     const frame = new BlzApsFrame();
     frame.clusterId = clusterId;
-    frame.profileId = 0;
+    frame.profileId = overrides.profileId ?? 0;
     frame.sequence = this.nextTransactionID();
-    frame.sourceEndpoint = 0;
-    frame.destinationEndpoint = 0;
-    frame.groupId = 0;
+    frame.sourceEndpoint = overrides.sourceEndpoint ?? 0;
+    frame.destinationEndpoint = overrides.destinationEndpoint ?? 0;
+    frame.groupId = overrides.groupId ?? 0;
     return frame;
   }
 

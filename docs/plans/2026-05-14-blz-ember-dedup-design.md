@@ -187,6 +187,8 @@ Future BLZ refactors should follow these rules:
 - Centralized UART connection/reset/send-cancelled error creation so serial
   open, TCP ready reset, close, reset, and DATA retry cancellation paths share
   the same cleanup reasons.
+- Centralized high-level APS frame defaulting and overrides so multicast,
+  broadcast, endpoint, and ZDO sends build frames through one factory.
 - Released the high-level driver's `Blz` instance reference after successful
   `Driver.stop()`, so closed transport/watchdog state is not retained and later
   startup/reset paths do not re-close the same object.
