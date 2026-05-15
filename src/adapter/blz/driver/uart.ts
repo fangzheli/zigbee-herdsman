@@ -477,9 +477,13 @@ export class SerialDriver extends EventEmitter {
 
   private cancelPendingOperations(error: Error): void {
     this.operationGeneration += 1;
-    this.sendRetryDelay.cancel();
+    this.cancelSendRetryDelay();
     this.queue.clear(error);
     this.waitress.clear(error);
+  }
+
+  private cancelSendRetryDelay(): void {
+    this.sendRetryDelay.cancel();
   }
 
   private cancelConnectOperations(error: Error): void {
