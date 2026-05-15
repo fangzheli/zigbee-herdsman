@@ -132,6 +132,9 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("public async leaveNetwork(");
         expect(source).toContain("private async formNetworkWithParameters(");
         expect(source).not.toContain("public async formNetworkWithParameters(");
+        expect(source).toContain("private async runMaybeStartupOperation<T>(");
+        expect(source).not.toContain("const run = async <T>");
+        expect(source.match(/this\.runMaybeStartupOperation\(/g)).toHaveLength(5);
         expect(source).toContain("private async setGlobalTcLinkKey(");
         expect(source).not.toContain("public async setGlobalTcLinkKey(");
         expect(source).toContain("private async setNetworkKeyInfo(");

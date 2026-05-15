@@ -813,18 +813,13 @@ export class Driver extends EventEmitter {
     restore: boolean,
     startupStopGeneration?: number,
   ): Promise<void> {
-    const run = async <T>(operation: () => Promise<T>): Promise<T> => {
-      if (startupStopGeneration === undefined) {
-        return await operation();
-      }
-
-      return await this.runStartupOperation(operation, startupStopGeneration);
-    };
-
     const blz = this.getBlz();
     let backup;
     if (restore) {
-      backup = await run(() => this.backupMan.getStoredBackup());
+      backup = await this.runMaybeStartupOperation(
+        () => this.backupMan.getStoredBackup(),
+        startupStopGeneration,
+      );
 
       if (!backup) {
         throw new Error(`No valid backup found.`);
@@ -841,8 +836,9 @@ export class Driver extends EventEmitter {
         );
       }
       // can only change network key and link key when the stack is on and leave the current network
-      await run(() =>
-        this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber),
+      await this.runMaybeStartupOperation(
+        () => this.setNetworkKeyInfo(networkKey, frameCounter, sequenceNumber),
+        startupStopGeneration,
       );
       // await this.setGlobalTcLinkKey(backup.blz!.tclk!, backup.blz!.tclkFrameCounter!);
     } else {
@@ -852,7 +848,10 @@ export class Driver extends EventEmitter {
           16,
           "Network key must be 16 bytes.",
         );
-        await run(() => this.setNetworkKeyInfo(networkKey, 0, 0));
+        await this.runMaybeStartupOperation(
+          () => this.setNetworkKeyInfo(networkKey, 0, 0),
+          startupStopGeneration,
+        );
       }
     }
 
@@ -861,23 +860,27 @@ export class Driver extends EventEmitter {
       const backupextendedPanID = uint64FromLittleEndianBytes(
         backup!.networkOptions.extendedPanId,
       );
-      formStatus = await run(() =>
-        blz.formNetwork(
-          backupextendedPanID,
-          backup!.networkOptions.panId,
-          backup!.logicalChannel,
-        ),
+      formStatus = await this.runMaybeStartupOperation(
+        () =>
+          blz.formNetwork(
+            backupextendedPanID,
+            backup!.networkOptions.panId,
+            backup!.logicalChannel,
+          ),
+        startupStopGeneration,
       );
     } else {
       const nwkoptextendedPanID = uint64FromLittleEndianBytes(
         this.nwkOpt.extendedPanID!,
       );
-      formStatus = await run(() =>
-        blz.formNetwork(
-          nwkoptextendedPanID,
-          this.nwkOpt.panID,
-          this.nwkOpt.channelList[0],
-        ),
+      formStatus = await this.runMaybeStartupOperation(
+        () =>
+          blz.formNetwork(
+            nwkoptextendedPanID,
+            this.nwkOpt.panID,
+            this.nwkOpt.channelList[0],
+          ),
+        startupStopGeneration,
       );
     }
 
@@ -886,6 +889,17 @@ export class Driver extends EventEmitter {
     }
 
     this.clearNetworkState();
+  }
+
+  private async runMaybeStartupOperation<T>(
+    operation: () => Promise<T>,
+    startupStopGeneration?: number,
+  ): Promise<T> {
+    if (startupStopGeneration === undefined) {
+      return await operation();
+    }
+
+    return await this.runStartupOperation(operation, startupStopGeneration);
   }
 
   private handleFrame(frameName: string, frame: BLZFrameData): void {

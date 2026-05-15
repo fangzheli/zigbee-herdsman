@@ -1113,6 +1113,9 @@ Future BLZ refactors should follow these rules:
 - Centralized high-level driver request-generation checks so request
   operations, retry delays, and channel-change delays share one active-request
   predicate while cancelled paths keep their existing false/throw behavior.
+- Centralized form-network startup-aware operation wrapping so backup reads,
+  key updates, and form commands share one helper for optional startup
+  cancellation.
 
 ## Next Steps
 
