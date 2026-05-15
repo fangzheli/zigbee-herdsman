@@ -246,21 +246,32 @@ export class BLZAdapter extends Adapter {
       return result;
     } catch (error) {
       const startError = errorFromUnknown(error);
-      if (!this.closing) {
-        this.enterStoppedState(startError);
-      }
-      this.throwAfterDriverListenerCleanup(
-        startError,
-        "Failed to start adapter and cleanup driver listeners",
-      );
+      this.throwAfterFailedStartCleanup(startError);
     }
   }
 
-  private throwAfterDriverListenerCleanup(error: unknown, message: string): never {
+  private throwAfterFailedStartCleanup(error: Error): never {
+    const cleanupErrors: unknown[] = [];
+
+    if (!this.closing) {
+      try {
+        this.enterStoppedState(error);
+      } catch (cleanupError) {
+        cleanupErrors.push(cleanupError);
+      }
+    }
+
     try {
       this.detachDriverListeners();
     } catch (cleanupError) {
-      throw new AggregateError([error, cleanupError], message);
+      cleanupErrors.push(cleanupError);
+    }
+
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(
+        [error, ...cleanupErrors],
+        "Failed to start adapter and cleanup driver listeners",
+      );
     }
 
     throw error;
@@ -284,42 +295,36 @@ export class BLZAdapter extends Adapter {
 
   private async performStop(): Promise<void> {
     const stopError = this.createAdapterStoppedError();
-    this.enterStoppedState(stopError);
+    const errors: unknown[] = [];
+
+    try {
+      this.enterStoppedState(stopError);
+    } catch (error) {
+      errors.push(error);
+    }
+
     this.driverStopCloseExpected = true;
-    let operationError: unknown;
-    let hasOperationError = false;
-    let cleanupError: unknown;
-    let hasCleanupError = false;
 
     try {
       await this.driver.stop(false);
     } catch (error) {
-      operationError = error;
-      hasOperationError = true;
+      errors.push(error);
     }
 
     try {
       this.detachDriverListeners();
     } catch (error) {
-      cleanupError = error;
-      hasCleanupError = true;
+      errors.push(error);
     } finally {
       this.driverStopCloseExpected = false;
     }
 
-    if (hasOperationError && hasCleanupError) {
-      throw new AggregateError(
-        [operationError, cleanupError],
-        "Failed to stop adapter and cleanup driver listeners",
-      );
+    if (errors.length === 1) {
+      throw errors[0];
     }
 
-    if (hasOperationError) {
-      throw operationError;
-    }
-
-    if (hasCleanupError) {
-      throw cleanupError;
+    if (errors.length > 1) {
+      throw new AggregateError(errors, "Failed to stop adapter and cleanup driver listeners");
     }
   }
 
@@ -352,10 +357,20 @@ export class BLZAdapter extends Adapter {
   private enterStoppedState(error: Error): void {
     this.closing = true;
     this.stopGeneration += 1;
-    this.queue.clear(error);
-    this.clearZclResponseWaiters(error);
-    this.cancelRunningOperations(error);
-    this.cancelStopDelay();
+    runCleanupSteps([
+      () => {
+        this.queue.clear(error);
+      },
+      () => {
+        this.clearZclResponseWaiters(error);
+      },
+      () => {
+        this.cancelRunningOperations(error);
+      },
+      () => {
+        this.cancelStopDelay();
+      },
+    ]);
   }
 
   private throwIfStopped(generation: number): void {

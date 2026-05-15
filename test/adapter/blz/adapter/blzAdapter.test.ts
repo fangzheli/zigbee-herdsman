@@ -337,6 +337,31 @@ describe("BLZ Adapter", () => {
       expect((adapter as unknown as {driverStopCloseExpected: boolean}).driverStopCloseExpected).toBe(false);
     });
 
+    it("should stop driver and detach listeners when stopped-state cleanup fails", async () => {
+      const cleanupError = new Error("zcl waiter cleanup failed");
+      const zclResponseWaiters = (
+        adapter as unknown as {
+          zclResponseWaiters: {clear: (error: Error) => void};
+        }
+      ).zclResponseWaiters;
+      const originalClear = zclResponseWaiters.clear.bind(zclResponseWaiters);
+      zclResponseWaiters.clear = vi.fn((error: Error): void => {
+        originalClear(error);
+        throw cleanupError;
+      });
+
+      const error = await adapter.stop().catch((caught: unknown) => caught);
+
+      expect(error).toBe(cleanupError);
+      expect(driverMock.stop).toHaveBeenCalledWith(false);
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverStopCloseExpected: boolean}).driverStopCloseExpected).toBe(false);
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
+    });
+
     it("should emit disconnected when unexpected driver close listener cleanup fails", () => {
       const disconnected = vi.fn();
       driverMock.off.mockImplementation((event: string) => {
@@ -430,6 +455,32 @@ describe("BLZ Adapter", () => {
       expect(error).toBeInstanceOf(AggregateError);
       const aggregateError = error as AggregateError;
       expect(aggregateError.errors).toEqual([startupError, detachError]);
+      expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
+      expect(driverMock.off).toHaveBeenCalledWith("incomingMessage", expect.any(Function));
+      expect((adapter as unknown as {driverListenersAttached: boolean}).driverListenersAttached).toBe(false);
+    });
+
+    it("should detach driver listeners when failed startup state cleanup fails", async () => {
+      const startupError = new Error("startup failed");
+      const cleanupError = new Error("zcl waiter cleanup failed");
+      driverMock.startup.mockRejectedValue(startupError);
+      const zclResponseWaiters = (
+        adapter as unknown as {
+          zclResponseWaiters: {clear: (error: Error) => void};
+        }
+      ).zclResponseWaiters;
+      const originalClear = zclResponseWaiters.clear.bind(zclResponseWaiters);
+      zclResponseWaiters.clear = vi.fn((error: Error): void => {
+        originalClear(error);
+        throw cleanupError;
+      });
+
+      const error = await adapter.start().catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toEqual([startupError, cleanupError]);
       expect(driverMock.off).toHaveBeenCalledWith("close", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceJoined", expect.any(Function));
       expect(driverMock.off).toHaveBeenCalledWith("deviceLeft", expect.any(Function));
