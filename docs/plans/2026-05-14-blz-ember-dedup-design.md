@@ -928,6 +928,8 @@ Future BLZ refactors should follow these rules:
   channel-change broadcast sending, and synthetic leave cache cleanup into the
   high-level driver, leaving the adapter responsible for queueing/stop guards
   and channel-change parsing/reform orchestration.
+- Made the high-level driver's ZDO waiter factory private after moving all
+  production ZDO response waiting behind `Driver.sendZdo()`.
 
 ## Next Steps
 

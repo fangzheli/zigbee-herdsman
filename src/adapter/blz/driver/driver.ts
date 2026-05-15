@@ -1526,7 +1526,7 @@ export class Driver extends EventEmitter {
     logger.debug(() => `Blz adding endpoint: ${JSON.stringify(res)}`, NS);
   }
 
-  public waitFor(
+  private waitFor(
     address: number | string,
     clusterId: number,
     timeout = 10000,

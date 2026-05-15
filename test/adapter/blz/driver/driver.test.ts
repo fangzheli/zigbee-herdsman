@@ -55,6 +55,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("extPanIdArray.push");
         expect(source).toContain("public async sendZdo(");
         expect(source).toContain("private async sendZdoFrame(");
+        expect(source).toContain("private waitFor(");
+        expect(source).not.toContain("public waitFor(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -153,6 +155,24 @@ describe("BLZ high-level driver lifecycle", () => {
 
     function setDriverBlz(driver: Driver, blz: unknown): void {
         (driver as unknown as {blz?: unknown}).blz = blz;
+    }
+
+    function waitForDriverZdo(
+        driver: Driver,
+        address: number | string,
+        clusterId: number,
+        timeout?: number,
+    ) {
+        return (driver as unknown as {
+            waitFor: (
+                address: number | string,
+                clusterId: number,
+                timeout?: number,
+            ) => {
+                start: () => {promise: Promise<{zdoResponse?: unknown}>};
+                cancel: () => void;
+            };
+        }).waitFor(address, clusterId, timeout);
     }
 
     function getBackupMan(driver: Driver): {
@@ -273,7 +293,7 @@ describe("BLZ high-level driver lifecycle", () => {
         vi.useFakeTimers();
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiter = waitForDriverZdo(driver, 0x1234, 0x8000, 1000);
         const waiterResult = waiter.start().promise.catch((error: Error) => error);
 
         setDriverBlz(driver, {
@@ -293,7 +313,7 @@ describe("BLZ high-level driver lifecycle", () => {
         vi.useFakeTimers();
         const clearTimeoutSpy = vi.spyOn(global, "clearTimeout");
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiter = waitForDriverZdo(driver, 0x1234, 0x8000, 1000);
         const waiterResult = waiter.start().promise.catch((error: Error) => error);
         const callback = vi.fn();
         const blzMock = {
@@ -321,7 +341,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
     it("clears pending waiters with the reset reason when reset starts", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiter = waitForDriverZdo(driver, 0x1234, 0x8000, 1000);
         const waiterResult = waiter.start().promise.catch((error: Error) => error);
 
         setDriverBlz(driver, {
@@ -343,14 +363,14 @@ describe("BLZ high-level driver lifecycle", () => {
 
     it("handles waiter cancellation before waiters start", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor(0x1234, 0x8000, 1000);
+        const waiter = waitForDriverZdo(driver, 0x1234, 0x8000, 1000);
 
         waiter.cancel();
     });
 
     it("matches network address response waiters with normalized EUI64 strings", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor("0X1122334455667788", Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE, 1000);
+        const waiter = waitForDriverZdo(driver, "0X1122334455667788", Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE, 1000);
         const result = waiter.start().promise.then(
             (response) => response.zdoResponse,
             (error: Error) => `rejected:${error.message}`,
@@ -2384,7 +2404,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
     it("matches driver waiters for coordinator address 0 only against address 0", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
-        const waiter = driver.waitFor(0x0000, 0x0006, 1000);
+        const waiter = waitForDriverZdo(driver, 0x0000, 0x0006, 1000);
         const result = waiter.start().promise.then(
             () => "resolved",
             (error: Error) => `rejected:${error.message}`,
