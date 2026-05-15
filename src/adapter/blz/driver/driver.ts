@@ -8,7 +8,10 @@ import { logger } from "../../../utils/logger";
 import * as ZSpec from "../../../zspec";
 import { Clusters } from "../../../zspec/zcl/definition/cluster";
 import * as Zdo from "../../../zspec/zdo";
-import { GenericZdoResponse } from "../../../zspec/zdo/definition/tstypes";
+import type {
+  GenericZdoResponse,
+  RequestToResponseMap,
+} from "../../../zspec/zdo/definition/tstypes";
 import { BLZAdapterBackup } from "../adapter/backup";
 import { fixedBufferFromBytes, fixedBufferFromHex } from "../byteUtils";
 import { normalizeIeeeAddress } from "../ieee";
@@ -111,6 +114,13 @@ function addressesMatch(
   }
 
   return left === right;
+}
+
+function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
+  const requestPayload = Buffer.allocUnsafe(payload.length);
+  payload.copy(requestPayload);
+  requestPayload[0] = sequence;
+  return requestPayload;
 }
 
 export interface BlzIncomingMessage {
@@ -1257,6 +1267,129 @@ export class Driver extends EventEmitter {
     } catch (error) {
       if (this.isRequestCancelled(requestGeneration)) {
         return false;
+      }
+
+      throw error;
+    }
+  }
+
+  public async sendZdo(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterId: Zdo.ClusterId,
+    payload: Buffer,
+    disableResponse: true,
+  ): Promise<void>;
+  public async sendZdo<K extends keyof RequestToResponseMap>(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterId: K,
+    payload: Buffer,
+    disableResponse: false,
+  ): Promise<RequestToResponseMap[K]>;
+  public async sendZdo<K extends keyof RequestToResponseMap>(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterId: K | Zdo.ClusterId,
+    payload: Buffer,
+    disableResponse: boolean,
+  ): Promise<RequestToResponseMap[K] | undefined>;
+  public async sendZdo<K extends keyof RequestToResponseMap>(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterId: K | Zdo.ClusterId,
+    payload: Buffer,
+    disableResponse: boolean,
+  ): Promise<RequestToResponseMap[K] | undefined> {
+    const requestGeneration = this.requestGeneration;
+    const clusterName = Zdo.ClusterId[clusterId];
+    const frame = this.makeApsFrame(clusterId);
+    const requestPayload = clonePayloadWithSequence(payload, frame.sequence);
+    let waiter: ReturnType<typeof this.waitFor> | undefined;
+    let responseClusterId: number | undefined;
+
+    if (!disableResponse) {
+      responseClusterId = Zdo.Utils.getResponseClusterId(clusterId);
+
+      if (responseClusterId) {
+        waiter = this.waitFor(
+          responseClusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE
+            ? ieeeAddress
+            : networkAddress,
+          responseClusterId,
+        );
+      }
+    }
+
+    await this.sendZdoFrame(
+      ieeeAddress,
+      networkAddress,
+      clusterName,
+      frame,
+      requestPayload,
+      waiter,
+      requestGeneration,
+    );
+
+    if (clusterId === Zdo.ClusterId.LEAVE_REQUEST) {
+      logger.info(
+        `[BLZ] LEAVE_REQUEST sent to ${ieeeAddress}:${networkAddress}, emitting deviceLeave`,
+        NS,
+      );
+      this.handleNodeLeft(networkAddress, ieeeAddress);
+    }
+
+    if (waiter && responseClusterId !== undefined) {
+      const response = await waiter.start().promise;
+
+      logger.debug(
+        () =>
+          `<~~ [ZDO ${Zdo.ClusterId[responseClusterId]} ${JSON.stringify(response.zdoResponse!)}]`,
+        NS,
+      );
+
+      return response.zdoResponse! as RequestToResponseMap[K];
+    }
+  }
+
+  private async sendZdoFrame(
+    ieeeAddress: string,
+    networkAddress: number,
+    clusterName: string,
+    frame: BlzApsFrame,
+    payload: Buffer,
+    waiter: { cancel: () => void } | undefined,
+    requestGeneration: number,
+  ): Promise<void> {
+    const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
+    const route = isBroadcast
+      ? `BROADCAST to=${networkAddress}`
+      : `UNICAST to=${ieeeAddress}:${networkAddress}`;
+
+    logger.debug(
+      () => `~~~> [ZDO ${clusterName} ${route} payload=${payload.toString("hex")}]`,
+      NS,
+    );
+
+    try {
+      const req = await (isBroadcast
+        ? this.brequest(networkAddress, frame, payload)
+        : this.request(networkAddress, frame, payload));
+
+      if (this.isRequestCancelled(requestGeneration)) {
+        throw new Error("Driver stopped");
+      }
+
+      logger.debug(`~~~> [SENT ZDO ${isBroadcast ? "BROADCAST" : "UNICAST"}]`, NS);
+
+      if (!req) {
+        throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
+      }
+    } catch (error) {
+      waiter?.cancel();
+
+      if (this.isRequestCancelled(requestGeneration)) {
+        throw new Error("Driver stopped");
       }
 
       throw error;

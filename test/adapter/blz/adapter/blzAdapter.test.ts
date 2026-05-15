@@ -27,6 +27,7 @@ describe("BLZ Adapter", () => {
     request: ReturnType<typeof vi.fn>;
     brequest: ReturnType<typeof vi.fn>;
     mrequest: ReturnType<typeof vi.fn>;
+    sendZdo: ReturnType<typeof vi.fn>;
     makeApsFrame: ReturnType<typeof vi.fn>;
     waitFor: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
@@ -88,6 +89,7 @@ describe("BLZ Adapter", () => {
       request: vi.fn(),
       brequest: vi.fn(),
       mrequest: vi.fn(),
+      sendZdo: vi.fn(),
       makeApsFrame: vi.fn(),
       waitFor: vi.fn(),
       on: vi.fn(),
@@ -157,6 +159,14 @@ describe("BLZ Adapter", () => {
       expect(source).toContain("private handleDeviceJoin(nwk: number, ieee: BlzEUI64): void");
       expect(source).not.toContain("private async handleDeviceJoin");
       expect(source).not.toContain('return await Promise.reject(new Error("Not supported"));');
+    });
+
+    it("keeps ZDO response waiter ownership inside the driver API", () => {
+      const source = fs.readFileSync("src/adapter/blz/adapter/blzAdapter.ts", "utf8");
+
+      expect(source).not.toContain("this.driver.waitFor(");
+      expect(source).not.toContain("type ZdoSendWaiter");
+      expect(source).toContain("this.driver.sendZdo(");
     });
 
     it("should stop successfully", async () => {
@@ -1553,18 +1563,13 @@ describe("BLZ Adapter", () => {
       await Promise.all([firstChange.catch(() => {}), secondChange.catch(() => {})]);
     });
 
-    it("should clear the driver address cache when sending a leave request", async () => {
+    it("should route leave ZDO requests through the driver API", async () => {
       const callback = vi.fn();
       adapter.on("deviceLeave", callback);
-      driverMock.makeApsFrame.mockReturnValue({
-        sequence: 9,
-        profileId: Zdo.ZDO_PROFILE_ID,
-        clusterId: Zdo.ClusterId.LEAVE_REQUEST,
-        sourceEndpoint: 0,
-        destinationEndpoint: 0,
-      });
-      driverMock.request.mockResolvedValue(true);
-      driverMock.handleNodeLeft.mockImplementation((nwk: number, ieee: string) => {
+      driverMock.sendZdo.mockImplementation(async (
+        ieee: string,
+        nwk: number,
+      ) => {
         driverMock.on.mock.calls.find((call) => call[0] === "deviceLeft")?.[1](
           nwk,
           { toString: () => ieee.replace(/^0x/, "") },
@@ -1579,9 +1584,12 @@ describe("BLZ Adapter", () => {
         true,
       );
 
-      expect(driverMock.handleNodeLeft).toHaveBeenCalledWith(
-        0x1234,
+      expect(driverMock.sendZdo).toHaveBeenCalledWith(
         "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.LEAVE_REQUEST,
+        Buffer.from([0, 1, 2, 3]),
+        true,
       );
       expect(callback).toHaveBeenCalledWith({
         networkAddress: 0x1234,
@@ -1931,19 +1939,8 @@ describe("BLZ Adapter", () => {
   });
 
   describe("Error handling", () => {
-    it("should cancel ZDO waiters when the driver send rejects", async () => {
-      const cancel = vi.fn();
-      const start = vi.fn();
-      const apsFrame = new BlzApsFrame();
-      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
-      apsFrame.clusterId = Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST;
-      apsFrame.sourceEndpoint = 0;
-      apsFrame.destinationEndpoint = 0;
-      apsFrame.sequence = 4;
-
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.waitFor.mockReturnValue({ cancel, start });
-      driverMock.request.mockRejectedValue(new Error("driver send failed"));
+    it("should propagate driver-owned ZDO send failures", async () => {
+      driverMock.sendZdo.mockRejectedValue(new Error("driver send failed"));
 
       await expect(
         adapter.sendZdo(
@@ -1955,21 +1952,18 @@ describe("BLZ Adapter", () => {
         ),
       ).rejects.toThrow("driver send failed");
 
-      expect(cancel).toHaveBeenCalledTimes(1);
-      expect(start).not.toHaveBeenCalled();
+      expect(driverMock.sendZdo).toHaveBeenCalledWith(
+        "0x0102030405060708",
+        0x1234,
+        Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+        Buffer.from([0x00, 0x34, 0x12]),
+        false,
+      );
     });
 
-    it("should not mutate or clone caller-owned ZDO payload buffers through Buffer.from when assigning TSN", async () => {
-      const apsFrame = new BlzApsFrame();
-      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
-      apsFrame.clusterId = Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST;
-      apsFrame.sourceEndpoint = 0;
-      apsFrame.destinationEndpoint = 0;
-      apsFrame.sequence = 4;
+    it("should pass caller-owned ZDO payload buffers to the driver without cloning", async () => {
       const payload = Buffer.from([0xaa, 0xbb, 0xcc]);
 
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockResolvedValue(true);
       const originalFrom = Buffer.from;
       const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
         if (value === payload) {
@@ -1989,10 +1983,12 @@ describe("BLZ Adapter", () => {
         );
 
         expect(payload).toEqual(Buffer.of(0xaa, 0xbb, 0xcc));
-        expect(driverMock.request).toHaveBeenCalledWith(
+        expect(driverMock.sendZdo).toHaveBeenCalledWith(
+          "0x0102030405060708",
           0x1234,
-          apsFrame,
-          Buffer.of(4, 0xbb, 0xcc),
+          Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+          payload,
+          true,
         );
         expect(fromSpy).not.toHaveBeenCalledWith(payload);
       } finally {
@@ -2000,20 +1996,13 @@ describe("BLZ Adapter", () => {
       }
     });
 
-    it("should not finish active ZDO sends after stop interrupts the lower request", async () => {
+    it("should not finish active ZDO sends after stop interrupts the driver request", async () => {
       let releaseRequest: (() => void) | undefined;
-      const lowerRequest = new Promise<boolean>((resolve) => {
-        releaseRequest = () => resolve(true);
+      const zdoRequest = new Promise<void>((resolve) => {
+        releaseRequest = resolve;
       });
-      const apsFrame = new BlzApsFrame();
-      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
-      apsFrame.clusterId = Zdo.ClusterId.LEAVE_REQUEST;
-      apsFrame.sourceEndpoint = 0;
-      apsFrame.destinationEndpoint = 0;
-      apsFrame.sequence = 4;
 
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockReturnValue(lowerRequest);
+      driverMock.sendZdo.mockReturnValue(zdoRequest);
       driverMock.stop.mockResolvedValue(undefined);
 
       const send = adapter.sendZdo(
@@ -2037,17 +2026,10 @@ describe("BLZ Adapter", () => {
       expect(driverMock.handleNodeLeft).not.toHaveBeenCalled();
     });
 
-    it("should register active ZDO lower sends as cancellable adapter operations", async () => {
-      const lowerRequest = new Promise<boolean>(() => {});
-      const apsFrame = new BlzApsFrame();
-      apsFrame.profileId = Zdo.ZDO_PROFILE_ID;
-      apsFrame.clusterId = Zdo.ClusterId.LEAVE_REQUEST;
-      apsFrame.sourceEndpoint = 0;
-      apsFrame.destinationEndpoint = 0;
-      apsFrame.sequence = 4;
+    it("should register active ZDO driver sends as cancellable adapter operations", async () => {
+      const zdoRequest = new Promise<void>(() => {});
 
-      driverMock.makeApsFrame.mockReturnValue(apsFrame);
-      driverMock.request.mockReturnValue(lowerRequest);
+      driverMock.sendZdo.mockReturnValue(zdoRequest);
       driverMock.stop.mockResolvedValue(undefined);
 
       const send = adapter.sendZdo(

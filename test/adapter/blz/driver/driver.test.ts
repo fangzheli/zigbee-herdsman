@@ -53,6 +53,8 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).not.toContain("private async onBlzReset");
         expect(source).toContain("void this.reset().catch");
         expect(source).not.toContain("extPanIdArray.push");
+        expect(source).toContain("public async sendZdo(");
+        expect(source).toContain("private async sendZdoFrame(");
     });
 
     it("converts BLZ MAC bytes to IEEE EUI64 without copying then reversing", () => {
@@ -369,6 +371,155 @@ describe("BLZ high-level driver lifecycle", () => {
                 nwkAddress: 0x3344,
             }),
         ]);
+    });
+
+    it("sends ZDO requests through driver-owned response waiters", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {});
+        const request = vi.spyOn(driver, "request").mockResolvedValue(true);
+        const payload = Buffer.from([
+            0x00,
+            0x88,
+            0x77,
+            0x66,
+            0x55,
+            0x44,
+            0x33,
+            0x22,
+            0x11,
+            0x00,
+            0x00,
+        ]);
+
+        const send = driver.sendZdo(
+            "0x1122334455667788",
+            0x3344,
+            Zdo.ClusterId.NETWORK_ADDRESS_REQUEST,
+            payload,
+            false,
+        );
+        await Promise.resolve();
+
+        expect(request).toHaveBeenCalledWith(
+            0x3344,
+            expect.objectContaining({
+                profileId: 0,
+                clusterId: Zdo.ClusterId.NETWORK_ADDRESS_REQUEST,
+                sourceEndpoint: 0,
+                destinationEndpoint: 0,
+                sequence: 2,
+            }),
+            Buffer.from([
+                0x02,
+                0x88,
+                0x77,
+                0x66,
+                0x55,
+                0x44,
+                0x33,
+                0x22,
+                0x11,
+                0x00,
+                0x00,
+            ]),
+        );
+
+        (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
+            "apsDataIndication",
+            makeIncomingZdoResponseFrame(
+                0x3344,
+                makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344),
+            ),
+        );
+
+        await expect(send).resolves.toEqual([
+            Zdo.Status.SUCCESS,
+            expect.objectContaining({
+                eui64: "0x1122334455667788",
+                nwkAddress: 0x3344,
+            }),
+        ]);
+        expect(payload[0]).toBe(0x00);
+    });
+
+    it("cancels driver-owned ZDO waiters when the lower send rejects", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {});
+        vi.spyOn(driver, "request").mockRejectedValue(new Error("driver send failed"));
+
+        await expect(
+            driver.sendZdo(
+                "0x0102030405060708",
+                0x1234,
+                Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+                Buffer.from([0x00, 0x34, 0x12]),
+                false,
+            ),
+        ).rejects.toThrow("driver send failed");
+
+        expect((driver as unknown as {waitress: {waiters: Map<number, unknown>}}).waitress.waiters.size).toBe(0);
+    });
+
+    it("does not mutate or clone caller-owned ZDO payload buffers through Buffer.from when assigning TSN", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {});
+        const request = vi.spyOn(driver, "request").mockResolvedValue(true);
+        const payload = Buffer.from([0xaa, 0xbb, 0xcc]);
+        const originalFrom = Buffer.from;
+        const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
+            if (value === payload) {
+                throw new Error("caller payload cloned");
+            }
+
+            return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
+        }) as typeof Buffer.from);
+
+        try {
+            await driver.sendZdo(
+                "0x0102030405060708",
+                0x1234,
+                Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+                payload,
+                true,
+            );
+
+            expect(payload).toEqual(Buffer.of(0xaa, 0xbb, 0xcc));
+            expect(request).toHaveBeenCalledWith(
+                0x1234,
+                expect.objectContaining({
+                    sequence: 2,
+                    clusterId: Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
+                }),
+                Buffer.of(2, 0xbb, 0xcc),
+            );
+            expect(fromSpy).not.toHaveBeenCalledWith(payload);
+        } finally {
+            fromSpy.mockRestore();
+        }
+    });
+
+    it("clears address cache when sending a leave request", async () => {
+        const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
+        setDriverBlz(driver, {});
+        vi.spyOn(driver, "request").mockResolvedValue(true);
+        const deviceLeft = vi.fn();
+        driver.on("deviceLeft", deviceLeft);
+        driver.handleNodeJoined(0x1234, 0x0102030405060708n);
+
+        await driver.sendZdo(
+            "0x0102030405060708",
+            0x1234,
+            Zdo.ClusterId.LEAVE_REQUEST,
+            Buffer.from([0x00]),
+            true,
+        );
+
+        expect(deviceLeft).toHaveBeenCalledWith(
+            0x1234,
+            "0x0102030405060708",
+        );
+        expect((driver as unknown as {nodeIdToEui64: Map<number, unknown>}).nodeIdToEui64.has(0x1234)).toBe(false);
+        expect((driver as unknown as {eui64ToNodeId: Map<string, number>}).eui64ToNodeId.has("0102030405060708")).toBe(false);
     });
 
     it("clears address cache when stopping", async () => {

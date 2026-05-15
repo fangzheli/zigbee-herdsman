@@ -54,17 +54,6 @@ function parseZclHeader(message: Buffer): Zcl.Header | undefined {
   return header;
 }
 
-function clonePayloadWithSequence(payload: Buffer, sequence: number): Buffer {
-  const requestPayload = Buffer.allocUnsafe(payload.length);
-  payload.copy(requestPayload);
-  requestPayload[0] = sequence;
-  return requestPayload;
-}
-
-type ZdoSendWaiter = {
-  cancel: () => void;
-};
-
 export class BLZAdapter extends Adapter {
   private driver: Driver;
   private waitress: Waitress<ZclWaitressPayload, ClusterWaitressMatcher>;
@@ -456,61 +445,20 @@ export class BLZAdapter extends Adapter {
       const generation = this.stopGeneration;
       this.throwIfStopped(generation);
 
-      const clusterName = Zdo.ClusterId[clusterId];
-      const frame = this.driver.makeApsFrame(clusterId);
-      // Sequence number is required for BLZ APS frame.
-      const requestPayload = clonePayloadWithSequence(payload, frame.sequence);
-      let waiter: ReturnType<typeof this.driver.waitFor> | undefined;
-      let responseClusterId: number | undefined;
-
-      if (!disableResponse) {
-        responseClusterId = Zdo.Utils.getResponseClusterId(clusterId);
-
-        if (responseClusterId) {
-          waiter = this.driver.waitFor(
-            responseClusterId === Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE
-              ? ieeeAddress
-              : networkAddress,
-            responseClusterId,
-          );
-        }
-      }
-
-      await this.sendZdoFrame(
-        ieeeAddress,
-        networkAddress,
-        clusterName,
-        frame,
-        requestPayload,
-        waiter,
+      const response = await this.runOperationWhileRunning(
+        () =>
+          this.driver.sendZdo(
+            ieeeAddress,
+            networkAddress,
+            clusterId,
+            payload,
+            disableResponse,
+          ),
         generation,
       );
       this.throwIfStopped(generation);
 
-      // BLZ hardware does not provide a device leave callback/indication.
-      // Route the synthetic leave through the driver so its address cache is
-      // cleared before the controller removes the device from the database.
-      if (clusterId === Zdo.ClusterId.LEAVE_REQUEST) {
-        logger.info(
-          `[BLZ] LEAVE_REQUEST sent to ${ieeeAddress}:${networkAddress}, emitting deviceLeave`,
-          NS,
-        );
-
-        this.driver.handleNodeLeft(networkAddress, ieeeAddress);
-      }
-
-      if (waiter && responseClusterId !== undefined) {
-        const response = await waiter.start().promise;
-        this.throwIfStopped(generation);
-
-        logger.debug(
-          () =>
-            `<~~ [ZDO ${Zdo.ClusterId[responseClusterId]} ${JSON.stringify(response.zdoResponse!)}]`,
-          NS,
-        );
-
-        return response.zdoResponse! as ZdoTypes.RequestToResponseMap[K];
-      }
+      return response as ZdoTypes.RequestToResponseMap[K] | undefined;
     }, networkAddress);
   }
 
@@ -520,7 +468,6 @@ export class BLZAdapter extends Adapter {
     clusterName: string,
     frame: BlzApsFrame,
     payload: Buffer,
-    waiter: ZdoSendWaiter | undefined,
     generation: number,
   ): Promise<void> {
     const isBroadcast = ZSpec.Utils.isBroadcastAddress(networkAddress);
@@ -549,7 +496,6 @@ export class BLZAdapter extends Adapter {
         throw new Error(`~x~> [ZDO ${clusterName} ${route}] Failed to send request.`);
       }
     } catch (error) {
-      waiter?.cancel();
       this.throwIfStopped(generation);
       throw error;
     }
@@ -615,7 +561,6 @@ export class BLZAdapter extends Adapter {
         Zdo.ClusterId[clusterId],
         frame,
         payload,
-        undefined,
         generation,
       );
 
