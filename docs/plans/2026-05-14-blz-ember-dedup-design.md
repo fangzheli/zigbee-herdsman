@@ -988,6 +988,9 @@ Future BLZ refactors should follow these rules:
 - Centralized low-level BLZ pending-command cleanup so reconnect pre-close,
   failed-connect cleanup, serial close/reset, explicit close, and force reset
   all clear the command queue and frame waiters through one helper.
+- Centralized UART active-port teardown so serial error closes and TCP/serial
+  destroy paths release pipes, owned listeners, and port references through one
+  helper while preserving graceful serial `asyncFlushAndClose()` on normal stop.
 
 ## Next Steps
 

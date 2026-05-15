@@ -413,28 +413,29 @@ export class SerialDriver extends EventEmitter {
     const wasInitialized = this.initialized;
     this.initialized = false;
 
-    if (this.serialPort) {
+    const serialPort = this.serialPort;
+    if (serialPort) {
       try {
         this.detachSerialPort();
-        if (wasInitialized && this.serialPort.isOpen) {
-          await this.serialPort.asyncFlushAndClose();
+        if (wasInitialized && serialPort.isOpen) {
+          await serialPort.asyncFlushAndClose();
         } else {
-          this.serialPort.destroy();
+          this.destroyActivePort();
         }
       } catch (error) {
-        this.serialPort.destroy();
+        this.destroyActivePort();
         if (this.emitCloseWhenCloseCompletes) {
           this.emit("close");
         }
 
         throw error;
       } finally {
-        this.serialPort = undefined;
+        if (this.serialPort === serialPort) {
+          this.serialPort = undefined;
+        }
       }
     } else if (this.socketPort) {
-      this.detachSocketPort();
-      this.socketPort.destroy();
-      this.socketPort = undefined;
+      this.destroyActivePort();
     }
 
     if (this.emitCloseWhenCloseCompletes) {
@@ -476,6 +477,21 @@ export class SerialDriver extends EventEmitter {
     this.detachSocketListeners = undefined;
   }
 
+  private destroyActivePort(): void {
+    if (this.serialPort) {
+      this.detachSerialPort();
+      this.serialPort.destroy();
+      this.serialPort = undefined;
+      return;
+    }
+
+    if (this.socketPort) {
+      this.detachSocketPort();
+      this.socketPort.destroy();
+      this.socketPort = undefined;
+    }
+  }
+
   private onPortError(error: Error): void {
     logger.error(`Port error: ${error}`, NS);
   }
@@ -489,15 +505,7 @@ export class SerialDriver extends EventEmitter {
     this.cancelPendingOperations(closeError);
     this.cleanupParser();
 
-    if (this.serialPort) {
-      this.detachSerialPort();
-      this.serialPort.destroy();
-      this.serialPort = undefined;
-    } else if (this.socketPort) {
-      this.detachSocketPort();
-      this.socketPort.destroy();
-      this.socketPort = undefined;
-    }
+    this.destroyActivePort();
 
     if (err != null && err !== false) {
       this.emit("reset");
