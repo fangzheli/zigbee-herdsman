@@ -1229,7 +1229,7 @@ describe("BLZ Serial Driver", () => {
       expect(callback).not.toHaveBeenCalled();
     });
 
-    it("should not stringify parse errors unless error logging evaluates the message", () => {
+    it("should format parse errors safely for public error logging", () => {
       const errorLog = vi.spyOn(logger, "error").mockImplementation(() => {});
       const frame = createFrame(0x0000, 0x01, 0x00, Buffer.from([1]));
       const parseError = new Error("bad crc");
@@ -1244,7 +1244,7 @@ describe("BLZ Serial Driver", () => {
         expect(() => parserMock.on.mock.calls.find((call) => call[0] === "parsed")?.[1](frame)).not.toThrow();
 
         expect(writerMock.sendACK).not.toHaveBeenCalled();
-        expect(errorLog).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(errorLog).toHaveBeenCalledWith("Error parsing frame: bad crc", expect.any(String));
       } finally {
         errorLog.mockRestore();
       }

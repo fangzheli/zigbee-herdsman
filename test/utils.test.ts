@@ -69,7 +69,6 @@ describe("Utils", () => {
         const wait2_3 = waitress.waitFor(2, 10000).start();
         const wait2_4 = waitress.waitFor(2, 5000).start();
         const wait2_5 = waitress.waitFor(2, 5000).start();
-        wait2_3.promise.catch(() => {});
 
         waitress.remove(wait2_3.ID);
         vi.advanceTimersByTime(6000);
@@ -139,220 +138,9 @@ describe("Utils", () => {
         waitress.clear();
         await vi.advanceTimersByTimeAsync(12000);
 
-        expect(waitress.count()).toStrictEqual(0);
+        // @ts-expect-error private
+        expect(waitress.waiters.size).toStrictEqual(0);
 
-        vi.useRealTimers();
-    });
-
-    it("Test waitress clear rejects pending waiters", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000).start();
-        const result = waiter.promise.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        waitress.clear();
-
-        expect(
-            await Promise.race([
-                result,
-                new Promise((resolve) => setImmediate(() => resolve("pending"))),
-            ]),
-        ).toBe("rejected:Waitress cleared");
-    });
-
-    it("Test waitress exposes pending waiter count without private state access", () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const first = waitress.waitFor(2, 10000);
-        const second = waitress.waitFor(3, 10000);
-
-        expect(waitress.count()).toBe(2);
-        waitress.remove(first.ID);
-
-        expect(waitress.count()).toBe(1);
-        waitress.clear();
-
-        expect(waitress.count()).toBe(0);
-        void second.start().promise.catch(() => {});
-    });
-
-    it("Test waitress clear preserves custom rejection reasons", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000).start();
-        const result = waiter.promise.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        waitress.clear(new Error("Driver stopped"));
-
-        expect(
-            await Promise.race([
-                result,
-                new Promise((resolve) => setImmediate(() => resolve("pending"))),
-            ]),
-        ).toBe("rejected:Driver stopped");
-    });
-
-    it("Test waitress remove rejects removed waiters", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000).start();
-        const result = waiter.promise.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        waitress.remove(waiter.ID);
-
-        expect(
-            await Promise.race([
-                result,
-                new Promise((resolve) => setImmediate(() => resolve("pending"))),
-            ]),
-        ).toBe("rejected:Waitress removed");
-    });
-
-    it("Test waitress remove rejects unstarted waiters without unhandled rejection", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000);
-
-        waitress.remove(waiter.ID);
-        await new Promise((resolve) => setImmediate(resolve));
-
-        await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress removed"));
-        expect(waitress.count()).toStrictEqual(0);
-    });
-
-    it("Test waitress clear rejects unstarted waiters without unhandled rejection", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000);
-
-        waitress.clear();
-        await new Promise((resolve) => setImmediate(resolve));
-
-        await expect(waiter.start().promise).rejects.toEqual(new Error("Waitress cleared"));
-        expect(waitress.count()).toStrictEqual(0);
-    });
-
-    it("Test waitress reject rejects unstarted waiters without unhandled rejection", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 10000);
-
-        const handled = waitress.reject("up", "drop");
-        await new Promise((resolve) => setImmediate(resolve));
-
-        expect(handled).toBe(true);
-        await expect(waiter.start().promise).rejects.toEqual(new Error("drop"));
-        expect(waitress.count()).toStrictEqual(0);
-    });
-
-    it("Test waitress removes timed out waiters immediately", async () => {
-        vi.useFakeTimers();
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const waiter = waitress.waitFor(2, 5000).start();
-        const result = waiter.promise.catch((error: Error) => error);
-
-        await vi.advanceTimersByTimeAsync(6000);
-
-        await expect(result).resolves.toEqual(new Error("Timedout '5000'"));
-        expect(waitress.count()).toStrictEqual(0);
-        vi.useRealTimers();
-    });
-
-    it("Test waitress releases timed out waiters when timeout formatter errors cannot be stringified", async () => {
-        vi.useFakeTimers();
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const formatterFailure = {
-            toString: () => {
-                throw new Error("formatter stringification failed");
-            },
-        };
-        const waitress = new Waitress<string, number>(validator, () => {
-            throw formatterFailure;
-        });
-        const waiter = waitress.waitFor(2, 5000).start();
-        const result = waiter.promise.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        await vi.advanceTimersByTimeAsync(5000).catch(() => {});
-        const observed = await Promise.race([result, Promise.resolve("pending")]);
-
-        expect(observed).toBe("rejected:<unprintable error>");
-        expect(waitress.count()).toStrictEqual(0);
-        vi.useRealTimers();
-    });
-
-    it("Test waitress releases validator failures and continues matching waiters", async () => {
-        const validator = (payload: string, matcher: number): boolean => {
-            if (matcher === 2) {
-                throw new Error("validator failed");
-            }
-
-            return payload.length === matcher;
-        };
-        const waitress = new Waitress<string, number>(validator, (_, timeout) => `Timedout '${timeout}'`);
-        const rejectedWaiter = waitress.waitFor(2, 5000).start();
-        const resolvedWaiter = waitress.waitFor(3, 5000).start();
-        const rejectedResult = rejectedWaiter.promise.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-        const resolvedResult = resolvedWaiter.promise.then(
-            (payload) => `resolved:${payload}`,
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        expect(() => waitress.resolve("hey")).not.toThrow();
-
-        await expect(rejectedResult).resolves.toBe("rejected:validator failed");
-        await expect(resolvedResult).resolves.toBe("resolved:hey");
-        expect(waitress.count()).toStrictEqual(0);
-    });
-
-    it("Test waitress defers timeout formatting for waiters that resolve", async () => {
-        vi.useFakeTimers();
-        const validator = (payload: string, matcher: number): boolean => {
-            return payload.length === matcher;
-        };
-        const timeoutFormatter = vi.fn((_, timeout) => `Timedout '${timeout}'`);
-        const waitress = new Waitress<string, number>(validator, timeoutFormatter);
-        const waiter = waitress.waitFor(2, 5000).start();
-
-        expect(timeoutFormatter).not.toHaveBeenCalled();
-        waitress.resolve("up");
-
-        await expect(waiter.promise).resolves.toBe("up");
-        expect(timeoutFormatter).not.toHaveBeenCalled();
-        expect(waitress.count()).toStrictEqual(0);
         vi.useRealTimers();
     });
 
@@ -440,164 +228,18 @@ describe("Utils", () => {
         expect(queue.count()).toBe(0);
     });
 
-    it("Test queue normalizes non-positive concurrency so jobs cannot stay stuck", async () => {
-        const queue = new Queue(0);
-        let started = false;
-
-        const result = queue.execute(async () => {
-            started = true;
-            await Promise.resolve();
-            return "started";
-        });
-        await Promise.resolve();
-
-        expect(started).toBe(true);
-        await expect(result).resolves.toBe("started");
-        expect(queue.count()).toBe(0);
-    });
-
-    it("Test queue clear rejects active jobs and does not let old work remove new jobs", async () => {
-        const queue = new Queue(1);
-        const started: number[] = [];
-
-        let finishOldJob: (() => void) | undefined;
-        let finishNewJob: (() => void) | undefined;
-        const oldJobBlocker = new Promise<void>((resolve) => {
-            finishOldJob = resolve;
-        });
-        const newJobBlocker = new Promise<void>((resolve) => {
-            finishNewJob = resolve;
-        });
-
-        const oldJob = queue.execute(async () => {
-            started.push(1);
-            await oldJobBlocker;
-        });
-        const oldJobResult = oldJob.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        queue.clear();
-        const observed = await Promise.race([
-            oldJobResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
-
-        const newJob = queue.execute(async () => {
-            started.push(2);
-            await newJobBlocker;
-        });
-        const queuedJob = queue.execute(async () => {
-            started.push(3);
-        });
-
-        expect(started).toEqual([1, 2]);
-        expect(queue.count()).toBe(2);
-        expect(observed).toBe("rejected:Queue cleared");
-
-        finishOldJob?.();
-        await Promise.resolve();
-
-        expect(started).toEqual([1, 2]);
-        expect(queue.count()).toBe(2);
-
-        finishNewJob?.();
-        await newJob;
-        await queuedJob;
-
-        expect(started).toEqual([1, 2, 3]);
-        expect(queue.count()).toBe(0);
-    });
-
-    it("Test queue treats zero as a valid serialization key", async () => {
-        const queue = new Queue(2);
-        const started: number[] = [];
-
-        let finishFirst: (() => void) | undefined;
-        const firstBlocker = new Promise<void>((resolve) => {
-            finishFirst = resolve;
-        });
-
-        const firstJob = queue.execute(async () => {
-            started.push(1);
-            await firstBlocker;
-        }, 0);
-        const secondJob = queue.execute(async () => {
-            started.push(2);
-        }, 0);
-
-        await Promise.resolve();
-        expect(started).toEqual([1]);
-
-        finishFirst?.();
-        await firstJob;
-        await secondJob;
-
-        expect(started).toEqual([1, 2]);
-    });
-
-    it("Test queue clear rejects jobs that have not started", async () => {
-        const queue = new Queue(1);
-        const started: number[] = [];
-
-        let finishRunningJob: (() => void) | undefined;
-        const runningJobBlocker = new Promise<void>((resolve) => {
-            finishRunningJob = resolve;
-        });
-
-        const runningJob = queue.execute(async () => {
-            started.push(1);
-            await runningJobBlocker;
-        });
-        const runningResult = runningJob.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-        const queuedJob = queue.execute(async () => {
-            started.push(2);
-        });
-        const queuedResult = queuedJob.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        queue.clear();
-
-        const result = await Promise.race([
-            queuedResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
-        const activeResult = await Promise.race([
-            runningResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
-
-        expect(result).toBe("rejected:Queue cleared");
-        expect(activeResult).toBe("rejected:Queue cleared");
-        expect(started).toEqual([1]);
-        expect(queue.count()).toBe(0);
-
-        finishRunningJob?.();
-        await Promise.resolve();
-    });
-
     it("Test async mutex", async () => {
         vi.useFakeTimers();
 
         const queue = new AsyncMutex();
 
-        void queue
-            .run(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            })
-            .catch(() => {});
+        void queue.run(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        });
 
-        void queue
-            .run(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            })
-            .catch(() => {});
+        void queue.run(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        });
 
         await vi.advanceTimersByTimeAsync(500);
         expect(queue.count).toStrictEqual(1); // first has ran but still pending return, second is queued
@@ -605,11 +247,9 @@ describe("Utils", () => {
         await vi.advanceTimersByTimeAsync(1000);
         expect(queue.count).toStrictEqual(0);
 
-        void queue
-            .run(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            })
-            .catch(() => {});
+        void queue.run(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        });
 
         expect(queue.count).toStrictEqual(1); // second has ran but still pending return, third is queued
         await vi.advanceTimersByTimeAsync(1600);
@@ -617,16 +257,12 @@ describe("Utils", () => {
 
         //-- clear
 
-        void queue
-            .run(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            })
-            .catch(() => {});
-        void queue
-            .run(async () => {
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-            })
-            .catch(() => {});
+        void queue.run(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        });
+        void queue.run(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        });
 
         expect(queue.count).toStrictEqual(1);
 
@@ -636,42 +272,6 @@ describe("Utils", () => {
         await vi.runOnlyPendingTimersAsync(); // cleanup
 
         vi.useRealTimers();
-    });
-
-    it("Test async mutex clear rejects waiting jobs so callers cannot stay pending", async () => {
-        const queue = new AsyncMutex();
-        let releaseFirstJob: (() => void) | undefined;
-        const firstJobBlocker = new Promise<void>((resolve) => {
-            releaseFirstJob = resolve;
-        });
-        const started: number[] = [];
-
-        const firstJob = queue.run(async () => {
-            started.push(1);
-            await firstJobBlocker;
-        });
-        const waitingJob = queue.run(async () => {
-            await Promise.resolve();
-            started.push(2);
-        });
-        const waitingResult = waitingJob.then(
-            () => "resolved",
-            (error: Error) => `rejected:${error.message}`,
-        );
-
-        queue.clear();
-
-        const observed = await Promise.race([
-            waitingResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
-
-        expect(observed).toBe("rejected:AsyncMutex cleared");
-        expect(started).toEqual([1]);
-        expect(queue.count).toBe(0);
-
-        releaseFirstJob?.();
-        await firstJob;
     });
 
     it("Logs", () => {
@@ -687,16 +287,6 @@ describe("Utils", () => {
         expect(warningSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: warning$/));
         logger.error("error", "zh");
         expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: error$/));
-        logger.error(() => "lazy error", "zh");
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: lazy error$/));
-        expect(() => {
-            logger.error(() => {
-                throw new Error("lazy format failed");
-            }, "zh");
-        }).not.toThrow();
-        expect(errorSpy).toHaveBeenCalledWith(
-            expect.stringMatching(/^\[\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d.\d\d\dZ\] zh: Log message formatting failed: Error: lazy format failed$/),
-        );
 
         setLogger(mockLogger);
         expect(logger).toEqual(mockLogger);

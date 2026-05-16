@@ -1760,7 +1760,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await Promise.all([stop, reset]);
     });
 
-    it("logs reset recovery failures lazily", async () => {
+    it("logs reset recovery failures through BLZ-safe formatting", async () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         const resetFailure = new Error("reset failed");
         const errorLog = vi.spyOn(logger, "error").mockImplementation(() => {});
@@ -1769,9 +1769,9 @@ describe("BLZ high-level driver lifecycle", () => {
         (driver as unknown as {onBlzReset: () => void}).onBlzReset();
         await Promise.resolve();
 
-        expect(errorLog).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
+        expect(errorLog).toHaveBeenCalledWith(`BLZ reset recovery failed: ${resetFailure}`, expect.any(String));
         const [message] = errorLog.mock.calls[0];
-        expect(typeof message === "function" ? message() : message).toBe(`BLZ reset recovery failed: ${resetFailure}`);
+        expect(message).toBe(`BLZ reset recovery failed: ${resetFailure}`);
     });
 
     it("does not let reset recovery failure logging throw when the reset error cannot be stringified", async () => {

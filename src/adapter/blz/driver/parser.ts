@@ -11,6 +11,14 @@ import { unstuffFrameData } from "./framing";
 const NS = "zh:blz:uart";
 const EMPTY_BUFFER = Buffer.alloc(0);
 
+function formatUnknownError(error: unknown): string {
+  try {
+    return String(error);
+  } catch {
+    return "<unprintable error>";
+  }
+}
+
 export class Parser extends stream.Transform {
   private tail: Buffer;
 
@@ -51,7 +59,7 @@ export class Parser extends stream.Transform {
           this.emit("parsed", frame); // Emit the parsed frame
         }
       } catch (error) {
-        logger.debug(() => `<-- error ${error}`, NS);
+        logger.debug(() => `<-- error ${formatUnknownError(error)}`, NS);
       }
 
       // Remove the processed part and search for the next frame

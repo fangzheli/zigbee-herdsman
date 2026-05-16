@@ -43,7 +43,7 @@ describe("BLZFrameData", () => {
             expect(
                 BLZFrameData.createFrame(FRAMES.getValue.ID, false, Buffer.alloc(0)),
             ).toBeUndefined();
-            expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
+            expect(error).toHaveBeenCalledWith("Frame getValue parsing error: <unprintable error>", NS);
         } finally {
             errorToString.mockRestore();
             error.mockRestore();

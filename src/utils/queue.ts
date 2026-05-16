@@ -2,8 +2,6 @@ interface Job {
     key?: string | number;
     running: boolean;
     start?: () => void;
-    rejectStart?: (error: Error) => void;
-    rejectRun?: (error: Error) => void;
 }
 
 export class Queue {
@@ -12,28 +10,21 @@ export class Queue {
     #running = 0;
 
     constructor(concurrent = 1) {
-        const normalizedConcurrent = Number.isFinite(concurrent) ? Math.floor(concurrent) : 1;
-        this.#concurrent = Math.max(1, normalizedConcurrent);
+        this.#concurrent = concurrent;
     }
 
     public async execute<T>(func: () => Promise<T>, key?: string | number): Promise<T> {
         const job: Job = {key, running: false};
-        const clearPromise = new Promise<never>((_, reject): void => {
-            job.rejectRun = reject;
-        });
         this.#jobs.push(job);
 
         // Minor optimization/workaround: various tests like the idea that a job that is immediately runnable is run without an event loop spin.
         // This also helps with stack traces in some cases, so avoid an `await` if we can help it.
         if (this.#getNext() !== job) {
-            await new Promise<void>((resolve, reject): void => {
+            await new Promise<void>((resolve): void => {
                 job.start = (): void => {
                     job.running = true;
                     this.#running += 1;
                     resolve();
-                };
-                job.rejectStart = (error: Error): void => {
-                    reject(error);
                 };
 
                 this.#executeNext();
@@ -43,19 +34,12 @@ export class Queue {
             this.#running += 1;
         }
 
-        const work = (async (): Promise<T> => await func())();
-        work.catch(() => {});
-
         try {
-            return await Promise.race([work, clearPromise]);
+            return await func();
         } finally {
-            job.rejectRun = undefined;
-            const index = this.#jobs.indexOf(job);
-            if (index !== -1) {
-                this.#jobs.splice(index, 1);
-                this.#running = Math.max(this.#running - 1, 0);
-                this.#executeNext();
-            }
+            this.#jobs.splice(this.#jobs.indexOf(job), 1);
+            this.#running = Math.max(this.#running - 1, 0);
+            this.#executeNext();
         }
     }
 
@@ -76,7 +60,7 @@ export class Queue {
         for (let i = 0; i < this.#jobs.length; i++) {
             const job = this.#jobs[i];
 
-            if (!job.running && (job.key === undefined || !this.#jobs.find((j) => j.key === job.key && j.running))) {
+            if (!job.running && (!job.key || !this.#jobs.find((j) => j.key === job.key && j.running))) {
                 return job;
             }
         }
@@ -84,15 +68,7 @@ export class Queue {
         return undefined;
     }
 
-    public clear(error = new Error("Queue cleared")): void {
-        for (const job of this.#jobs) {
-            if (!job.running) {
-                job.rejectStart?.(error);
-            } else {
-                job.rejectRun?.(error);
-            }
-        }
-
+    public clear(): void {
         this.#running = 0;
         this.#jobs.length = 0;
     }

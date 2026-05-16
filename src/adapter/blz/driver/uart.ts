@@ -332,7 +332,7 @@ export class SerialDriver extends EventEmitter {
           this.handleDATA(frame);
       }
     } catch (error) {
-      logger.error(() => `Error parsing frame: ${error}`, NS);
+      logger.error(`Error parsing frame: ${formatErrorMessage(error)}`, NS);
     }
   }
 
@@ -372,7 +372,7 @@ export class SerialDriver extends EventEmitter {
   }
 
   private handleError(frame: Frame): void {
-    logger.error(`<-- Error: NCP is in error state`, NS);
+    logger.error("<-- Error: NCP is in error state", NS);
     this.handleResetFrame();
   }
 
@@ -390,7 +390,7 @@ export class SerialDriver extends EventEmitter {
         logger.debug("UART reset frame sent successfully", NS);
       } catch (e) {
         const errorMessage = formatErrorMessage(e);
-        logger.error(() => `Reset failed: ${errorMessage}`, NS);
+        logger.error(`Reset failed: ${errorMessage}`, NS);
         this.emit("reset");
         throw new Error(`Reset error: ${errorMessage}`);
       }
@@ -814,11 +814,11 @@ export class SerialDriver extends EventEmitter {
   }
 
   private onPortError(error: Error): void {
-    logger.error(() => `Port error: ${error}`, NS);
+    logger.error(`Port error: ${formatErrorMessage(error)}`, NS);
   }
 
   private onPortClose(err: boolean | Error): void {
-    logger.debug(() => `Port closed. Error? ${err}`, NS);
+    logger.debug(() => `Port closed. Error? ${formatErrorMessage(err)}`, NS);
     const closeError = this.createPortCloseError(err);
     this.cleanupPortEvent(closeError);
 
@@ -893,11 +893,7 @@ export class SerialDriver extends EventEmitter {
         return;
       } catch (e) {
         this.frameWaiters.cancel(waiter);
-        logger.error(
-          () =>
-            `Attempt ${attempt + 1} failed for seq ${seq}: ${formatErrorMessage(e)}`,
-          NS,
-        );
+        logger.error(`Attempt ${attempt + 1} failed for seq ${seq}: ${formatErrorMessage(e)}`, NS);
 
         if (!this.isOperationGenerationActive(generation)) {
           throw this.createSendCancelledError();

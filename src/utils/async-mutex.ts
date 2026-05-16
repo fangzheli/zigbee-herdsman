@@ -1,11 +1,6 @@
-interface Waiter {
-    resolve: () => void;
-    reject: (error: Error) => void;
-}
-
 export class AsyncMutex {
     #locked = false;
-    readonly #queue: Waiter[] = [];
+    readonly #queue: Array<() => void> = [];
 
     get count() {
         return this.#queue.length;
@@ -13,7 +8,7 @@ export class AsyncMutex {
 
     async run<T>(fn: () => Promise<T>): Promise<T> {
         if (this.#locked) {
-            await new Promise<void>((resolve, reject) => this.#queue.push({resolve, reject}));
+            await new Promise<void>((resolve) => this.#queue.push(resolve));
         }
 
         this.#locked = true;
@@ -25,16 +20,12 @@ export class AsyncMutex {
             const next = this.#queue.shift();
 
             if (next) {
-                next.resolve();
+                next();
             }
         }
     }
 
-    clear(error = new Error("AsyncMutex cleared")) {
-        for (const waiter of this.#queue) {
-            waiter.reject(error);
-        }
-
+    clear() {
         this.#queue.length = 0;
     }
 }

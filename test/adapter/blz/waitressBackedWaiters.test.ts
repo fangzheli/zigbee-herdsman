@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+
 import {describe, expect, it} from "vitest";
 
 import {WaitressBackedWaiters} from "../../../src/adapter/blz/waitressBackedWaiters";
@@ -12,6 +14,13 @@ interface Matcher {
 }
 
 describe("BLZ waitress-backed waiters", () => {
+    it("keeps waitress ownership private to BLZ", () => {
+        const source = fs.readFileSync("src/adapter/blz/waitressBackedWaiters.ts", "utf8");
+
+        expect(source).not.toContain('from "../../utils"');
+        expect(source).not.toContain("new Waitress<");
+    });
+
     it("wraps Waitress matching, resolving, cancellation, and cleanup", async () => {
         const waiters = makeWaiters();
         const waiter = waiters.waitFor({id: 1}, 1000);

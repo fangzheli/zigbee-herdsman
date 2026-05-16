@@ -14,6 +14,14 @@ const WORD_LIST_FIELD_LENGTHS: Record<string, string> = {
     outputClusterList: "outputClusterCount",
 };
 
+function formatUnknownError(error: unknown): string {
+    try {
+        return String(error);
+    } catch {
+        return "<unprintable error>";
+    }
+}
+
 export class BLZFrameData {
     _cls_: string;
     _id_: number;
@@ -31,7 +39,7 @@ export class BLZFrameData {
             try {
                 return new BLZFrameData(frameName, isRequest, params);
             } catch (error) {
-                logger.error(() => `Frame ${frameName} parsing error: ${error}`, NS);
+                logger.error(`Frame ${frameName} parsing error: ${formatUnknownError(error)}`, NS);
             }
         }
 

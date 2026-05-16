@@ -66,6 +66,14 @@ function formatUnknownError(error: unknown): string {
   }
 }
 
+function formatLogMessage(message: () => string): string {
+  try {
+    return message();
+  } catch (error) {
+    return `Log message formatting failed: ${formatUnknownError(error)}`;
+  }
+}
+
 type ForceResetOptions = {
   holdResetState?: boolean;
 };
@@ -115,7 +123,7 @@ export class Blz extends EventEmitter {
       isResetting: () => this.inResetingProcess,
       emitReset: () => this.emit("reset"),
       debug: (message) => logger.debug(message, NS),
-      error: (message) => logger.error(message, NS),
+      error: (message) => logger.error(formatLogMessage(message), NS),
     });
     this.attachSerialDriverEventBridge();
     this.version = {
@@ -256,7 +264,7 @@ export class Blz extends EventEmitter {
         const attemptError = errorFromUnknown(error);
         lastError = attemptError;
         logger.error(
-          () => `Connection attempt ${i} failed: ${attemptError.message}`,
+          formatLogMessage(() => `Connection attempt ${i} failed: ${attemptError.message}`),
           NS,
         );
 
@@ -366,7 +374,7 @@ export class Blz extends EventEmitter {
       }
 
       logger.debug(
-        () => `Failed to close serial driver after connect failure: ${error}`,
+        () => `Failed to close serial driver after connect failure: ${formatUnknownError(error)}`,
         NS,
       );
     }
@@ -695,7 +703,7 @@ export class Blz extends EventEmitter {
       }
     } catch (error) {
       this.inResetingProcess = wasResetingProcess;
-      logger.error(() => `Direct UART reset failed: ${error}`, NS);
+      logger.error(formatLogMessage(() => `Direct UART reset failed: ${error}`), NS);
       throw error;
     }
   }
@@ -725,7 +733,7 @@ export class Blz extends EventEmitter {
       frm = BLZFrameData.createFrame(frameId, false, data);
     } catch (error) {
       logger.error(
-        () => `Failed to parse BLZ frame 0x${frameId.toString(16)}: ${error}`,
+        formatLogMessage(() => `Failed to parse BLZ frame 0x${frameId.toString(16)}: ${error}`),
         NS,
       );
       return;
@@ -864,8 +872,7 @@ export class Blz extends EventEmitter {
 
     if (!this.isSuccessStatus(ret.status)) {
       logger.error(
-        () =>
-          `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`,
+        formatLogMessage(() => `Command (setValue(${valueName}, ${value})) returned unexpected state: ${JSON.stringify(ret)}`),
         NS,
       );
       throw new Error(`Failed to set value ${valueName}: status ${ret.status}`);
@@ -881,8 +888,7 @@ export class Blz extends EventEmitter {
 
     if (!this.isSuccessStatus(ret.status)) {
       logger.error(
-        () =>
-          `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`,
+        formatLogMessage(() => `Command (getValue(${valueName})) returned unexpected state: ${JSON.stringify(ret)}`),
         NS,
       );
       throw new Error(`Failed to get value ${valueName}: status ${ret.status}`);

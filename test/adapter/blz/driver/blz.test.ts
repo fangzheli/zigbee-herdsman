@@ -703,7 +703,10 @@ describe("BLZ Driver", () => {
       expect(serialDriverMock.close).toHaveBeenCalledTimes(
         MAX_SERIAL_CONNECT_ATTEMPTS,
       );
-      expect(errorLog).toHaveBeenCalledWith(expect.any(Function), NS);
+      expect(errorLog).toHaveBeenCalledWith(
+        "Log message formatting failed: Error: connect message stringification failed",
+        NS,
+      );
     });
 
     it("should close the serial driver when failed-attempt runtime cleanup fails", async () => {
@@ -1875,11 +1878,12 @@ describe("BLZ Driver", () => {
       try {
         expect(() => receivedHandler(data)).not.toThrow();
         expect(frame).not.toHaveBeenCalled();
-        expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
-        const [message] = error.mock.calls[0];
-        expect((message as () => string)()).toContain(
-          "Failed to parse BLZ frame 0xffff",
+        expect(error).toHaveBeenCalledWith(
+          "Failed to parse BLZ frame 0xffff: Error: Unrecognized frame FrameID 65535",
+          NS,
         );
+        const [message] = error.mock.calls[0];
+        expect(message).toContain("Failed to parse BLZ frame 0xffff");
       } finally {
         error.mockRestore();
       }
@@ -1909,7 +1913,10 @@ describe("BLZ Driver", () => {
       try {
         expect(() => receivedHandler(data)).not.toThrow();
         expect(frame).not.toHaveBeenCalled();
-        expect(error).toHaveBeenCalledWith(expect.any(Function), NS);
+        expect(error).toHaveBeenCalledWith(
+          "Log message formatting failed: Error: decode stringification failed",
+          NS,
+        );
       } finally {
         errorToString.mockRestore();
         error.mockRestore();

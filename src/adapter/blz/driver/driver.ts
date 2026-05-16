@@ -81,6 +81,14 @@ function formatUnknownError(error: unknown): string {
   }
 }
 
+function formatLogMessage(message: () => string): string {
+  try {
+    return message();
+  } catch (error) {
+    return `Log message formatting failed: ${formatUnknownError(error)}`;
+  }
+}
+
 function channelToMask(channel: number): number {
   return 2 ** channel;
 }
@@ -409,7 +417,7 @@ export class Driver extends EventEmitter {
         await this.stop(false, true);
       }
     } catch (err) {
-      logger.debug(() => `Stop error ${err}`, NS);
+      logger.debug(() => `Stop error ${formatUnknownError(err)}`, NS);
     }
     try {
       if (!this.isResetGenerationActive(resetStopGeneration)) {
@@ -424,7 +432,7 @@ export class Driver extends EventEmitter {
       logger.debug(`Startup again.`, NS);
       await this.startup();
     } catch (err) {
-      logger.debug(() => `Reset error ${err}`, NS);
+      logger.debug(() => `Reset error ${formatUnknownError(err)}`, NS);
       if (!this.isResetGenerationActive(resetStopGeneration)) {
         logger.debug("Reset cancelled by stop.", NS);
         return;
@@ -469,7 +477,7 @@ export class Driver extends EventEmitter {
   private onBlzReset(): void {
     logger.debug("onBlzReset()", NS);
     void this.reset().catch((error) => {
-      logger.error(() => `BLZ reset recovery failed: ${error}`, NS);
+      logger.error(formatLogMessage(() => `BLZ reset recovery failed: ${error}`), NS);
     });
   }
 
@@ -730,7 +738,7 @@ export class Driver extends EventEmitter {
           startupStopGeneration,
         );
       } catch (error) {
-        logger.debug(() => `BLZ could not connect: ${error}`, NS);
+        logger.debug(() => `BLZ could not connect: ${formatUnknownError(error)}`, NS);
         throw error;
       }
       this.throwIfStartupCancelled(startupStopGeneration);
@@ -848,7 +856,7 @@ export class Driver extends EventEmitter {
 
   private async cleanupFailedStartup(error: unknown): Promise<void> {
     logger.debug(
-      () => `Startup failed, cleaning up BLZ resources: ${error}`,
+      () => `Startup failed, cleaning up BLZ resources: ${formatUnknownError(error)}`,
       NS,
     );
     const resetCancelledStartup =
@@ -1134,11 +1142,7 @@ export class Driver extends EventEmitter {
           frame.message,
         );
       } catch (error) {
-        logger.error(
-          () =>
-            `Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${formatUnknownError(error)}`,
-          NS,
-        );
+        logger.error(`Failed to parse ZDO response 0x${frame.clusterId.toString(16)}: ${formatUnknownError(error)}`, NS);
       }
 
       if (zdoResponse) {
@@ -1294,7 +1298,7 @@ export class Driver extends EventEmitter {
         );
       } catch (e) {
         logger.debug(
-          () => `Request attempt ${attempt + 1}/${REQUEST_ATTEMPT_DELAYS.length} error: ${e}`,
+          () => `Request attempt ${attempt + 1}/${REQUEST_ATTEMPT_DELAYS.length} error: ${formatUnknownError(e)}`,
           NS,
         );
       }
