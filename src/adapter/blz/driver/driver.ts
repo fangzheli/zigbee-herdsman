@@ -26,6 +26,7 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {formatLogMessage, formatUnknownError} from "../errorUtils";
 import {
   runAsyncCleanupSteps,
   runCleanupSteps,
@@ -72,22 +73,6 @@ type ApsFrameOverrides = Partial<Pick<
   BlzApsFrame,
   "profileId" | "sourceEndpoint" | "destinationEndpoint" | "groupId"
 >>;
-
-function formatUnknownError(error: unknown): string {
-  try {
-    return String(error);
-  } catch {
-    return "<unprintable error>";
-  }
-}
-
-function formatLogMessage(message: () => string): string {
-  try {
-    return message();
-  } catch (error) {
-    return `Log message formatting failed: ${formatUnknownError(error)}`;
-  }
-}
 
 function channelToMask(channel: number): number {
   return 2 ** channel;

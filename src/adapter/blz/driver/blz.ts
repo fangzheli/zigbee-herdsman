@@ -10,6 +10,7 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {errorFromUnknown, formatLogMessage, formatUnknownError} from "../errorUtils";
 import {
   runAsyncCleanupSteps,
   runCleanupSteps,
@@ -45,34 +46,6 @@ const MTOR_DELIVERY_FAIL_THRESHOLD = 3;
 const MAX_WATCHDOG_FAILURES = 2;
 const WATCHDOG_WAKE_PERIOD = 30; // in sec
 const BLZ_DEFAULT_RADIUS = 0;
-
-function errorFromUnknown(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  try {
-    return new Error(String(error), { cause: error });
-  } catch {
-    return new Error("<unprintable error>", { cause: error });
-  }
-}
-
-function formatUnknownError(error: unknown): string {
-  try {
-    return String(error);
-  } catch {
-    return "<unprintable error>";
-  }
-}
-
-function formatLogMessage(message: () => string): string {
-  try {
-    return message();
-  } catch (error) {
-    return `Log message formatting failed: ${formatUnknownError(error)}`;
-  }
-}
 
 type ForceResetOptions = {
   holdResetState?: boolean;

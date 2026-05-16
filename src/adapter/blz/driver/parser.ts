@@ -4,20 +4,13 @@ import * as stream from "node:stream";
 
 import { logger } from "../../../utils/logger";
 import { bufferForRetention } from "../byteUtils";
+import {formatUnknownError} from "../errorUtils";
 import * as consts from "./consts";
 import Frame from "./frame";
 import { unstuffFrameData } from "./framing";
 
 const NS = "zh:blz:uart";
 const EMPTY_BUFFER = Buffer.alloc(0);
-
-function formatUnknownError(error: unknown): string {
-  try {
-    return String(error);
-  } catch {
-    return "<unprintable error>";
-  }
-}
 
 export class Parser extends stream.Transform {
   private tail: Buffer;

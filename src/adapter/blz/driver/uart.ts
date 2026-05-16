@@ -13,6 +13,7 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
+import {errorFromUnknownWithSafeMessage, formatErrorMessage} from "../errorUtils";
 import {
   runAsyncCleanupSteps,
   runCleanupSteps,
@@ -29,35 +30,6 @@ import {
 } from "./uartFrameWaiters";
 
 const NS = "zh:blz:uart";
-
-function formatErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    try {
-      return error.message;
-    } catch {
-      // Fall through to the generic stringifier below.
-    }
-  }
-
-  try {
-    return String(error);
-  } catch {
-    return "<unprintable error>";
-  }
-}
-
-function errorFromUnknown(error: unknown): Error {
-  if (error instanceof Error) {
-    try {
-      void error.message;
-      return error;
-    } catch {
-      return new Error(formatErrorMessage(error), { cause: error });
-    }
-  }
-
-  return new Error(formatErrorMessage(error), { cause: error });
-}
 
 export class SerialDriver extends EventEmitter {
   private serialPort?: SerialPort;
@@ -232,7 +204,7 @@ export class SerialDriver extends EventEmitter {
             // reset
             await this.runSocketReadyReset(socketPort);
           } catch (error) {
-            openError(errorFromUnknown(error));
+            openError(errorFromUnknownWithSafeMessage(error));
             return;
           }
 
@@ -252,7 +224,7 @@ export class SerialDriver extends EventEmitter {
         };
         const onReady = (): void => {
           void handleSocketReady().catch((error) => {
-            openError(errorFromUnknown(error));
+            openError(errorFromUnknownWithSafeMessage(error));
           });
         };
         const detachOpenListeners = (): void => {

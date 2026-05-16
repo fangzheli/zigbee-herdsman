@@ -21,6 +21,7 @@ import {
 import { CancellableQueue } from "../cancellableQueue";
 import { CancellableDelay } from "../driver/cancellableDelay";
 import { CancellableOperation } from "../driver/cancellableOperation";
+import {errorFromUnknown, formatUnknownError} from "../errorUtils";
 import {
   attachListenersOrRollback,
   detachListeners,
@@ -62,26 +63,6 @@ function parseZclHeader(message: Buffer): Zcl.Header | undefined {
   }
 
   return header;
-}
-
-function errorFromUnknown(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  try {
-    return new Error(String(error), { cause: error });
-  } catch {
-    return new Error("<unprintable error>", { cause: error });
-  }
-}
-
-function formatUnknownError(error: unknown): string {
-  try {
-    return String(error);
-  } catch {
-    return "<unprintable error>";
-  }
 }
 
 export class BLZAdapter extends Adapter {

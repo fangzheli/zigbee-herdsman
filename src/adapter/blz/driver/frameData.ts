@@ -1,4 +1,5 @@
 import {logger} from "../../../utils/logger";
+import {formatUnknownError} from "../errorUtils";
 import {type BLZFrameDesc, FRAME_NAMES_BY_ID, FRAMES, type ParamsDesc} from "./commands";
 import {Bytes, WordList} from "./types";
 import {serializeMappedBufferSegments} from "./types/basic";
@@ -13,14 +14,6 @@ const WORD_LIST_FIELD_LENGTHS: Record<string, string> = {
     inputClusterList: "inputClusterCount",
     outputClusterList: "outputClusterCount",
 };
-
-function formatUnknownError(error: unknown): string {
-    try {
-        return String(error);
-    } catch {
-        return "<unprintable error>";
-    }
-}
 
 export class BLZFrameData {
     _cls_: string;

@@ -1,3 +1,5 @@
+import {errorFromUnknown} from "./errorUtils";
+
 interface Waiter<TPayload, TMatcher> {
     ID: number;
     resolve: (payload: TPayload) => void;
@@ -17,18 +19,6 @@ interface WaiterHandle<TPayload> {
 
 type Validator<TPayload, TMatcher> = (payload: TPayload, matcher: TMatcher) => boolean;
 type TimeoutFormatter<TMatcher> = (matcher: TMatcher, timeout: number) => string;
-
-function errorFromUnknown(error: unknown): Error {
-    if (error instanceof Error) {
-        return error;
-    }
-
-    try {
-        return new Error(String(error), {cause: error});
-    } catch {
-        return new Error("<unprintable error>", {cause: error});
-    }
-}
 
 class WaiterRegistry<TPayload, TMatcher> {
     private readonly waiters = new Map<number, Waiter<TPayload, TMatcher>>();
