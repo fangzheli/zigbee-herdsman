@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from "vitest";
 
-import {runAsyncCleanupSteps, runCleanupSteps} from "../../../src/adapter/blz/lifecycleCleanup";
+import {collectCleanupErrors, runAsyncCleanupSteps, runCleanupSteps, throwCollectedErrors} from "../../../src/adapter/blz/lifecycleCleanup";
 
 describe("BLZ lifecycle cleanup helpers", () => {
     it("runs every sync cleanup step and reports all cleanup failures", () => {
@@ -51,6 +51,38 @@ describe("BLZ lifecycle cleanup helpers", () => {
             ]),
         ).toThrow(syncError);
         await expect(runAsyncCleanupSteps([() => Promise.reject(asyncError)])).rejects.toThrow(asyncError);
+    });
+
+    it("collects cleanup errors without stopping later cleanup steps", () => {
+        const firstError = new Error("first cleanup failed");
+        const secondError = new Error("second cleanup failed");
+        const lastStep = vi.fn();
+
+        const errors = collectCleanupErrors([
+            () => {
+                throw firstError;
+            },
+            () => {
+                throw secondError;
+            },
+            lastStep,
+        ]);
+
+        expect(errors).toEqual([firstError, secondError]);
+        expect(lastStep).toHaveBeenCalledOnce();
+    });
+
+    it("throws collected errors with the caller's aggregate message", () => {
+        const firstError = new Error("first cleanup failed");
+        const secondError = new Error("second cleanup failed");
+
+        const error = captureThrown(() => {
+            throwCollectedErrors([firstError, secondError], "custom cleanup failed");
+        });
+
+        expect(error).toBeInstanceOf(AggregateError);
+        expect((error as AggregateError).message).toBe("custom cleanup failed");
+        expect((error as AggregateError).errors).toEqual([firstError, secondError]);
     });
 });
 

@@ -26,7 +26,11 @@ import {
   detachListeners,
   type OwnedEventListener,
 } from "../eventListeners";
-import { runCleanupSteps } from "../lifecycleCleanup";
+import {
+  collectCleanupErrors,
+  runCleanupSteps,
+  throwCollectedErrors,
+} from "../lifecycleCleanup";
 import { Driver, BlzIncomingMessage } from "../driver";
 import { BlzEUI64, BlzOutgoingMessageType } from "../driver/types";
 import { formatIeeeAddress } from "../ieee";
@@ -251,24 +255,19 @@ export class BLZAdapter extends Adapter {
   }
 
   private throwAfterFailedStartCleanup(error: Error): never {
-    const cleanupErrors: unknown[] = [];
-
-    if (!this.closing) {
-      try {
-        this.enterStoppedState(error);
-      } catch (cleanupError) {
-        cleanupErrors.push(cleanupError);
-      }
-    }
-
-    try {
-      this.detachDriverListeners();
-    } catch (cleanupError) {
-      cleanupErrors.push(cleanupError);
-    }
+    const cleanupErrors = collectCleanupErrors([
+      () => {
+        if (!this.closing) {
+          this.enterStoppedState(error);
+        }
+      },
+      () => {
+        this.detachDriverListeners();
+      },
+    ]);
 
     if (cleanupErrors.length > 0) {
-      throw new AggregateError(
+      throwCollectedErrors(
         [error, ...cleanupErrors],
         "Failed to start adapter and cleanup driver listeners",
       );
@@ -319,13 +318,7 @@ export class BLZAdapter extends Adapter {
       this.driverStopCloseExpected = false;
     }
 
-    if (errors.length === 1) {
-      throw errors[0];
-    }
-
-    if (errors.length > 1) {
-      throw new AggregateError(errors, "Failed to stop adapter and cleanup driver listeners");
-    }
+    throwCollectedErrors(errors, "Failed to stop adapter and cleanup driver listeners");
   }
 
   private onDriverClose(): void {

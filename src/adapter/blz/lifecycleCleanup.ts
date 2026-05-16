@@ -1,17 +1,7 @@
 type CleanupStep = () => void;
 type AsyncCleanupStep = () => void | Promise<void>;
 
-function throwCleanupErrors(errors: readonly unknown[]): void {
-    if (errors.length === 1) {
-        throw errors[0];
-    }
-
-    if (errors.length > 1) {
-        throw new AggregateError(errors, "Multiple cleanup steps failed");
-    }
-}
-
-export function runCleanupSteps(steps: readonly CleanupStep[]): void {
+export function collectCleanupErrors(steps: readonly CleanupStep[]): unknown[] {
     const errors: unknown[] = [];
 
     for (const step of steps) {
@@ -22,7 +12,21 @@ export function runCleanupSteps(steps: readonly CleanupStep[]): void {
         }
     }
 
-    throwCleanupErrors(errors);
+    return errors;
+}
+
+export function throwCollectedErrors(errors: readonly unknown[], message: string): void {
+    if (errors.length === 1) {
+        throw errors[0];
+    }
+
+    if (errors.length > 1) {
+        throw new AggregateError(errors, message);
+    }
+}
+
+export function runCleanupSteps(steps: readonly CleanupStep[]): void {
+    throwCollectedErrors(collectCleanupErrors(steps), "Multiple cleanup steps failed");
 }
 
 export async function runAsyncCleanupSteps(steps: readonly AsyncCleanupStep[]): Promise<void> {
@@ -36,5 +40,5 @@ export async function runAsyncCleanupSteps(steps: readonly AsyncCleanupStep[]): 
         }
     }
 
-    throwCleanupErrors(errors);
+    throwCollectedErrors(errors, "Multiple cleanup steps failed");
 }
