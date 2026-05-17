@@ -1,3 +1,7 @@
+// biome-ignore-all lint/suspicious/noExplicitAny: Tests use dynamic casts to exercise private driver paths.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Tests assert source text containing a template literal.
+// biome-ignore-all lint/suspicious/useAwait: Some Vitest callbacks intentionally keep async promise shape.
+
 import * as fs from "node:fs";
 
 import {afterEach, describe, expect, it, vi} from "vitest";
@@ -159,7 +163,7 @@ describe("BLZ high-level driver lifecycle", () => {
         expect(source).toContain("const networkParams = this.setNetworkParametersSnapshot(netParams);");
         expect(source).toContain("uint64ToBigEndianBuffer(netParams.extPanId)");
         expect(source).toContain("uint64FromBigEndianBytes(currentParams.extendedPanId)");
-        expect(source).not.toContain("BigInt(`0x${currentParams.extendedPanId.toString(\"hex\")}`)");
+        expect(source).not.toContain('BigInt(`0x${currentParams.extendedPanId.toString("hex")}`)');
         expect(source).toContain("private async leaveNetwork(");
         expect(source).not.toContain("public async leaveNetwork(");
         expect(source).toContain("private async formNetworkWithParameters(");
@@ -205,9 +209,7 @@ describe("BLZ high-level driver lifecycle", () => {
         });
 
         try {
-            const result = (
-                driver as unknown as {convertBlzMacToIeeeEui64: (rawMacBuffer: Buffer) => Buffer}
-            ).convertBlzMacToIeeeEui64(raw);
+            const result = (driver as unknown as {convertBlzMacToIeeeEui64: (rawMacBuffer: Buffer) => Buffer}).convertBlzMacToIeeeEui64(raw);
 
             expect(result).toEqual(expected);
             expect(raw).toEqual(original);
@@ -269,13 +271,7 @@ describe("BLZ high-level driver lifecycle", () => {
     function makeNetworkAddressResponseMessage(eui64: string, nwk: number): Buffer {
         const normalized = eui64.replace(/^0x/i, "");
         const eui64Bytes = Buffer.from(normalized, "hex").reverse();
-        return Buffer.from([
-            0x01,
-            0x00,
-            ...eui64Bytes,
-            nwk & 0xff,
-            (nwk >> 8) & 0xff,
-        ]);
+        return Buffer.from([0x01, 0x00, ...eui64Bytes, nwk & 0xff, (nwk >> 8) & 0xff]);
     }
 
     function seedNetworkSnapshot(driver: Driver): void {
@@ -295,27 +291,26 @@ describe("BLZ high-level driver lifecycle", () => {
 
     function setActiveDriverBlz(driver: Driver, blz: unknown): void {
         setDriverBlz(driver, blz);
-        (driver as unknown as {
-            blzCloseListener?: unknown;
-            blzRuntimeListeners?: unknown;
-        }).blzCloseListener = blz;
-        (driver as unknown as {
-            blzCloseListener?: unknown;
-            blzRuntimeListeners?: unknown;
-        }).blzRuntimeListeners = blz;
+        (
+            driver as unknown as {
+                blzCloseListener?: unknown;
+                blzRuntimeListeners?: unknown;
+            }
+        ).blzCloseListener = blz;
+        (
+            driver as unknown as {
+                blzCloseListener?: unknown;
+                blzRuntimeListeners?: unknown;
+            }
+        ).blzRuntimeListeners = blz;
     }
 
-    function cacheDriverNode(
-        driver: Driver,
-        nwk: number,
-        ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
-    ): BlzEUI64 {
-        return (driver as unknown as {
-            cacheNodeIeee: (
-                nwk: number,
-                ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint,
-            ) => BlzEUI64;
-        }).cacheNodeIeee(nwk, ieee);
+    function cacheDriverNode(driver: Driver, nwk: number, ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint): BlzEUI64 {
+        return (
+            driver as unknown as {
+                cacheNodeIeee: (nwk: number, ieee: BlzEUI64 | ArrayLike<number> | string | number | bigint) => BlzEUI64;
+            }
+        ).cacheNodeIeee(nwk, ieee);
     }
 
     function getCachedDriverEui64(driver: Driver, nwk: number): string | undefined {
@@ -327,117 +322,107 @@ describe("BLZ high-level driver lifecycle", () => {
     }
 
     function handleDriverNodeJoined(driver: Driver, nwk: number, ieee: number | bigint): void {
-        (driver as unknown as {
-            handleNodeJoined: (nwk: number, ieee: number | bigint) => void;
-        }).handleNodeJoined(nwk, ieee);
+        (
+            driver as unknown as {
+                handleNodeJoined: (nwk: number, ieee: number | bigint) => void;
+            }
+        ).handleNodeJoined(nwk, ieee);
     }
 
     function handleDriverNodeLeft(driver: Driver, nwk: number, ieeeAddr: string): void {
-        (driver as unknown as {
-            handleNodeLeft: (nwk: number, ieeeAddr: string) => void;
-        }).handleNodeLeft(nwk, ieeeAddr);
+        (
+            driver as unknown as {
+                handleNodeLeft: (nwk: number, ieeeAddr: string) => void;
+            }
+        ).handleNodeLeft(nwk, ieeeAddr);
     }
 
-    function updateDriverNetworkParametersSnapshot(
-        driver: Driver,
-        channel: number,
-        nwkUpdateId: number,
-    ): void {
-        (driver as unknown as {
-            updateNetworkParametersSnapshot: (channel: number, nwkUpdateId: number) => void;
-        }).updateNetworkParametersSnapshot(channel, nwkUpdateId);
+    function updateDriverNetworkParametersSnapshot(driver: Driver, channel: number, nwkUpdateId: number): void {
+        (
+            driver as unknown as {
+                updateNetworkParametersSnapshot: (channel: number, nwkUpdateId: number) => void;
+            }
+        ).updateNetworkParametersSnapshot(channel, nwkUpdateId);
     }
 
     function driverLeaveNetwork(driver: Driver): Promise<BlzStatus> {
-        return (driver as unknown as {
-            leaveNetwork: () => Promise<BlzStatus>;
-        }).leaveNetwork();
+        return (
+            driver as unknown as {
+                leaveNetwork: () => Promise<BlzStatus>;
+            }
+        ).leaveNetwork();
     }
 
-    function driverFormNetworkWithParameters(
-        driver: Driver,
-        extendedPanId: bigint,
-        panId: number,
-        channel: number,
-    ): Promise<BlzStatus> {
-        return (driver as unknown as {
-            formNetworkWithParameters: (
-                extendedPanId: bigint,
-                panId: number,
-                channel: number,
-            ) => Promise<BlzStatus>;
-        }).formNetworkWithParameters(extendedPanId, panId, channel);
+    function driverFormNetworkWithParameters(driver: Driver, extendedPanId: bigint, panId: number, channel: number): Promise<BlzStatus> {
+        return (
+            driver as unknown as {
+                formNetworkWithParameters: (extendedPanId: bigint, panId: number, channel: number) => Promise<BlzStatus>;
+            }
+        ).formNetworkWithParameters(extendedPanId, panId, channel);
     }
 
-    function driverSetGlobalTcLinkKey(
-        driver: Driver,
-        linkKey: Buffer,
-        outgoingFrameCounter: number,
-    ): Promise<BlzStatus> {
-        return (driver as unknown as {
-            setGlobalTcLinkKey: (
-                linkKey: Buffer,
-                outgoingFrameCounter: number,
-            ) => Promise<BlzStatus>;
-        }).setGlobalTcLinkKey(linkKey, outgoingFrameCounter);
+    function driverSetGlobalTcLinkKey(driver: Driver, linkKey: Buffer, outgoingFrameCounter: number): Promise<BlzStatus> {
+        return (
+            driver as unknown as {
+                setGlobalTcLinkKey: (linkKey: Buffer, outgoingFrameCounter: number) => Promise<BlzStatus>;
+            }
+        ).setGlobalTcLinkKey(linkKey, outgoingFrameCounter);
     }
 
-    function driverSetNetworkKeyInfo(
-        driver: Driver,
-        nwkKey: Buffer,
-        outgoingFrameCounter: number,
-        nwkKeySeqNum: number,
-    ): Promise<BlzStatus> {
-        return (driver as unknown as {
-            setNetworkKeyInfo: (
-                nwkKey: Buffer,
-                outgoingFrameCounter: number,
-                nwkKeySeqNum: number,
-            ) => Promise<BlzStatus>;
-        }).setNetworkKeyInfo(nwkKey, outgoingFrameCounter, nwkKeySeqNum);
+    function driverSetNetworkKeyInfo(driver: Driver, nwkKey: Buffer, outgoingFrameCounter: number, nwkKeySeqNum: number): Promise<BlzStatus> {
+        return (
+            driver as unknown as {
+                setNetworkKeyInfo: (nwkKey: Buffer, outgoingFrameCounter: number, nwkKeySeqNum: number) => Promise<BlzStatus>;
+            }
+        ).setNetworkKeyInfo(nwkKey, outgoingFrameCounter, nwkKeySeqNum);
     }
 
     function driverGetGlobalTcLinkKey(driver: Driver): Promise<BLZFrameData> {
-        return (driver as unknown as {
-            getGlobalTcLinkKey: () => Promise<BLZFrameData>;
-        }).getGlobalTcLinkKey();
+        return (
+            driver as unknown as {
+                getGlobalTcLinkKey: () => Promise<BLZFrameData>;
+            }
+        ).getGlobalTcLinkKey();
     }
 
     function driverGetNetworkKeyInfo(driver: Driver): Promise<BLZFrameData> {
-        return (driver as unknown as {
-            getNetworkKeyInfo: () => Promise<BLZFrameData>;
-        }).getNetworkKeyInfo();
+        return (
+            driver as unknown as {
+                getNetworkKeyInfo: () => Promise<BLZFrameData>;
+            }
+        ).getNetworkKeyInfo();
     }
 
     function driverGetCurrentNetworkParameters(driver: Driver): Promise<BLZFrameData> {
-        return (driver as unknown as {
-            getCurrentNetworkParameters: () => Promise<BLZFrameData>;
-        }).getCurrentNetworkParameters();
+        return (
+            driver as unknown as {
+                getCurrentNetworkParameters: () => Promise<BLZFrameData>;
+            }
+        ).getCurrentNetworkParameters();
     }
 
     function driverGetMacAddress(driver: Driver): Promise<Buffer> {
-        return (driver as unknown as {
-            getMacAddress: () => Promise<Buffer>;
-        }).getMacAddress();
+        return (
+            driver as unknown as {
+                getMacAddress: () => Promise<Buffer>;
+            }
+        ).getMacAddress();
     }
 
-    function driverNeedsToBeInitialised(
-        driver: Driver,
-        options: NetworkOptions,
-        startupStopGeneration = 0,
-    ): Promise<boolean> {
-        return (driver as unknown as {
-            needsToBeInitialised: (
-                options: NetworkOptions,
-                startupStopGeneration: number,
-            ) => Promise<boolean>;
-        }).needsToBeInitialised(options, startupStopGeneration);
+    function driverNeedsToBeInitialised(driver: Driver, options: NetworkOptions, startupStopGeneration = 0): Promise<boolean> {
+        return (
+            driver as unknown as {
+                needsToBeInitialised: (options: NetworkOptions, startupStopGeneration: number) => Promise<boolean>;
+            }
+        ).needsToBeInitialised(options, startupStopGeneration);
     }
 
     function driverNetworkIdToEUI64(driver: Driver, nwk: number): Promise<BlzEUI64> {
-        return (driver as unknown as {
-            networkIdToEUI64: (nwk: number) => Promise<BlzEUI64>;
-        }).networkIdToEUI64(nwk);
+        return (
+            driver as unknown as {
+                networkIdToEUI64: (nwk: number) => Promise<BlzEUI64>;
+            }
+        ).networkIdToEUI64(nwk);
     }
 
     type DriverAddEndpointParameters = {
@@ -450,14 +435,14 @@ describe("BLZ high-level driver lifecycle", () => {
     };
 
     function driverAddEndpoint(driver: Driver, parameters: DriverAddEndpointParameters): Promise<void> {
-        return (driver as unknown as {
-            addEndpoint: (parameters: DriverAddEndpointParameters) => Promise<void>;
-        }).addEndpoint(parameters);
+        return (
+            driver as unknown as {
+                addEndpoint: (parameters: DriverAddEndpointParameters) => Promise<void>;
+            }
+        ).addEndpoint(parameters);
     }
 
-    function spyOnDriverAddEndpoint(
-        driver: Driver,
-    ): ReturnType<typeof vi.spyOn> {
+    function spyOnDriverAddEndpoint(driver: Driver): ReturnType<typeof vi.spyOn> {
         return vi.spyOn(
             driver as unknown as {
                 addEndpoint: (parameters: DriverAddEndpointParameters) => Promise<void>;
@@ -466,91 +451,68 @@ describe("BLZ high-level driver lifecycle", () => {
         );
     }
 
-    function spyOnDriverSetNetworkKeyInfo(
-        driver: Driver,
-    ): ReturnType<typeof vi.spyOn> {
+    function spyOnDriverSetNetworkKeyInfo(driver: Driver): ReturnType<typeof vi.spyOn> {
         return vi.spyOn(
             driver as unknown as {
-                setNetworkKeyInfo: (
-                    nwkKey: Buffer,
-                    outgoingFrameCounter: number,
-                    nwkKeySeqNum: number,
-                ) => Promise<BlzStatus>;
+                setNetworkKeyInfo: (nwkKey: Buffer, outgoingFrameCounter: number, nwkKeySeqNum: number) => Promise<BlzStatus>;
             },
             "setNetworkKeyInfo",
         );
     }
 
-    function waitForDriverZdo(
-        driver: Driver,
-        address: number | string,
-        clusterId: number,
-        timeout?: number,
-    ) {
-        return (driver as unknown as {
-            zdoResponseWaiters: {
-                waitFor: (
-                address: number | string,
-                clusterId: number,
-                timeout?: number,
-            ) => {
-                start: () => {promise: Promise<{zdoResponse?: unknown}>};
-                cancel: () => void;
-            };
-            };
-        }).zdoResponseWaiters.waitFor(address, clusterId, timeout);
+    function waitForDriverZdo(driver: Driver, address: number | string, clusterId: number, timeout?: number) {
+        return (
+            driver as unknown as {
+                zdoResponseWaiters: {
+                    waitFor: (
+                        address: number | string,
+                        clusterId: number,
+                        timeout?: number,
+                    ) => {
+                        start: () => {promise: Promise<{zdoResponse?: unknown}>};
+                        cancel: () => void;
+                    };
+                };
+            }
+        ).zdoResponseWaiters.waitFor(address, clusterId, timeout);
     }
 
-    function driverMrequest(
-        driver: Driver,
-        apsFrame: BlzApsFrame,
-        data: Buffer,
-    ): Promise<boolean> {
-        return (driver as unknown as {
-            mrequest: (apsFrame: BlzApsFrame, data: Buffer) => Promise<boolean>;
-        }).mrequest(apsFrame, data);
+    function driverMrequest(driver: Driver, apsFrame: BlzApsFrame, data: Buffer): Promise<boolean> {
+        return (
+            driver as unknown as {
+                mrequest: (apsFrame: BlzApsFrame, data: Buffer) => Promise<boolean>;
+            }
+        ).mrequest(apsFrame, data);
     }
 
-    function driverBrequest(
-        driver: Driver,
-        destination: number,
-        apsFrame: BlzApsFrame,
-        data: Buffer,
-    ): Promise<boolean> {
-        return (driver as unknown as {
-            brequest: (
-                destination: number,
-                apsFrame: BlzApsFrame,
-                data: Buffer,
-            ) => Promise<boolean>;
-        }).brequest(destination, apsFrame, data);
+    function driverBrequest(driver: Driver, destination: number, apsFrame: BlzApsFrame, data: Buffer): Promise<boolean> {
+        return (
+            driver as unknown as {
+                brequest: (destination: number, apsFrame: BlzApsFrame, data: Buffer) => Promise<boolean>;
+            }
+        ).brequest(destination, apsFrame, data);
     }
 
-    function driverRequest(
-        driver: Driver,
-        nwk: number | BlzEUI64,
-        apsFrame: BlzApsFrame,
-        data: Buffer,
-    ): Promise<boolean> {
-        return (driver as unknown as {
-            request: (
-                nwk: number | BlzEUI64,
-                apsFrame: BlzApsFrame,
-                data: Buffer,
-            ) => Promise<boolean>;
-        }).request(nwk, apsFrame, data);
+    function driverRequest(driver: Driver, nwk: number | BlzEUI64, apsFrame: BlzApsFrame, data: Buffer): Promise<boolean> {
+        return (
+            driver as unknown as {
+                request: (nwk: number | BlzEUI64, apsFrame: BlzApsFrame, data: Buffer) => Promise<boolean>;
+            }
+        ).request(nwk, apsFrame, data);
     }
 
     function getBackupMan(driver: Driver): {
         createBackup: (assertActive?: () => void) => Promise<unknown>;
         getStoredBackup: () => Promise<unknown>;
     } {
-        return (driver as unknown as {
-            backupMan: {
-                createBackup: (assertActive?: () => void) => Promise<unknown>;
-                getStoredBackup: () => Promise<unknown>;
-            };
-        }).backupMan;
+        return (
+            driver as unknown as {
+                backupMan: {
+                    createBackup: (assertActive?: () => void) => Promise<unknown>;
+                    getStoredBackup: () => Promise<unknown>;
+                };
+            }
+        ).backupMan;
     }
 
     function bytesThatThrowWhenHexLogged(values: number[], message: string): number[] {
@@ -637,9 +599,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         setDriverBlz(driver, {formNetwork});
 
-        await expect(
-            driverFormNetworkWithParameters(driver, 0x0102030405060708n, 0x1234, 15),
-        ).resolves.toBe(BlzStatus.SUCCESS);
+        await expect(driverFormNetworkWithParameters(driver, 0x0102030405060708n, 0x1234, 15)).resolves.toBe(BlzStatus.SUCCESS);
 
         expect(formNetwork).toHaveBeenCalledWith(0x0102030405060708n, 0x1234, 15);
     });
@@ -712,10 +672,7 @@ describe("BLZ high-level driver lifecycle", () => {
         driver.on("close", callback);
 
         (driver as unknown as {onBlzClose: () => void}).onBlzClose();
-        const observed = await Promise.race([
-            waiterResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
+        const observed = await Promise.race([waiterResult, new Promise((resolve) => setImmediate(() => resolve("pending")))]);
 
         expect(clearTimeoutSpy).toHaveBeenCalled();
         expect(observed).toEqual(new Error("Driver closed"));
@@ -768,10 +725,7 @@ describe("BLZ high-level driver lifecycle", () => {
         });
 
         const reset = driver.reset();
-        const observed = await Promise.race([
-            waiterResult,
-            new Promise((resolve) => setImmediate(() => resolve("pending"))),
-        ]);
+        const observed = await Promise.race([waiterResult, new Promise((resolve) => setImmediate(() => resolve("pending")))]);
         void reset.catch(() => {});
 
         expect(observed).toEqual(new Error("Driver reset"));
@@ -812,10 +766,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
             "apsDataIndication",
-            makeIncomingZdoResponseFrame(
-                0x3344,
-                makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344),
-            ),
+            makeIncomingZdoResponseFrame(0x3344, makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344)),
         );
 
         await expect(result).resolves.toEqual([
@@ -837,14 +788,13 @@ describe("BLZ high-level driver lifecycle", () => {
         };
 
         try {
-            const matched = (driver as unknown as {
-                zdoResponseWaiters: {
-                    matches: (
-                    payload: unknown,
-                    matcher: {address: number; clusterId: number},
-                ) => boolean;
-                };
-            }).zdoResponseWaiters.matches(
+            const matched = (
+                driver as unknown as {
+                    zdoResponseWaiters: {
+                        matches: (payload: unknown, matcher: {address: number; clusterId: number}) => boolean;
+                    };
+                }
+            ).zdoResponseWaiters.matches(
                 {
                     address: 0x1234,
                     frame: {clusterId},
@@ -856,10 +806,7 @@ describe("BLZ high-level driver lifecycle", () => {
             );
 
             expect(matched).toBe(false);
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             debug.mockRestore();
         }
@@ -869,27 +816,9 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         setDriverBlz(driver, {});
         const request = vi.spyOn(driver, "request").mockResolvedValue(true);
-        const payload = Buffer.from([
-            0x00,
-            0x88,
-            0x77,
-            0x66,
-            0x55,
-            0x44,
-            0x33,
-            0x22,
-            0x11,
-            0x00,
-            0x00,
-        ]);
+        const payload = Buffer.from([0x00, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 0x00]);
 
-        const send = driver.sendZdo(
-            "0x1122334455667788",
-            0x3344,
-            Zdo.ClusterId.NETWORK_ADDRESS_REQUEST,
-            payload,
-            false,
-        );
+        const send = driver.sendZdo("0x1122334455667788", 0x3344, Zdo.ClusterId.NETWORK_ADDRESS_REQUEST, payload, false);
         await Promise.resolve();
 
         expect(request).toHaveBeenCalledWith(
@@ -901,27 +830,12 @@ describe("BLZ high-level driver lifecycle", () => {
                 destinationEndpoint: 0,
                 sequence: 2,
             }),
-            Buffer.from([
-                0x02,
-                0x88,
-                0x77,
-                0x66,
-                0x55,
-                0x44,
-                0x33,
-                0x22,
-                0x11,
-                0x00,
-                0x00,
-            ]),
+            Buffer.from([0x02, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 0x00]),
         );
 
         (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
             "apsDataIndication",
-            makeIncomingZdoResponseFrame(
-                0x3344,
-                makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344),
-            ),
+            makeIncomingZdoResponseFrame(0x3344, makeNetworkAddressResponseMessage("0x1122334455667788", 0x3344)),
         );
 
         await expect(send).resolves.toEqual([
@@ -940,13 +854,7 @@ describe("BLZ high-level driver lifecycle", () => {
         vi.spyOn(driver, "request").mockRejectedValue(new Error("driver send failed"));
 
         await expect(
-            driver.sendZdo(
-                "0x0102030405060708",
-                0x1234,
-                Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
-                Buffer.from([0x00, 0x34, 0x12]),
-                false,
-            ),
+            driver.sendZdo("0x0102030405060708", 0x1234, Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST, Buffer.from([0x00, 0x34, 0x12]), false),
         ).rejects.toThrow("driver send failed");
 
         expect((driver as unknown as {zdoResponseWaiters: {count: () => number}}).zdoResponseWaiters.count()).toBe(0);
@@ -967,13 +875,7 @@ describe("BLZ high-level driver lifecycle", () => {
         }) as typeof Buffer.from);
 
         try {
-            await driver.sendZdo(
-                "0x0102030405060708",
-                0x1234,
-                Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST,
-                payload,
-                true,
-            );
+            await driver.sendZdo("0x0102030405060708", 0x1234, Zdo.ClusterId.NODE_DESCRIPTOR_REQUEST, payload, true);
 
             expect(payload).toEqual(Buffer.of(0xaa, 0xbb, 0xcc));
             expect(request).toHaveBeenCalledWith(
@@ -998,18 +900,9 @@ describe("BLZ high-level driver lifecycle", () => {
         driver.on("deviceLeft", deviceLeft);
         handleDriverNodeJoined(driver, 0x1234, 0x0102030405060708n);
 
-        await driver.sendZdo(
-            "0x0102030405060708",
-            0x1234,
-            Zdo.ClusterId.LEAVE_REQUEST,
-            Buffer.from([0x00]),
-            true,
-        );
+        await driver.sendZdo("0x0102030405060708", 0x1234, Zdo.ClusterId.LEAVE_REQUEST, Buffer.from([0x00]), true);
 
-        expect(deviceLeft).toHaveBeenCalledWith(
-            0x1234,
-            "0x0102030405060708",
-        );
+        expect(deviceLeft).toHaveBeenCalledWith(0x1234, "0x0102030405060708");
         expect(getCachedDriverEui64(driver, 0x1234)).toBeUndefined();
         expect(getCachedDriverNodeId(driver, "0102030405060708")).toBeUndefined();
     });
@@ -1023,15 +916,9 @@ describe("BLZ high-level driver lifecycle", () => {
             throw listenerError;
         });
 
-        await expect(
-            driver.sendZdo(
-                "0x0102030405060708",
-                0x1234,
-                Zdo.ClusterId.LEAVE_REQUEST,
-                Buffer.from([0x00]),
-                false,
-            ),
-        ).rejects.toThrow(listenerError);
+        await expect(driver.sendZdo("0x0102030405060708", 0x1234, Zdo.ClusterId.LEAVE_REQUEST, Buffer.from([0x00]), false)).rejects.toThrow(
+            listenerError,
+        );
 
         expect((driver as unknown as {zdoResponseWaiters: {count: () => number}}).zdoResponseWaiters.count()).toBe(0);
     });
@@ -1144,9 +1031,7 @@ describe("BLZ high-level driver lifecycle", () => {
         snapshot.nwkUpdateId = 10;
         snapshot.extendedPanId[0] = 0xff;
 
-        const sourceExtendedPanId = (
-            driver as unknown as {networkParams: BlzNetworkParameters}
-        ).networkParams.extendedPanId;
+        const sourceExtendedPanId = (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.extendedPanId;
         const originalFrom = Buffer.from;
         const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
             if (value === sourceExtendedPanId) {
@@ -1188,10 +1073,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         seedNetworkSnapshot(driver);
         (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.panId = 0x2ea0;
-        (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.extendedPanId = Buffer.from(
-            "b3c6675b7437d674",
-            "hex",
-        );
+        (driver as unknown as {networkParams: BlzNetworkParameters}).networkParams.extendedPanId = Buffer.from("b3c6675b7437d674", "hex");
         const nwkKey = Buffer.from("05b02757f70f2384c89cf08592bdfb4f", "hex");
         const linkKey = Buffer.alloc(16);
         const execCommand = vi.fn((command: string) => {
@@ -1235,11 +1117,7 @@ describe("BLZ high-level driver lifecycle", () => {
             linkKey,
             outgoingFrameCounter: 7,
         });
-        expect(formNetwork).toHaveBeenCalledWith(
-            BigInt("0xb3c6675b7437d674"),
-            0x2ea0,
-            15,
-        );
+        expect(formNetwork).toHaveBeenCalledWith(BigInt("0xb3c6675b7437d674"), 0x2ea0, 15);
         const snapshot = driver.getNetworkParametersSnapshot();
         expect(snapshot.Channel).toBe(15);
         expect(snapshot.nwkUpdateId).toBe(1);
@@ -1302,10 +1180,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await vi.advanceTimersByTimeAsync(24000);
 
             await expect(changeResult).resolves.toBe("resolved");
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             toStringSpy.mockRestore();
             debug.mockRestore();
@@ -1355,10 +1230,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            changeResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([changeResult, Promise.resolve("pending")]);
 
         void change.catch(() => {});
 
@@ -1446,10 +1318,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            lookupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([lookupResult, Promise.resolve("pending")]);
 
         void lookup.catch(() => {});
 
@@ -1478,8 +1347,7 @@ describe("BLZ high-level driver lifecycle", () => {
         },
         {
             name: "setGlobalTcLinkKey",
-            invoke: (driver: Driver) =>
-                driverSetGlobalTcLinkKey(driver, Buffer.alloc(16), 0),
+            invoke: (driver: Driver) => driverSetGlobalTcLinkKey(driver, Buffer.alloc(16), 0),
             expectedCommand: "setGlobalTcLinkKey",
             hasParameters: true,
         },
@@ -1503,16 +1371,11 @@ describe("BLZ high-level driver lifecycle", () => {
         },
         {
             name: "setNetworkKeyInfo",
-            invoke: (driver: Driver) =>
-                driverSetNetworkKeyInfo(driver, Buffer.alloc(16), 0, 0),
+            invoke: (driver: Driver) => driverSetNetworkKeyInfo(driver, Buffer.alloc(16), 0, 0),
             expectedCommand: "setNwkSecurityInfos",
             hasParameters: true,
         },
-    ])("cancels $name when stopping while the lower command is pending", async ({
-        invoke,
-        expectedCommand,
-        hasParameters,
-    }) => {
+    ])("cancels $name when stopping while the lower command is pending", async ({invoke, expectedCommand, hasParameters}) => {
         const execCommand = vi.fn().mockReturnValue(new Promise(() => {}));
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         setDriverBlz(driver, {
@@ -1531,19 +1394,13 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await new Promise((resolve) => setImmediate(resolve));
-        const observed = await Promise.race([
-            operationResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([operationResult, Promise.resolve("pending")]);
 
         void operation.catch(() => {});
 
         expect(observed).toBe("rejected:Driver stopped");
         if (hasParameters) {
-            expect(execCommand).toHaveBeenCalledWith(
-                expectedCommand,
-                expect.anything(),
-            );
+            expect(execCommand).toHaveBeenCalledWith(expectedCommand, expect.anything());
         } else {
             expect(execCommand).toHaveBeenCalledWith(expectedCommand);
         }
@@ -1810,10 +1667,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(1000);
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            resetResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([resetResult, Promise.resolve("pending")]);
         await vi.advanceTimersByTimeAsync(2000);
         await reset;
 
@@ -1839,10 +1693,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            resetResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([resetResult, Promise.resolve("pending")]);
 
         void reset.catch(() => {});
 
@@ -1911,9 +1762,7 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
         };
         setDriverBlz(driver, blzMock);
-        const stop = vi.spyOn(driver, "stop")
-            .mockResolvedValueOnce(undefined)
-            .mockRejectedValueOnce(cleanupFailure);
+        const stop = vi.spyOn(driver, "stop").mockResolvedValueOnce(undefined).mockRejectedValueOnce(cleanupFailure);
         vi.spyOn(driver, "startup").mockRejectedValue(startupFailure);
 
         const resetResult = driver.reset().catch((caught: unknown) => caught);
@@ -1977,9 +1826,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = makeDriverWithApsSender(sendApsData);
         const data = Buffer.from([0x11, 0x12]);
 
-        await expect(
-            driver.sendZclMulticast(0x1234, 0x0006, 0x0105, 5, data),
-        ).resolves.toBe(true);
+        await expect(driver.sendZclMulticast(0x1234, 0x0006, 0x0105, 5, data)).resolves.toBe(true);
 
         expect(sendApsData).toHaveBeenCalledWith(
             BlzOutgoingMessageType.BLZ_MSG_TYPE_MULTICAST,
@@ -2001,9 +1848,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = makeDriverWithApsSender(sendApsData);
         const data = Buffer.from([0x13, 0x14]);
 
-        await expect(
-            driver.sendZclBroadcast(ZSpec.BroadcastAddress.DEFAULT, 0x0006, 0x0105, 2, 3, data),
-        ).resolves.toBe(true);
+        await expect(driver.sendZclBroadcast(ZSpec.BroadcastAddress.DEFAULT, 0x0006, 0x0105, 2, 3, data)).resolves.toBe(true);
 
         expect(sendApsData).toHaveBeenCalledWith(
             BlzOutgoingMessageType.BLZ_MSG_TYPE_BROADCAST,
@@ -2025,17 +1870,7 @@ describe("BLZ high-level driver lifecycle", () => {
         const driver = makeDriverWithApsSender(sendApsData);
         const data = Buffer.from([0x15, 0x16]);
 
-        await expect(
-            driver.sendZclEndpoint(
-                "0x0102030405060708",
-                0x1234,
-                0x0006,
-                0x0105,
-                2,
-                3,
-                data,
-            ),
-        ).resolves.toBe(true);
+        await expect(driver.sendZclEndpoint("0x0102030405060708", 0x1234, 0x0006, 0x0105, 2, 3, data)).resolves.toBe(true);
 
         expect(sendApsData).toHaveBeenCalledWith(
             BlzOutgoingMessageType.BLZ_MSG_TYPE_UNICAST,
@@ -2105,10 +1940,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(0);
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            requestResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([requestResult, Promise.resolve("pending")]);
         await vi.advanceTimersByTimeAsync(3000);
         await request;
 
@@ -2154,10 +1986,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(0);
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            requestResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([requestResult, Promise.resolve("pending")]);
 
         void request.catch(() => {});
 
@@ -2182,10 +2011,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(0);
         const reset = driver.reset();
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            requestResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([requestResult, Promise.resolve("pending")]);
 
         await vi.advanceTimersByTimeAsync(3000);
         await reset;
@@ -2214,10 +2040,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(0);
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            requestResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([requestResult, Promise.resolve("pending")]);
 
         void request.catch(() => {});
 
@@ -2308,7 +2131,7 @@ describe("BLZ high-level driver lifecycle", () => {
         try {
             const startupResult = driver.startup().then(
                 () => "resolved",
-                (error: Error) => error === connectFailure ? "connect failure" : `rejected:${error.message}`,
+                (error: Error) => (error === connectFailure ? "connect failure" : `rejected:${error.message}`),
             );
 
             await expect(startupResult).resolves.toBe("connect failure");
@@ -2340,7 +2163,7 @@ describe("BLZ high-level driver lifecycle", () => {
         try {
             const startupResult = driver.startup().then(
                 () => "resolved",
-                (error: Error) => error === startupFailure ? "startup failure" : `rejected:${error.message}`,
+                (error: Error) => (error === startupFailure ? "startup failure" : `rejected:${error.message}`),
             );
 
             await expect(startupResult).resolves.toBe("startup failure");
@@ -2400,10 +2223,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await vi.advanceTimersByTimeAsync(1000);
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
         await vi.advanceTimersByTimeAsync(2000);
         await startup.catch(() => {});
 
@@ -2433,10 +2253,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -2468,10 +2285,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         const reset = driver.reset();
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         await vi.advanceTimersByTimeAsync(3000);
         void reset.catch(() => {});
@@ -2501,7 +2315,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2525,9 +2340,7 @@ describe("BLZ high-level driver lifecycle", () => {
             removeAllListeners: vi.fn(),
             close: vi.fn().mockResolvedValue(undefined),
         };
-        blzConstructorMock
-            .mockImplementationOnce(() => firstBlzMock)
-            .mockImplementationOnce(() => secondBlzMock);
+        blzConstructorMock.mockImplementationOnce(() => firstBlzMock).mockImplementationOnce(() => secondBlzMock);
         const driver = new Driver(serialPortOptions, networkOptions, "/tmp/backup.json");
         spyOnDriverAddEndpoint(driver).mockResolvedValue(undefined);
 
@@ -2570,10 +2383,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -2599,7 +2409,8 @@ describe("BLZ high-level driver lifecycle", () => {
             }),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2648,7 +2459,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2699,7 +2511,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2740,9 +2553,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await vi.advanceTimersByTimeAsync(3000);
             await startup;
 
-            expect(driver.getNetworkParametersSnapshot().extendedPanId).toEqual(
-                Buffer.from("0807060504030201", "hex"),
-            );
+            expect(driver.getNetworkParametersSnapshot().extendedPanId).toEqual(Buffer.from("0807060504030201", "hex"));
             expect(allocSpy).not.toHaveBeenCalledWith(8);
         } finally {
             allocSpy.mockRestore();
@@ -2759,7 +2570,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2799,10 +2611,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await vi.advanceTimersByTimeAsync(3000);
 
             await expect(startupResult).resolves.toBe("resolved");
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             toStringSpy.mockRestore();
             debug.mockRestore();
@@ -2830,7 +2639,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce(initialNetworkParameters)
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
@@ -2860,10 +2670,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await vi.advanceTimersByTimeAsync(3000);
 
             await expect(startupResult).resolves.toBe("resolved");
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             debug.mockRestore();
         }
@@ -2879,7 +2686,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2919,10 +2727,7 @@ describe("BLZ high-level driver lifecycle", () => {
             await vi.advanceTimersByTimeAsync(3000);
 
             await expect(startupResult).resolves.toBe("resolved");
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             toStringSpy.mockRestore();
             debug.mockRestore();
@@ -2938,7 +2743,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -2979,7 +2785,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -3069,10 +2876,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3107,10 +2911,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3146,10 +2947,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3192,10 +2990,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await driver.stop(false);
         finishNetworkInit?.();
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3235,10 +3030,7 @@ describe("BLZ high-level driver lifecycle", () => {
                     extendedPanID,
                 }),
             ).resolves.toBe(false);
-            expect(debug).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(String),
-            );
+            expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
         } finally {
             toStringSpy.mockRestore();
             debug.mockRestore();
@@ -3254,7 +3046,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.GENERAL_ERROR,
                 })
@@ -3298,7 +3091,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -3325,10 +3119,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3348,7 +3139,8 @@ describe("BLZ high-level driver lifecycle", () => {
             forceReset: vi.fn().mockResolvedValue(undefined),
             getVersion: vi.fn().mockResolvedValue(undefined),
             networkInit: vi.fn().mockResolvedValue(true),
-            execCommand: vi.fn()
+            execCommand: vi
+                .fn()
                 .mockResolvedValueOnce({
                     status: BlzStatus.SUCCESS,
                     nodeType: 0,
@@ -3383,10 +3175,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3435,10 +3224,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3485,10 +3271,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3536,10 +3319,7 @@ describe("BLZ high-level driver lifecycle", () => {
 
         await driver.stop(false);
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3593,10 +3373,7 @@ describe("BLZ high-level driver lifecycle", () => {
         await driver.stop(false);
         finishSetNetworkKeyInfo?.();
         await vi.advanceTimersByTimeAsync(0);
-        const observed = await Promise.race([
-            startupResult,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([startupResult, Promise.resolve("pending")]);
 
         void startup.catch(() => {});
 
@@ -3766,20 +3543,14 @@ describe("BLZ high-level driver lifecycle", () => {
         driver.on("deviceJoined", deviceJoined);
 
         expect(() =>
-            (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame(
-                "deviceJoinCallback",
-                {
-                    nodeId: 0x3344,
-                    eui64: 0x0000000000123456n,
-                    status: 0x01,
-                } as BLZFrameData,
-            ),
+            (driver as unknown as {handleFrame: (frameName: string, frame: BLZFrameData) => void}).handleFrame("deviceJoinCallback", {
+                nodeId: 0x3344,
+                eui64: 0x0000000000123456n,
+                status: 0x01,
+            } as BLZFrameData),
         ).not.toThrow();
 
-        expect(deviceJoined).toHaveBeenCalledWith(
-            0x3344,
-            "0x0000000000123456",
-        );
+        expect(deviceJoined).toHaveBeenCalledWith(0x3344, "0x0000000000123456");
     });
 
     it("removes stale EUI64 mappings when a node ID is re-cached with a new EUI64", async () => {
@@ -3904,10 +3675,7 @@ describe("BLZ high-level driver lifecycle", () => {
             makeIncomingApsFrame(0x1234),
         );
         await Promise.resolve();
-        const observed = await Promise.race([
-            result,
-            Promise.resolve("pending"),
-        ]);
+        const observed = await Promise.race([result, Promise.resolve("pending")]);
         waiter.cancel();
 
         expect(observed).toBe("pending");
@@ -3988,11 +3756,7 @@ describe("BLZ high-level driver lifecycle", () => {
         try {
             await (driver as unknown as {formNetwork: (restore: boolean) => Promise<void>}).formNetwork(true);
 
-            expect(setNetworkKeyInfo).toHaveBeenCalledWith(
-                Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-                1234,
-                5,
-            );
+            expect(setNetworkKeyInfo).toHaveBeenCalledWith(Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16), 1234, 5);
             expect(formNetwork).toHaveBeenCalledWith(0x0807060504030201n, networkOptions.panID, 11);
             expect(fromSpy).not.toHaveBeenCalledWith(networkKey, "hex");
         } finally {
@@ -4020,9 +3784,9 @@ describe("BLZ high-level driver lifecycle", () => {
         }) as typeof Buffer.from);
 
         try {
-            const result = await (
-                driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}
-            ).needsToBeRestore(networkOptions);
+            const result = await (driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}).needsToBeRestore(
+                networkOptions,
+            );
 
             expect(result).toBe(true);
             expect(fromSpy).not.toHaveBeenCalledWith(networkOptions.extendedPanID);
@@ -4034,14 +3798,8 @@ describe("BLZ high-level driver lifecycle", () => {
 
     it("does not hex-format restore compatibility bytes unless debug logging evaluates the message", async () => {
         const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
-        const extendedPanID = bytesThatThrowWhenHexLogged(
-            [1, 2, 3, 4, 5, 6, 7, 8],
-            "eager restore extended PAN ID hex",
-        );
-        const networkKey = bytesThatThrowWhenHexLogged(
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            "eager restore network key hex",
-        );
+        const extendedPanID = bytesThatThrowWhenHexLogged([1, 2, 3, 4, 5, 6, 7, 8], "eager restore extended PAN ID hex");
+        const networkKey = bytesThatThrowWhenHexLogged([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "eager restore network key hex");
         const driver = new Driver(
             serialPortOptions,
             {
@@ -4054,23 +3812,15 @@ describe("BLZ high-level driver lifecycle", () => {
         vi.spyOn(getBackupMan(driver), "getStoredBackup").mockResolvedValue({
             networkOptions: {
                 panId: networkOptions.panID,
-                extendedPanId: bytesThatThrowWhenHexLogged(
-                    [1, 2, 3, 4, 5, 6, 7, 8],
-                    "eager backup extended PAN ID hex",
-                ),
-                networkKey: bytesThatThrowWhenHexLogged(
-                    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-                    "eager backup network key hex",
-                ),
+                extendedPanId: bytesThatThrowWhenHexLogged([1, 2, 3, 4, 5, 6, 7, 8], "eager backup extended PAN ID hex"),
+                networkKey: bytesThatThrowWhenHexLogged([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "eager backup network key hex"),
             },
             logicalChannel: 11,
         } as any);
 
         try {
             await expect(
-                (
-                    driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}
-                ).needsToBeRestore({
+                (driver as unknown as {needsToBeRestore: (options: NetworkOptions) => Promise<boolean>}).needsToBeRestore({
                     ...networkOptions,
                     extendedPanID,
                     networkKey,
@@ -4089,7 +3839,8 @@ describe("BLZ high-level driver lifecycle", () => {
         const toStringSpy = vi.spyOn(linkKey, "toString").mockImplementation(() => {
             throw new Error("eager trust-center key string");
         });
-        const execCommand = vi.fn()
+        const execCommand = vi
+            .fn()
             .mockResolvedValueOnce({
                 status: BlzStatus.SUCCESS,
                 linkKey,
@@ -4103,9 +3854,7 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, {execCommand});
 
         try {
-            await expect(driverGetGlobalTcLinkKey(driver)).resolves.toEqual(
-                expect.objectContaining({linkKey}),
-            );
+            await expect(driverGetGlobalTcLinkKey(driver)).resolves.toEqual(expect.objectContaining({linkKey}));
             await expect(driverSetGlobalTcLinkKey(driver, linkKey, 7)).resolves.toBe(BlzStatus.SUCCESS);
 
             expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
@@ -4121,7 +3870,8 @@ describe("BLZ high-level driver lifecycle", () => {
         const toStringSpy = vi.spyOn(nwkKey, "toString").mockImplementation(() => {
             throw new Error("eager network key string");
         });
-        const execCommand = vi.fn()
+        const execCommand = vi
+            .fn()
             .mockResolvedValueOnce({
                 status: BlzStatus.SUCCESS,
                 nwkKey,
@@ -4135,9 +3885,7 @@ describe("BLZ high-level driver lifecycle", () => {
         setDriverBlz(driver, {execCommand});
 
         try {
-            await expect(driverGetNetworkKeyInfo(driver)).resolves.toEqual(
-                expect.objectContaining({nwkKey}),
-            );
+            await expect(driverGetNetworkKeyInfo(driver)).resolves.toEqual(expect.objectContaining({nwkKey}));
             await expect(driverSetNetworkKeyInfo(driver, nwkKey, 9, 2)).resolves.toBe(BlzStatus.SUCCESS);
 
             expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));

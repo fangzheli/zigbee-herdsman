@@ -1,19 +1,23 @@
 /* istanbul ignore file */
 
-import {Bytes, fixed_list, int8s, list, LVBytes, LVList, serializeMappedBufferSegments, uint_t, uint8_t, uint16_t, uint24_t, uint32_t, uint64_t, WordList} from "./basic";
 import {
-    BlzApsOption,
-    BlzEUI64,
-    BlzNodeType,
-    BlzOutgoingMessageType,
-    BlzStatus,
-    BlzValueId,
-} from "./named";
-import {
-    BlzApsFrame,
-    BlzNetworkParameters,
-    BlzStruct,
-} from "./struct";
+    Bytes,
+    fixed_list,
+    int8s,
+    LVBytes,
+    LVList,
+    list,
+    serializeMappedBufferSegments,
+    uint_t,
+    uint8_t,
+    uint16_t,
+    uint24_t,
+    uint32_t,
+    uint64_t,
+    WordList,
+} from "./basic";
+import {BlzApsOption, BlzEUI64, BlzNodeType, BlzOutgoingMessageType, BlzStatus, BlzValueId} from "./named";
+import {BlzApsFrame, BlzNetworkParameters, BlzStruct} from "./struct";
 
 interface SchemaType {
     deserialize: (type: unknown, data: Buffer) => [unknown, Buffer];
@@ -37,31 +41,29 @@ export function serialize(data: unknown[], schema: SchemaType[]): Buffer {
 }
 
 export {
+    BlzApsFrame,
+    BlzApsOption,
+    /* Named Types */
+    BlzEUI64,
+    BlzNetworkParameters,
+    BlzNodeType,
+    BlzOutgoingMessageType,
+    BlzStatus,
+    /* Structs */
+    BlzStruct,
+    BlzValueId,
+    Bytes,
+    fixed_list,
     /* Basic Types */
     int8s,
+    LVBytes,
+    LVList,
+    list,
     uint_t,
     uint8_t,
     uint16_t,
     uint24_t,
     uint32_t,
     uint64_t,
-    LVBytes,
-    list,
-    LVList,
-    fixed_list,
     WordList,
-    Bytes,
-
-    /* Named Types */
-    BlzEUI64,
-    BlzValueId,
-    BlzStatus,
-    BlzNodeType,
-    BlzOutgoingMessageType,
-    BlzApsOption,
-
-    /* Structs */
-    BlzStruct,
-    BlzNetworkParameters,
-    BlzApsFrame,
 };

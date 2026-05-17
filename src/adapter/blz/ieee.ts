@@ -1,11 +1,11 @@
 export type IeeeAddressLike = {
-  toString(): string;
+    toString(): string;
 };
 
 export function normalizeIeeeAddress(ieee: IeeeAddressLike): string {
-  return ieee.toString().replace(/^0x/i, "").toLowerCase();
+    return ieee.toString().replace(/^0x/i, "").toLowerCase();
 }
 
 export function formatIeeeAddress(ieee: IeeeAddressLike): string {
-  return `0x${normalizeIeeeAddress(ieee)}`;
+    return `0x${normalizeIeeeAddress(ieee)}`;
 }

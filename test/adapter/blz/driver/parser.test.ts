@@ -1,10 +1,12 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest';
-import {Parser} from '../../../../src/adapter/blz/driver/parser';
-import * as consts from '../../../../src/adapter/blz/driver/consts';
-import crc16ccitt from '../../../../src/adapter/blz/driver/utils/crc16ccitt';
-import {logger} from '../../../../src/utils/logger';
+// biome-ignore-all lint/suspicious/noExplicitAny: Tests collect dynamic EventEmitter payloads.
 
-describe('BLZ Parser', () => {
+import {beforeEach, describe, expect, it, vi} from "vitest";
+import * as consts from "../../../../src/adapter/blz/driver/consts";
+import {Parser} from "../../../../src/adapter/blz/driver/parser";
+import crc16ccitt from "../../../../src/adapter/blz/driver/utils/crc16ccitt";
+import {logger} from "../../../../src/utils/logger";
+
+describe("BLZ Parser", () => {
     let parser: Parser;
 
     /**
@@ -25,7 +27,7 @@ describe('BLZ Parser', () => {
 
         // Calculate CRC
         const crc = crc16ccitt(dataBuffer, 0xffff);
-        const frameWithCrc = Buffer.concat([dataBuffer, Buffer.from([crc >> 8, crc & 0xFF])]);
+        const frameWithCrc = Buffer.concat([dataBuffer, Buffer.from([crc >> 8, crc & 0xff])]);
 
         // Apply stuffing
         const stuffed: number[] = [];
@@ -47,7 +49,7 @@ describe('BLZ Parser', () => {
      */
     function getParsedFrame(parser: Parser): Promise<any> {
         return new Promise((resolve) => {
-            parser.once('parsed', (frame) => {
+            parser.once("parsed", (frame) => {
                 resolve(frame);
             });
         });
@@ -62,11 +64,11 @@ describe('BLZ Parser', () => {
             const handler = (frame: any) => {
                 frames.push(frame);
                 if (frames.length === count) {
-                    parser.off('parsed', handler);
+                    parser.off("parsed", handler);
                     resolve(frames);
                 }
             };
-            parser.on('parsed', handler);
+            parser.on("parsed", handler);
         });
     }
 
@@ -74,11 +76,11 @@ describe('BLZ Parser', () => {
         parser = new Parser();
     });
 
-    describe('Frame parsing', () => {
-        it('should parse a complete frame', async () => {
+    describe("Frame parsing", () => {
+        it("should parse a complete frame", async () => {
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.control).toBe(0x00);
@@ -86,12 +88,12 @@ describe('BLZ Parser', () => {
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
-        it('should parse a single complete chunk without Buffer.concat allocation churn', async () => {
+        it("should parse a single complete chunk without Buffer.concat allocation churn", async () => {
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
-            const concatSpy = vi.spyOn(Buffer, 'concat');
+            const concatSpy = vi.spyOn(Buffer, "concat");
             try {
                 const parsePromise = getParsedFrame(parser);
-                parser._transform(frame, 'binary', () => {});
+                parser._transform(frame, "binary", () => {});
                 const parsedFrame = await parsePromise;
 
                 expect(parsedFrame.frameId).toBe(0x0010);
@@ -101,15 +103,15 @@ describe('BLZ Parser', () => {
             }
         });
 
-        it('should not stringify raw chunks unless debug logging evaluates the message', () => {
-            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+        it("should not stringify raw chunks unless debug logging evaluates the message", () => {
+            const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
             const chunk = Buffer.from([0xff, 0xfe, 0xfd]);
-            const toStringSpy = vi.spyOn(chunk, 'toString').mockImplementation(() => {
-                throw new Error('eager chunk hex string');
+            const toStringSpy = vi.spyOn(chunk, "toString").mockImplementation(() => {
+                throw new Error("eager chunk hex string");
             });
 
             try {
-                expect(() => parser._transform(chunk, 'binary', () => {})).not.toThrow();
+                expect(() => parser._transform(chunk, "binary", () => {})).not.toThrow();
                 expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
             } finally {
                 toStringSpy.mockRestore();
@@ -117,28 +119,22 @@ describe('BLZ Parser', () => {
             }
         });
 
-        it('should discard invalid frames whose parse errors cannot be stringified', () => {
-            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+        it("should discard invalid frames whose parse errors cannot be stringified", () => {
+            const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
             const parsed = vi.fn();
             const callback = vi.fn();
             const originalErrorToString = Error.prototype.toString;
-            const errorToString = vi
-                .spyOn(Error.prototype, 'toString')
-                .mockImplementation(function errorToString() {
-                    if (this.message.includes('Invalid frame length')) {
-                        throw new Error('parser error stringification failed');
-                    }
+            const errorToString = vi.spyOn(Error.prototype, "toString").mockImplementation(function errorToString() {
+                if (this.message.includes("Invalid frame length")) {
+                    throw new Error("parser error stringification failed");
+                }
 
-                    return originalErrorToString.call(this);
-                });
-            parser.on('parsed', parsed);
+                return originalErrorToString.call(this);
+            });
+            parser.on("parsed", parsed);
 
             try {
-                expect(() => parser._transform(
-                    Buffer.from([consts.START, 0x01, consts.END]),
-                    'binary',
-                    callback,
-                )).not.toThrow();
+                expect(() => parser._transform(Buffer.from([consts.START, 0x01, consts.END]), "binary", callback)).not.toThrow();
                 expect(callback).toHaveBeenCalledTimes(1);
                 expect(parsed).not.toHaveBeenCalled();
                 expect(debug).toHaveBeenCalledWith(expect.any(Function), expect.any(String));
@@ -148,23 +144,23 @@ describe('BLZ Parser', () => {
             }
         });
 
-        it('should parse frame with payload', async () => {
+        it("should parse frame with payload", async () => {
             const payload = Buffer.from([0x01, 0x02, 0x03, 0x04]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payload);
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.payload).toEqual(payload);
         });
 
-        it('should parse multiple frames in single chunk', async () => {
+        it("should parse multiple frames in single chunk", async () => {
             const frame1 = createCompleteFrame(0x00, 0x01, 0x0010);
             const frame2 = createCompleteFrame(0x00, 0x02, 0x0011);
             const combined = Buffer.concat([frame1, frame2]);
 
             const framesPromise = collectFrames(parser, 2);
-            parser._transform(combined, 'binary', () => {});
+            parser._transform(combined, "binary", () => {});
             const frames = await framesPromise;
 
             expect(frames[0].frameId).toBe(0x0010);
@@ -173,33 +169,33 @@ describe('BLZ Parser', () => {
             expect(frames[1].sequence).toBe(0x02);
         });
 
-        it('should handle fragmented frames across multiple chunks', async () => {
+        it("should handle fragmented frames across multiple chunks", async () => {
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const mid = Math.floor(frame.length / 2);
             const part1 = frame.subarray(0, mid);
             const part2 = frame.subarray(mid);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(part1, 'binary', () => {});
-            parser._transform(part2, 'binary', () => {});
+            parser._transform(part1, "binary", () => {});
+            parser._transform(part2, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
-        it('should parse fragmented frames without Buffer.concat allocation churn', async () => {
+        it("should parse fragmented frames without Buffer.concat allocation churn", async () => {
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const mid = Math.floor(frame.length / 2);
             const part1 = frame.subarray(0, mid);
             const part2 = frame.subarray(mid);
-            const concatSpy = vi.spyOn(Buffer, 'concat').mockImplementation(() => {
-                throw new Error('Buffer.concat used');
+            const concatSpy = vi.spyOn(Buffer, "concat").mockImplementation(() => {
+                throw new Error("Buffer.concat used");
             });
 
             try {
                 const parsePromise = getParsedFrame(parser);
-                parser._transform(part1, 'binary', () => {});
-                parser._transform(part2, 'binary', () => {});
+                parser._transform(part1, "binary", () => {});
+                parser._transform(part2, "binary", () => {});
                 const parsedFrame = await parsePromise;
 
                 expect(parsedFrame.frameId).toBe(0x0010);
@@ -209,7 +205,7 @@ describe('BLZ Parser', () => {
             }
         });
 
-        it('should not retain a large noisy chunk when saving a short partial tail', () => {
+        it("should not retain a large noisy chunk when saving a short partial tail", () => {
             const chunk = Buffer.alloc(20000, 0);
             const startOffset = chunk.length - 4;
             chunk[startOffset] = consts.START;
@@ -217,7 +213,7 @@ describe('BLZ Parser', () => {
             chunk[startOffset + 2] = 0x02;
             chunk[startOffset + 3] = 0x03;
 
-            parser._transform(chunk, 'binary', () => {});
+            parser._transform(chunk, "binary", () => {});
             const tail = (parser as unknown as {tail: Buffer}).tail;
 
             expect(tail).toEqual(chunk.subarray(startOffset));
@@ -225,47 +221,47 @@ describe('BLZ Parser', () => {
         });
     });
 
-    describe('Byte unstuffing', () => {
-        it('should unstuff escaped START byte', async () => {
+    describe("Byte unstuffing", () => {
+        it("should unstuff escaped START byte", async () => {
             // Create a payload that contains the START byte value
             const payloadWithStart = Buffer.from([0x00, consts.START, 0x00]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payloadWithStart);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.payload[1]).toBe(consts.START);
         });
 
-        it('should unstuff escaped END byte', async () => {
+        it("should unstuff escaped END byte", async () => {
             const payloadWithEnd = Buffer.from([0x00, consts.END, 0x00]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payloadWithEnd);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.payload[1]).toBe(consts.END);
         });
 
-        it('should unstuff escaped ESCAPE byte', async () => {
+        it("should unstuff escaped ESCAPE byte", async () => {
             const payloadWithEscape = Buffer.from([0x00, consts.ESCAPE, 0x00]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payloadWithEscape);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.payload[1]).toBe(consts.ESCAPE);
         });
 
-        it('should handle multiple escaped bytes in sequence', async () => {
+        it("should handle multiple escaped bytes in sequence", async () => {
             const payloadWithMultiple = Buffer.from([consts.START, consts.END, consts.ESCAPE]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payloadWithMultiple);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.payload[0]).toBe(consts.START);
@@ -274,105 +270,99 @@ describe('BLZ Parser', () => {
         });
     });
 
-    describe('reset', () => {
-        it('should clear the tail buffer', () => {
+    describe("reset", () => {
+        it("should clear the tail buffer", () => {
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const partial = frame.subarray(0, frame.length - 2); // Incomplete frame
 
-            parser._transform(partial, 'binary', () => {});
+            parser._transform(partial, "binary", () => {});
             parser.reset();
 
             // After reset, sending the rest should not complete the frame
             const parsed = vi.fn();
-            parser.on('parsed', parsed);
+            parser.on("parsed", parsed);
 
             const rest = frame.subarray(frame.length - 2);
-            parser._transform(rest, 'binary', () => {});
+            parser._transform(rest, "binary", () => {});
 
             expect(parsed).not.toHaveBeenCalled();
         });
 
-        it('should allow new frames after reset', async () => {
+        it("should allow new frames after reset", async () => {
             parser.reset();
 
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
         });
     });
 
-    describe('Error handling', () => {
-        it('should handle invalid frame gracefully', () => {
+    describe("Error handling", () => {
+        it("should handle invalid frame gracefully", () => {
             // Create an invalid frame (too short after delimiters)
             const invalidFrame = Buffer.from([consts.START, 0x00, 0x01, consts.END]);
 
             const parsed = vi.fn();
-            parser.on('parsed', parsed);
+            parser.on("parsed", parsed);
 
             // Should not throw
-            expect(() => parser._transform(invalidFrame, 'binary', () => {})).not.toThrow();
+            expect(() => parser._transform(invalidFrame, "binary", () => {})).not.toThrow();
             expect(parsed).not.toHaveBeenCalled();
         });
 
-        it('should continue parsing after error', async () => {
+        it("should continue parsing after error", async () => {
             const invalidFrame = Buffer.from([consts.START, 0x00, 0x01, consts.END]);
             const validFrame = createCompleteFrame(0x00, 0x01, 0x0010);
             const combined = Buffer.concat([invalidFrame, validFrame]);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(combined, 'binary', () => {});
+            parser._transform(combined, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
-        it('should resynchronize when a new START arrives before END', async () => {
+        it("should resynchronize when a new START arrives before END", async () => {
             const brokenPrefix = Buffer.from([consts.START, 0x00, 0x01, 0x02]);
             const validFrame = createCompleteFrame(0x00, 0x01, 0x0010);
             const combined = Buffer.concat([brokenPrefix, validFrame]);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(combined, 'binary', () => {});
-            const parsedFrame = await Promise.race([
-                parsePromise,
-                new Promise((resolve) => setImmediate(() => resolve('pending'))),
-            ]);
+            parser._transform(combined, "binary", () => {});
+            const parsedFrame = await Promise.race([parsePromise, new Promise((resolve) => setImmediate(() => resolve("pending")))]);
 
             expect(parsedFrame).toMatchObject({frameId: 0x0010});
         });
 
-        it('should ignore data before first START delimiter', async () => {
-            const garbage = Buffer.from([0xFF, 0xFE, 0xFD]);
+        it("should ignore data before first START delimiter", async () => {
+            const garbage = Buffer.from([0xff, 0xfe, 0xfd]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
             const combined = Buffer.concat([garbage, frame]);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(combined, 'binary', () => {});
+            parser._transform(combined, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
         });
 
-        it('should drop garbage without START delimiter without retaining it as tail', () => {
-            const warning = vi.spyOn(logger, 'warning');
+        it("should drop garbage without START delimiter without retaining it as tail", () => {
+            const warning = vi.spyOn(logger, "warning");
             const garbage = Buffer.alloc(16385, 0xff);
 
-            parser._transform(garbage, 'binary', () => {});
+            parser._transform(garbage, "binary", () => {});
 
-            expect(warning).not.toHaveBeenCalledWith(
-                expect.stringContaining('Parser buffer overflow'),
-                expect.anything(),
-            );
+            expect(warning).not.toHaveBeenCalledWith(expect.stringContaining("Parser buffer overflow"), expect.anything());
         });
 
-        it('should retain one trimmed buffer for an incomplete START-delimited tail', () => {
+        it("should retain one trimmed buffer for an incomplete START-delimited tail", () => {
             const garbage = Buffer.from([0xff, 0xfe, 0xfd]);
             const partial = Buffer.from([consts.START, 0x01, 0x02]);
 
-            parser._transform(Buffer.concat([garbage, partial]), 'binary', () => {});
+            parser._transform(Buffer.concat([garbage, partial]), "binary", () => {});
 
             const tail = (parser as unknown as {tail: Buffer}).tail;
             expect(Buffer.isBuffer(tail)).toBe(true);
@@ -380,77 +370,83 @@ describe('BLZ Parser', () => {
         });
     });
 
-    describe('Frame types', () => {
-        it('should parse ACK frame', async () => {
+    describe("Frame types", () => {
+        it("should parse ACK frame", async () => {
             const frame = createCompleteFrame(0x80, 0x00, 0x0001);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0001);
         });
 
-        it('should parse RESET frame', async () => {
+        it("should parse RESET frame", async () => {
             const frame = createCompleteFrame(0x00, 0x00, 0x0003);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0003);
         });
 
-        it('should parse getValue response', async () => {
-            const payload = Buffer.from([0x00, 0x02, 0xAB, 0xCD]); // status=0, len=2, value
+        it("should parse getValue response", async () => {
+            const payload = Buffer.from([0x00, 0x02, 0xab, 0xcd]); // status=0, len=2, value
             const frame = createCompleteFrame(0x00, 0x01, 0x0010, payload);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0010);
             expect(parsedFrame.payload).toEqual(payload);
         });
 
-        it('should parse apsDataIndication', async () => {
+        it("should parse apsDataIndication", async () => {
             const payload = Buffer.from([
-                0x04, 0x01, // profileId
-                0x06, 0x00, // clusterId
-                0x00, 0x00, // srcShortAddr
-                0x00, 0x00, // dstShortAddr
-                0x01,       // srcEp
-                0x01,       // dstEp
-                0x00,       // msgType
-                0xFF,       // lqi
-                0x00,       // rssi
-                0x03,       // messageLength
-                0x01, 0x02, 0x03 // message
+                0x04,
+                0x01, // profileId
+                0x06,
+                0x00, // clusterId
+                0x00,
+                0x00, // srcShortAddr
+                0x00,
+                0x00, // dstShortAddr
+                0x01, // srcEp
+                0x01, // dstEp
+                0x00, // msgType
+                0xff, // lqi
+                0x00, // rssi
+                0x03, // messageLength
+                0x01,
+                0x02,
+                0x03, // message
             ]);
             const frame = createCompleteFrame(0x00, 0x01, 0x0082, payload);
 
             const parsePromise = getParsedFrame(parser);
-            parser._transform(frame, 'binary', () => {});
+            parser._transform(frame, "binary", () => {});
             const parsedFrame = await parsePromise;
 
             expect(parsedFrame.frameId).toBe(0x0082);
         });
     });
 
-    describe('Stream behavior', () => {
-        it('should call callback after processing', () => {
+    describe("Stream behavior", () => {
+        it("should call callback after processing", () => {
             const callback = vi.fn();
             const frame = createCompleteFrame(0x00, 0x01, 0x0010);
 
-            parser._transform(frame, 'binary', callback);
+            parser._transform(frame, "binary", callback);
             expect(callback).toHaveBeenCalled();
         });
 
-        it('should call callback even with incomplete data', () => {
+        it("should call callback even with incomplete data", () => {
             const callback = vi.fn();
             const incomplete = Buffer.from([consts.START, 0x00, 0x01]);
 
-            parser._transform(incomplete, 'binary', callback);
+            parser._transform(incomplete, "binary", callback);
             expect(callback).toHaveBeenCalled();
         });
     });

@@ -1,10 +1,10 @@
-import {describe, expect, it, beforeEach, vi} from 'vitest';
-import {Writer} from '../../../../src/adapter/blz/driver/writer';
-import * as consts from '../../../../src/adapter/blz/driver/consts';
-import crc16ccitt from '../../../../src/adapter/blz/driver/utils/crc16ccitt';
-import {logger} from '../../../../src/utils/logger';
+import {beforeEach, describe, expect, it, vi} from "vitest";
+import * as consts from "../../../../src/adapter/blz/driver/consts";
+import crc16ccitt from "../../../../src/adapter/blz/driver/utils/crc16ccitt";
+import {Writer} from "../../../../src/adapter/blz/driver/writer";
+import {logger} from "../../../../src/utils/logger";
 
-describe('BLZ Writer', () => {
+describe("BLZ Writer", () => {
     let writer: Writer;
 
     /**
@@ -42,7 +42,7 @@ describe('BLZ Writer', () => {
      */
     function getWriterOutput(writer: Writer): Promise<Buffer> {
         return new Promise((resolve) => {
-            writer.once('data', (chunk) => {
+            writer.once("data", (chunk) => {
                 resolve(chunk);
             });
         });
@@ -52,8 +52,8 @@ describe('BLZ Writer', () => {
         writer = new Writer();
     });
 
-    describe('writeBuffer', () => {
-        it('should push buffer to readable stream', async () => {
+    describe("writeBuffer", () => {
+        it("should push buffer to readable stream", async () => {
             const testBuffer = Buffer.from([0x01, 0x02, 0x03]);
             const outputPromise = getWriterOutput(writer);
             writer.writeBuffer(testBuffer);
@@ -61,11 +61,11 @@ describe('BLZ Writer', () => {
             expect(chunk).toEqual(testBuffer);
         });
 
-        it('should not stringify outgoing buffers unless debug logging evaluates the message', async () => {
-            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
+        it("should not stringify outgoing buffers unless debug logging evaluates the message", async () => {
+            const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
             const testBuffer = Buffer.from([0x01, 0x02, 0x03]);
-            const toStringSpy = vi.spyOn(testBuffer, 'toString').mockImplementation(() => {
-                throw new Error('eager outgoing hex string');
+            const toStringSpy = vi.spyOn(testBuffer, "toString").mockImplementation(() => {
+                throw new Error("eager outgoing hex string");
             });
 
             try {
@@ -81,8 +81,8 @@ describe('BLZ Writer', () => {
         });
     });
 
-    describe('sendACK', () => {
-        it('should create ACK frame with correct frameId', async () => {
+    describe("sendACK", () => {
+        it("should create ACK frame with correct frameId", async () => {
             const ackSeq = 3;
             const outputPromise = getWriterOutput(writer);
             writer.sendACK(ackSeq);
@@ -95,7 +95,7 @@ describe('BLZ Writer', () => {
             expect(content.readUInt16LE(2)).toBe(0x0001);
         });
 
-        it('should set correct sequence byte for ACK', async () => {
+        it("should set correct sequence byte for ACK", async () => {
             const ackSeq = 5;
             const outputPromise = getWriterOutput(writer);
             writer.sendACK(ackSeq);
@@ -104,11 +104,11 @@ describe('BLZ Writer', () => {
 
             // Sequence byte: (ackSeq & 0x07) << 4 | (seq & 0x07)
             // For ACK, seq should be 0
-            const expectedSeqByte = (ackSeq & 0x07) << 4 | 0;
+            const expectedSeqByte = ((ackSeq & 0x07) << 4) | 0;
             expect(content[1]).toBe(expectedSeqByte);
         });
 
-        it('should include valid CRC', async () => {
+        it("should include valid CRC", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendACK(0);
             const chunk = await outputPromise;
@@ -117,10 +117,10 @@ describe('BLZ Writer', () => {
             const crc = crc16ccitt(data, 0xffff);
 
             expect(content[content.length - 2]).toBe(crc >> 8);
-            expect(content[content.length - 1]).toBe(crc & 0xFF);
+            expect(content[content.length - 1]).toBe(crc & 0xff);
         });
 
-        it('should wrap ackSeq to 3 bits', async () => {
+        it("should wrap ackSeq to 3 bits", async () => {
             const ackSeq = 10; // Should become 2 (10 & 0x07)
             const outputPromise = getWriterOutput(writer);
             writer.sendACK(ackSeq);
@@ -131,8 +131,8 @@ describe('BLZ Writer', () => {
         });
     });
 
-    describe('sendData', () => {
-        it('should create DATA frame with payload', async () => {
+    describe("sendData", () => {
+        it("should create DATA frame with payload", async () => {
             const data = Buffer.from([0x01, 0x02, 0x03]);
             const seq = 1;
             const ackSeq = 2;
@@ -149,7 +149,7 @@ describe('BLZ Writer', () => {
             expect(content.subarray(4, -2)).toEqual(data);
         });
 
-        it('should set correct sequence byte', async () => {
+        it("should set correct sequence byte", async () => {
             const seq = 3;
             const ackSeq = 5;
 
@@ -161,7 +161,7 @@ describe('BLZ Writer', () => {
             expect(content[1]).toBe(expectedSeqByte);
         });
 
-        it('should set control byte without flags by default', async () => {
+        it("should set control byte without flags by default", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([0x01]), 0, 0, 0x0010);
             const chunk = await outputPromise;
@@ -169,7 +169,7 @@ describe('BLZ Writer', () => {
             expect(content[0]).toBe(0x00);
         });
 
-        it('should set RETX flag when isRetransmission is true', async () => {
+        it("should set RETX flag when isRetransmission is true", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([0x01]), 0, 0, 0x0010, true);
             const chunk = await outputPromise;
@@ -177,7 +177,7 @@ describe('BLZ Writer', () => {
             expect(content[0] & consts.RETX).toBe(consts.RETX);
         });
 
-        it('should set DEBUG flag when isDebug is true', async () => {
+        it("should set DEBUG flag when isDebug is true", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([0x01]), 0, 0, 0x0010, false, true);
             const chunk = await outputPromise;
@@ -185,7 +185,7 @@ describe('BLZ Writer', () => {
             expect(content[0] & consts.DEBUG).toBe(consts.DEBUG);
         });
 
-        it('should set both RETX and DEBUG flags', async () => {
+        it("should set both RETX and DEBUG flags", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([0x01]), 0, 0, 0x0010, true, true);
             const chunk = await outputPromise;
@@ -193,7 +193,7 @@ describe('BLZ Writer', () => {
             expect(content[0]).toBe(consts.RETX | consts.DEBUG);
         });
 
-        it('should handle empty data', async () => {
+        it("should handle empty data", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([]), 0, 0, 0x0010);
             const chunk = await outputPromise;
@@ -202,7 +202,7 @@ describe('BLZ Writer', () => {
             expect(content.length).toBe(6);
         });
 
-        it('should include valid CRC', async () => {
+        it("should include valid CRC", async () => {
             const data = Buffer.from([0x01, 0x02, 0x03]);
 
             const outputPromise = getWriterOutput(writer);
@@ -213,12 +213,12 @@ describe('BLZ Writer', () => {
             const crc = crc16ccitt(dataForCrc, 0xffff);
 
             expect(content[content.length - 2]).toBe(crc >> 8);
-            expect(content[content.length - 1]).toBe(crc & 0xFF);
+            expect(content[content.length - 1]).toBe(crc & 0xff);
         });
     });
 
-    describe('sendReset', () => {
-        it('should create RESET frame with frameId 0x0003', async () => {
+    describe("sendReset", () => {
+        it("should create RESET frame with frameId 0x0003", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendReset(0, 0);
             const chunk = await outputPromise;
@@ -226,7 +226,7 @@ describe('BLZ Writer', () => {
             expect(content.readUInt16LE(2)).toBe(0x0003);
         });
 
-        it('should set sequence bytes correctly', async () => {
+        it("should set sequence bytes correctly", async () => {
             const seq = 2;
             const ackSeq = 4;
 
@@ -238,7 +238,7 @@ describe('BLZ Writer', () => {
             expect(content[1]).toBe(expectedSeqByte);
         });
 
-        it('should set RETX flag when specified', async () => {
+        it("should set RETX flag when specified", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendReset(0, 0, true);
             const chunk = await outputPromise;
@@ -246,7 +246,7 @@ describe('BLZ Writer', () => {
             expect(content[0] & consts.RETX).toBe(consts.RETX);
         });
 
-        it('should set DEBUG flag when specified', async () => {
+        it("should set DEBUG flag when specified", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendReset(0, 0, false, true);
             const chunk = await outputPromise;
@@ -254,10 +254,10 @@ describe('BLZ Writer', () => {
             expect(content[0] & consts.DEBUG).toBe(consts.DEBUG);
         });
 
-        it('should not stringify reset frames unless debug logging evaluates the message', async () => {
-            const debug = vi.spyOn(logger, 'debug').mockImplementation(() => {});
-            const toStringSpy = vi.spyOn(Buffer.prototype, 'toString').mockImplementation(() => {
-                throw new Error('eager reset hex string');
+        it("should not stringify reset frames unless debug logging evaluates the message", async () => {
+            const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+            const toStringSpy = vi.spyOn(Buffer.prototype, "toString").mockImplementation(() => {
+                throw new Error("eager reset hex string");
             });
 
             try {
@@ -273,8 +273,8 @@ describe('BLZ Writer', () => {
         });
     });
 
-    describe('Byte stuffing', () => {
-        it('should stuff START byte in payload', async () => {
+    describe("Byte stuffing", () => {
+        it("should stuff START byte in payload", async () => {
             const data = Buffer.from([0x00, consts.START, 0x00]);
 
             const outputPromise = getWriterOutput(writer);
@@ -290,7 +290,7 @@ describe('BLZ Writer', () => {
             expect(content.subarray(4, -2)).toEqual(data);
         });
 
-        it('should stuff END byte in payload', async () => {
+        it("should stuff END byte in payload", async () => {
             const data = Buffer.from([0x00, consts.END, 0x00]);
 
             const outputPromise = getWriterOutput(writer);
@@ -300,7 +300,7 @@ describe('BLZ Writer', () => {
             expect(content.subarray(4, -2)).toEqual(data);
         });
 
-        it('should stuff ESCAPE byte in payload', async () => {
+        it("should stuff ESCAPE byte in payload", async () => {
             const data = Buffer.from([0x00, consts.ESCAPE, 0x00]);
 
             const outputPromise = getWriterOutput(writer);
@@ -310,7 +310,7 @@ describe('BLZ Writer', () => {
             expect(content.subarray(4, -2)).toEqual(data);
         });
 
-        it('should handle multiple reserved bytes', async () => {
+        it("should handle multiple reserved bytes", async () => {
             const data = Buffer.from([consts.START, consts.END, consts.ESCAPE, consts.START]);
 
             const outputPromise = getWriterOutput(writer);
@@ -320,7 +320,7 @@ describe('BLZ Writer', () => {
             expect(content.subarray(4, -2)).toEqual(data);
         });
 
-        it('should stuff reserved bytes in header/CRC area too', async () => {
+        it("should stuff reserved bytes in header/CRC area too", async () => {
             // Use a frameId that might produce START/END/ESCAPE in the buffer
             const frameId = consts.START | (consts.END << 8);
 
@@ -332,8 +332,8 @@ describe('BLZ Writer', () => {
         });
     });
 
-    describe('Frame structure', () => {
-        it('should wrap frame with START and END delimiters', async () => {
+    describe("Frame structure", () => {
+        it("should wrap frame with START and END delimiters", async () => {
             const outputPromise = getWriterOutput(writer);
             writer.sendData(Buffer.from([0x01]), 0, 0, 0x0010);
             const chunk = await outputPromise;
@@ -341,8 +341,8 @@ describe('BLZ Writer', () => {
             expect(chunk[chunk.length - 1]).toBe(consts.END);
         });
 
-        it('should produce correct frame order: [START, control, seq, frameId_lo, frameId_hi, data..., crc_hi, crc_lo, END]', async () => {
-            const data = Buffer.from([0xAA, 0xBB]);
+        it("should produce correct frame order: [START, control, seq, frameId_lo, frameId_hi, data..., crc_hi, crc_lo, END]", async () => {
+            const data = Buffer.from([0xaa, 0xbb]);
             const seq = 1;
             const ackSeq = 2;
             const frameId = 0x1234;
@@ -360,15 +360,15 @@ describe('BLZ Writer', () => {
             expect(content[2]).toBe(0x34); // Low byte
             expect(content[3]).toBe(0x12); // High byte
             // Payload
-            expect(content[4]).toBe(0xAA);
-            expect(content[5]).toBe(0xBB);
+            expect(content[4]).toBe(0xaa);
+            expect(content[5]).toBe(0xbb);
             // CRC (2 bytes at end - verified by other tests)
             expect(content.length).toBe(8); // 4 header + 2 data + 2 CRC
         });
     });
 
-    describe('_read', () => {
-        it('should be a no-op function', () => {
+    describe("_read", () => {
+        it("should be a no-op function", () => {
             // _read is required by Readable stream but does nothing
             expect(() => writer._read()).not.toThrow();
         });

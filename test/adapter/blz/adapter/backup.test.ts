@@ -1,18 +1,20 @@
-import {vi, describe, it, expect, beforeEach} from 'vitest';
-import * as fs from 'fs';
-import {BLZAdapterBackup} from '../../../../src/adapter/blz/adapter/backup';
-import * as BackupUtils from '../../../../src/utils/backup';
+// biome-ignore-all lint/suspicious/noExplicitAny: Tests cast mocked backup data through legacy helper types.
 
-vi.mock('fs', async (importOriginal) => ({
-    ...(await importOriginal<typeof import('fs')>()),
+import * as fs from "node:fs";
+import {beforeEach, describe, expect, it, vi} from "vitest";
+import {BLZAdapterBackup} from "../../../../src/adapter/blz/adapter/backup";
+import * as BackupUtils from "../../../../src/utils/backup";
+
+vi.mock("fs", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("fs")>()),
     promises: {
         access: vi.fn(),
         readFile: vi.fn(),
     },
 }));
-vi.mock('../../../../src/utils/backup');
+vi.mock("../../../../src/utils/backup");
 
-describe('BLZ Adapter Backup', () => {
+describe("BLZ Adapter Backup", () => {
     let backup: BLZAdapterBackup;
     let providerMock: {
         getCoordinatorVersion: ReturnType<typeof vi.fn>;
@@ -22,7 +24,7 @@ describe('BLZ Adapter Backup', () => {
         getMacAddress: ReturnType<typeof vi.fn>;
     };
 
-    const backupPath = '/path/to/backup.json';
+    const backupPath = "/path/to/backup.json";
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -34,41 +36,39 @@ describe('BLZ Adapter Backup', () => {
             getMacAddress: vi.fn(),
         };
         providerMock.getCoordinatorVersion.mockReturnValue({
-            type: 'BLZ v1',
+            type: "BLZ v1",
             meta: {product: 1},
         });
 
         backup = new BLZAdapterBackup(providerMock, backupPath);
     });
 
-    describe('Creating backup', () => {
-        it('uses a narrow backup provider instead of concrete driver wrappers', () => {
-            const source = fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8');
+    describe("Creating backup", () => {
+        it("uses a narrow backup provider instead of concrete driver wrappers", () => {
+            const source = fs.readFileSync("src/adapter/blz/adapter/backup.ts", "utf8");
 
-            expect(source).toContain('interface BlzBackupProvider');
-            expect(source).not.toContain('export interface BlzBackupProvider');
-            expect(source).toContain('private provider: BlzBackupProvider;');
-            expect(source).not.toContain('import type { Driver }');
-            expect(source).not.toContain('BLZFrameData');
-            expect(source).toContain('getGlobalTcLinkKey: () => Promise<BlzBackupTrustCenterKey>;');
-            expect(source).toContain('getCurrentNetworkParameters: () => Promise<BlzBackupNetworkParameters>;');
-            expect(source).toContain('getNetworkKeyInfo: () => Promise<BlzBackupNetworkKey>;');
-            expect(source).not.toContain('private driver: Driver;');
-            expect(source).toContain('uint64ToLittleEndianBuffer(netParams.extPanId)');
-            expect(source).not.toContain('function extendedPanIdToBackupBuffer');
+            expect(source).toContain("interface BlzBackupProvider");
+            expect(source).not.toContain("export interface BlzBackupProvider");
+            expect(source).toContain("private provider: BlzBackupProvider;");
+            expect(source).not.toContain("import type { Driver }");
+            expect(source).not.toContain("BLZFrameData");
+            expect(source).toContain("getGlobalTcLinkKey: () => Promise<BlzBackupTrustCenterKey>;");
+            expect(source).toContain("getCurrentNetworkParameters: () => Promise<BlzBackupNetworkParameters>;");
+            expect(source).toContain("getNetworkKeyInfo: () => Promise<BlzBackupNetworkKey>;");
+            expect(source).not.toContain("private driver: Driver;");
+            expect(source).toContain("uint64ToLittleEndianBuffer(netParams.extPanId)");
+            expect(source).not.toContain("function extendedPanIdToBackupBuffer");
         });
 
-        it('should create backup successfully', async () => {
+        it("should create backup successfully", async () => {
             providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
-                extPanId: BigInt('0x0102030405060708'),
+                extPanId: BigInt("0x0102030405060708"),
                 channel: 11,
                 channelMask: 0x800, // Channel 11
                 nwkUpdateId: 0,
             });
-            providerMock.getMacAddress.mockResolvedValue(
-                Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
-            );
+            providerMock.getMacAddress.mockResolvedValue(Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]));
 
             providerMock.getGlobalTcLinkKey.mockResolvedValue({
                 linkKey: Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
@@ -110,10 +110,10 @@ describe('BLZ Adapter Backup', () => {
             });
         });
 
-        it('should serialize the extended PAN ID without an intermediate byte array', async () => {
+        it("should serialize the extended PAN ID without an intermediate byte array", async () => {
             providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
-                extPanId: BigInt('0x0102030405060708'),
+                extPanId: BigInt("0x0102030405060708"),
                 channel: 11,
                 channelMask: 0,
                 nwkUpdateId: 0,
@@ -130,9 +130,9 @@ describe('BLZ Adapter Backup', () => {
             });
             const expectedExtendedPanId = Buffer.from([8, 7, 6, 5, 4, 3, 2, 1]);
             const originalFrom = Buffer.from;
-            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+            const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
                 if (Array.isArray(value)) {
-                    throw new Error('array-backed Buffer.from used');
+                    throw new Error("array-backed Buffer.from used");
                 }
 
                 return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
@@ -148,13 +148,13 @@ describe('BLZ Adapter Backup', () => {
             }
         });
 
-        it('should copy backup-owned key and IEEE buffers without Buffer.from source clones', async () => {
+        it("should copy backup-owned key and IEEE buffers without Buffer.from source clones", async () => {
             const linkKey = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
             const networkKey = Buffer.of(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
             const ieee = Buffer.of(1, 2, 3, 4, 5, 6, 7, 8);
             providerMock.getCurrentNetworkParameters.mockResolvedValue({
                 panId: 0x1234,
-                extPanId: BigInt('0x0102030405060708'),
+                extPanId: BigInt("0x0102030405060708"),
                 channel: 11,
                 channelMask: 0,
                 nwkUpdateId: 0,
@@ -170,9 +170,9 @@ describe('BLZ Adapter Backup', () => {
                 outgoingFrameCounter: 5678,
             });
             const originalFrom = Buffer.from;
-            const fromSpy = vi.spyOn(Buffer, 'from').mockImplementation(((value: unknown, ...args: unknown[]) => {
+            const fromSpy = vi.spyOn(Buffer, "from").mockImplementation(((value: unknown, ...args: unknown[]) => {
                 if (value === linkKey || value === networkKey || value === ieee) {
-                    throw new Error('backup source buffer cloned');
+                    throw new Error("backup source buffer cloned");
                 }
 
                 return (originalFrom as (...parameters: unknown[]) => Buffer)(value, ...args);
@@ -195,7 +195,7 @@ describe('BLZ Adapter Backup', () => {
             }
         });
 
-        it('should not continue collecting backup data after the active guard fails', async () => {
+        it("should not continue collecting backup data after the active guard fails", async () => {
             let finishLinkKeyRead: (() => void) | undefined;
             let active = true;
             providerMock.getGlobalTcLinkKey.mockReturnValue(
@@ -209,13 +209,17 @@ describe('BLZ Adapter Backup', () => {
             );
             providerMock.getCurrentNetworkParameters.mockReturnValue(new Promise(() => {}));
 
-            const result = (backup as unknown as {
-                createBackup: (assertActive: () => void) => Promise<unknown>;
-            }).createBackup(() => {
-                if (!active) {
-                    throw new Error('backup stopped');
+            const result = (
+                backup as unknown as {
+                    createBackup: (assertActive: () => void) => Promise<unknown>;
                 }
-            }).catch((error: Error) => error.message);
+            )
+                .createBackup(() => {
+                    if (!active) {
+                        throw new Error("backup stopped");
+                    }
+                })
+                .catch((error: Error) => error.message);
 
             await Promise.resolve();
             active = false;
@@ -223,22 +227,22 @@ describe('BLZ Adapter Backup', () => {
             await Promise.resolve();
 
             expect(providerMock.getCurrentNetworkParameters).not.toHaveBeenCalled();
-            await expect(result).resolves.toBe('backup stopped');
+            await expect(result).resolves.toBe("backup stopped");
         });
     });
 
-    describe('Loading backup', () => {
-        it('should keep backup async errors on native throw paths', () => {
-            const source = fs.readFileSync('src/adapter/blz/adapter/backup.ts', 'utf8');
+    describe("Loading backup", () => {
+        it("should keep backup async errors on native throw paths", () => {
+            const source = fs.readFileSync("src/adapter/blz/adapter/backup.ts", "utf8");
 
-            expect(source).not.toContain('return Promise.reject(');
-            expect(source).not.toContain('return Promise.resolve(');
+            expect(source).not.toContain("return Promise.reject(");
+            expect(source).not.toContain("return Promise.resolve(");
         });
 
-        it('should load unified backup successfully', async () => {
+        it("should load unified backup successfully", async () => {
             const mockBackupData = {
                 metadata: {
-                    format: 'zigpy/open-coordinator-backup',
+                    format: "zigpy/open-coordinator-backup",
                     version: 1,
                 },
             };
@@ -259,24 +263,24 @@ describe('BLZ Adapter Backup', () => {
             expect(result).toBe(mockParsedBackup);
         });
 
-        it('should handle missing backup file', async () => {
-            vi.mocked(fs.promises.access).mockRejectedValue(new Error('File not found'));
+        it("should handle missing backup file", async () => {
+            vi.mocked(fs.promises.access).mockRejectedValue(new Error("File not found"));
 
             const result = await backup.getStoredBackup();
             expect(result).toBeUndefined();
         });
 
-        it('should handle corrupted backup file', async () => {
+        it("should handle corrupted backup file", async () => {
             vi.mocked(fs.promises.access).mockResolvedValue(undefined);
-            vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from('invalid json'));
+            vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from("invalid json"));
 
-            await expect(backup.getStoredBackup()).rejects.toThrow('Coordinator backup is corrupted');
+            await expect(backup.getStoredBackup()).rejects.toThrow("Coordinator backup is corrupted");
         });
 
-        it('should handle unsupported backup version', async () => {
+        it("should handle unsupported backup version", async () => {
             const mockBackupData = {
                 metadata: {
-                    format: 'zigpy/open-coordinator-backup',
+                    format: "zigpy/open-coordinator-backup",
                     version: 2,
                 },
             };
@@ -284,17 +288,17 @@ describe('BLZ Adapter Backup', () => {
             vi.mocked(fs.promises.access).mockResolvedValue(undefined);
             vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from(JSON.stringify(mockBackupData)));
 
-            await expect(backup.getStoredBackup()).rejects.toThrow('Unsupported open coordinator backup version');
+            await expect(backup.getStoredBackup()).rejects.toThrow("Unsupported open coordinator backup version");
         });
 
-        it('should reject invalid backup data before reading metadata', async () => {
+        it("should reject invalid backup data before reading metadata", async () => {
             vi.mocked(fs.promises.access).mockResolvedValue(undefined);
-            vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from('null'));
+            vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from("null"));
 
-            await expect(backup.getStoredBackup()).rejects.toThrow('Invalid backup data format');
+            await expect(backup.getStoredBackup()).rejects.toThrow("Invalid backup data format");
         });
 
-        it('should handle unknown backup format', async () => {
+        it("should handle unknown backup format", async () => {
             const mockBackupData = {
                 someOtherFormat: true,
             };
@@ -302,7 +306,7 @@ describe('BLZ Adapter Backup', () => {
             vi.mocked(fs.promises.access).mockResolvedValue(undefined);
             vi.mocked(fs.promises.readFile).mockResolvedValue(Buffer.from(JSON.stringify(mockBackupData)));
 
-            await expect(backup.getStoredBackup()).rejects.toThrow('Unknown backup format');
+            await expect(backup.getStoredBackup()).rejects.toThrow("Unknown backup format");
         });
     });
 });

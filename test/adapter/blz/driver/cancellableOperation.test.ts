@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/useAwait: Tests use async callbacks to exercise promise rejection behavior.
+
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {CancellableOperation} from "../../../../src/adapter/blz/driver/cancellableOperation";
 
@@ -19,7 +21,11 @@ describe("BLZ cancellable operation", () => {
         const operation = vi.fn().mockResolvedValue("ok");
 
         await expect(
-            operations.run(operation, () => false, () => new Error("stopped")),
+            operations.run(
+                operation,
+                () => false,
+                () => new Error("stopped"),
+            ),
         ).rejects.toThrow("stopped");
 
         expect(operation).not.toHaveBeenCalled();

@@ -1,5 +1,9 @@
 /* istanbul ignore file */
-import { bufferForRetention, bufferFromBytes, copyBytes } from "../../byteUtils";
+// biome-ignore-all lint/suspicious/noExplicitAny: BLZ frame schemas use dynamic runtime type descriptors.
+// biome-ignore-all lint/complexity/noStaticOnlyClass: BLZ schema descriptors are modeled as static classes.
+// biome-ignore-all lint/style/useNamingConvention: BLZ type names mirror the firmware schema names.
+// biome-ignore-all lint/suspicious/noImplicitAnyLet: BLZ schema deserializers unpack dynamically typed values.
+import {bufferForRetention, bufferFromBytes, copyBytes} from "../../byteUtils";
 
 const EMPTY_BUFFER = Buffer.alloc(0);
 
@@ -35,7 +39,7 @@ export class int_t {
         if (cls._size > 8) {
             throw new Error(`Unsupported size: ${cls._size}`);
         }
-    
+
         // If value is a Buffer, convert to a number or BigInt
         if (Buffer.isBuffer(value)) {
             if (cls._size <= 6) {
@@ -46,14 +50,14 @@ export class int_t {
                 throw new Error(`Unsupported size for Buffer conversion: ${cls._size}`);
             }
         }
-    
+
         // Ensure value is a valid number or BigInt
-        if (typeof value !== 'number' && typeof value !== 'bigint') {
+        if (typeof value !== "number" && typeof value !== "bigint") {
             throw new TypeError(`Value must be a number, BigInt, or Buffer. Received: ${typeof value}`);
         }
-    
+
         const buffer = Buffer.allocUnsafe(cls._size);
-    
+
         if (cls._size <= 6) {
             if (cls._signed) {
                 buffer.writeIntLE(Number(value), 0, cls._size);
@@ -61,7 +65,7 @@ export class int_t {
                 buffer.writeUIntLE(Number(value), 0, cls._size);
             }
         } else if (cls._size === 8) {
-            if (typeof value !== 'bigint') {
+            if (typeof value !== "bigint") {
                 value = BigInt(value); // Convert number to BigInt if necessary
             }
             if (cls._signed) {
@@ -70,19 +74,16 @@ export class int_t {
                 buffer.writeBigUInt64LE(value, 0);
             }
         }
-    
+
         return buffer;
     }
-    
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
         if (data.length < cls._size) {
-            throw new RangeError(
-                `Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`
-            );
+            throw new RangeError(`Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`);
         }
-    
+
         let value;
         if (cls._size <= 6) {
             // Use native readIntLE or readUIntLE for sizes up to 6 bytes
@@ -90,37 +91,34 @@ export class int_t {
         } else if (cls._size === 8) {
             // hotfix for 64-bit integers
             // Use BigInt for 64-bit integers
-            value = cls._signed
-                ? BigInt.asIntN(64, data.readBigInt64LE(0))
-                : BigInt.asUintN(64, data.readBigUInt64LE(0));
+            value = cls._signed ? BigInt.asIntN(64, data.readBigInt64LE(0)) : BigInt.asUintN(64, data.readBigUInt64LE(0));
         } else {
             throw new Error(`Unsupported size: ${cls._size}`);
         }
-    
+
         return [value, data.subarray(cls._size)];
     }
-    
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static valueToName(cls: any, value: any): string {
         for (const prop of Object.getOwnPropertyNames(cls)) {
             const desc = Object.getOwnPropertyDescriptor(cls, prop);
-            if (desc !== undefined && desc.enumerable && desc.writable && value == desc.value) {
+            if (desc?.enumerable && desc.writable && value === desc.value) {
                 return `${cls.name}.${prop}`;
             }
         }
-        return '';
+        return "";
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static valueName(cls: any, value: any): string {
         for (const prop of Object.getOwnPropertyNames(cls)) {
             const desc = Object.getOwnPropertyDescriptor(cls, prop);
-            if (desc !== undefined && desc.enumerable && desc.writable && value == desc.value) {
+            if (desc?.enumerable && desc.writable && value === desc.value) {
                 return `${prop}`;
             }
         }
-        return '';
+        return "";
     }
 }
 
@@ -170,7 +168,7 @@ export class uint64_t extends uint_t {
 
 export class LVBytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: any[]): Buffer {
+    static serialize(_cls: any, value: any[]): Buffer {
         const result = Buffer.allocUnsafe(1 + value.length);
         result.writeUInt8(value.length, 0);
         copyBytes(value, result, 1);
@@ -179,7 +177,7 @@ export class LVBytes {
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static deserialize(cls: any, data: Buffer): any[] {
+    static deserialize(_cls: any, data: Buffer): any[] {
         if (data.length < 1) {
             throw new RangeError(`Buffer too small. Expected at least 1 byte, received ${data.length}`);
         }
@@ -190,8 +188,7 @@ export class LVBytes {
         }
 
         const s = bufferForRetention(data.subarray(1, l + 1));
-        const remainder =
-            data.length === l + 1 ? EMPTY_BUFFER : data.subarray(l + 1);
+        const remainder = data.length === l + 1 ? EMPTY_BUFFER : data.subarray(l + 1);
         return [s, remainder];
     }
 }
@@ -218,7 +215,7 @@ export abstract class List {
 class _LVList extends List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any[]): Buffer {
-        const data = super.serialize(cls, value);
+        const data = List.serialize(cls, value);
         const result = Buffer.allocUnsafe(1 + data.length);
         result.writeUInt8(value.length, 0);
         data.copy(result, 1);
@@ -227,7 +224,8 @@ class _LVList extends List {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
-        let item, length;
+        let item;
+        let length;
         /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
         if (data.length < 1) {
             throw new RangeError(`Buffer too small. Expected at least 1 byte, received ${data.length}`);
@@ -263,7 +261,7 @@ export function LVList(itemtype: any): List {
 
 export class WordList extends List {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: any[]): Buffer {
+    static serialize(_cls: any, value: any[]): Buffer {
         const result = Buffer.allocUnsafe(value.length * 2);
         for (let i = 0; i < value.length; i++) {
             result.writeUInt16LE(value[i], i * 2);
@@ -272,7 +270,7 @@ export class WordList extends List {
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static deserialize(cls: any, data: Buffer): any[] {
+    static deserialize(_cls: any, data: Buffer): any[] {
         if (data.length % 2 !== 0) {
             throw new RangeError(`WordList requires an even byte length, received ${data.length}`);
         }
@@ -328,18 +326,18 @@ export function fixed_list(
 
 export class Bytes {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: any[]): Buffer {
+    static serialize(_cls: any, value: any[]): Buffer {
         return Buffer.isBuffer(value) ? value : bufferFromBytes(value);
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static deserialize(cls: any, data: Buffer): any[] {
+    static deserialize(_cls: any, data: Buffer): any[] {
         return [bufferForRetention(data), EMPTY_BUFFER];
     }
 }
 
 export class Fixed16Bytes extends Bytes {
-    static _size = 16;  // Fixed size for this type
+    static _size = 16; // Fixed size for this type
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static serialize(cls: any, value: any): Buffer {
@@ -347,21 +345,18 @@ export class Fixed16Bytes extends Bytes {
         if (!Buffer.isBuffer(value) || value.length !== cls._size) {
             throw new Error(`Value must be a buffer with exactly ${cls._size} bytes.`);
         }
-        return value;  // The enclosing frame serializer copies this into its final buffer.
+        return value; // The enclosing frame serializer copies this into its final buffer.
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     static deserialize(cls: any, data: Buffer): any[] {
         if (data.length < cls._size) {
-            throw new RangeError(
-                `Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`
-            );
+            throw new RangeError(`Buffer too small. Expected at least ${cls._size} bytes, received ${data.length}`);
         }
 
         // Extract exactly 16 bytes
         const value = bufferForRetention(data.subarray(0, cls._size));
-        const remainder =
-            data.length === cls._size ? EMPTY_BUFFER : data.subarray(cls._size);  // Remaining part of the buffer after the first 16 bytes
-        return [value, remainder];  // Returns the 16-byte buffer and the remainder
+        const remainder = data.length === cls._size ? EMPTY_BUFFER : data.subarray(cls._size); // Remaining part of the buffer after the first 16 bytes
+        return [value, remainder]; // Returns the 16-byte buffer and the remainder
     }
 }

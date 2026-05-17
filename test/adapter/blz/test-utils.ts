@@ -1,4 +1,4 @@
-import {vi} from 'vitest';
+import {vi} from "vitest";
 
 export const advanceTime = async (ms: number): Promise<void> => {
     await vi.advanceTimersByTimeAsync(ms);

@@ -1,8 +1,9 @@
 /* istanbul ignore file */
+// biome-ignore-all lint/suspicious/noExplicitAny: BLZ named schema descriptors use dynamic runtime class APIs.
 
-import * as basic from './basic';
-import {fixed_list} from './basic';
-import { fixedBufferFromBytes, fixedBufferFromHex } from '../../byteUtils';
+import {fixedBufferFromBytes, fixedBufferFromHex} from "../../byteUtils";
+import * as basic from "./basic";
+import {fixed_list} from "./basic";
 
 export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     private readonly _value: Buffer;
@@ -10,17 +11,17 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     constructor(value: ArrayLike<number> | string | BlzEUI64) {
         super();
         if (value instanceof BlzEUI64) {
-            this._value = fixedBufferFromBytes(value._value, 8, 'Incorrect value passed');
-        } else if (typeof value === 'string') {
+            this._value = fixedBufferFromBytes(value._value, 8, "Incorrect value passed");
+        } else if (typeof value === "string") {
             if (/^0x/i.test(value)) value = value.slice(2);
-            this._value = fixedBufferFromHex(value, 8, 'Incorrect value passed');
+            this._value = fixedBufferFromHex(value, 8, "Incorrect value passed");
         } else {
-            this._value = fixedBufferFromBytes(value, 8, 'Incorrect value passed');
+            this._value = fixedBufferFromBytes(value, 8, "Incorrect value passed");
         }
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static deserialize(cls: any, data: Buffer): any[] {
+    static deserialize(_cls: any, data: Buffer): any[] {
         if (data.length < 8) {
             throw new RangeError(`Buffer too small. Expected at least 8 bytes, received ${data.length}`);
         }
@@ -33,7 +34,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
     }
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
-    static serialize(cls: any, value: ArrayLike<number> | BlzEUI64): Buffer {
+    static serialize(_cls: any, value: ArrayLike<number> | BlzEUI64): Buffer {
         let source: ArrayLike<number>;
         if (value instanceof BlzEUI64) {
             source = value._value;
@@ -41,7 +42,7 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
             source = value;
         }
         if (source.length !== 8) {
-            throw new Error('Incorrect value passed');
+            throw new Error("Incorrect value passed");
         }
 
         const result = Buffer.allocUnsafe(8);
@@ -53,11 +54,11 @@ export class BlzEUI64 extends fixed_list(8, basic.uint8_t) {
 
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
     public get value(): any {
-        return fixedBufferFromBytes(this._value, 8, 'Incorrect value passed');
+        return fixedBufferFromBytes(this._value, 8, "Incorrect value passed");
     }
 
     public toString(): string {
-        return this._value.toString('hex');
+        return this._value.toString("hex");
     }
 }
 
@@ -85,15 +86,15 @@ export class BlzValueId extends basic.uint8_t {
     // Binding table size
     static BLZ_VALUE_ID_BINDING_TABLE_SIZE = 0x09;
     // Max end device supported
-    static BLZ_VALUE_ID_MAX_END_DEVICE_CHILDREN = 0x0A;
+    static BLZ_VALUE_ID_MAX_END_DEVICE_CHILDREN = 0x0a;
     // Indirect message timeout value
-    static BLZ_VALUE_ID_INDIRECT_TRANSMISSION_TIMEOUT = 0x0B;
+    static BLZ_VALUE_ID_INDIRECT_TRANSMISSION_TIMEOUT = 0x0b;
     // End device timeout value
-    static BLZ_VALUE_ID_END_DEVICE_BIND_TIMEOUT = 0x0C;
+    static BLZ_VALUE_ID_END_DEVICE_BIND_TIMEOUT = 0x0c;
     // Device Unique TC Link key table size
-    static BLZ_VALUE_ID_UNIQUE_TC_LINK_KEY_TABLE_SIZE = 0x0D;
+    static BLZ_VALUE_ID_UNIQUE_TC_LINK_KEY_TABLE_SIZE = 0x0d;
     // Trust center address
-    static BLZ_VALUE_ID_TRUST_CENTER_ADDRESS = 0x0F;
+    static BLZ_VALUE_ID_TRUST_CENTER_ADDRESS = 0x0f;
     // MAC address of NCP
     static BLZ_VALUE_ID_MAC_ADDRESS = 0x20;
 }
@@ -126,7 +127,6 @@ export class BlzOutgoingMessageType extends basic.uint8_t {
 
 // Options to use when sending a message.
 export class BlzApsOption extends basic.uint16_t {
-
     // No options.
     static ZB_APS_TX_OPTIONS_NONE = 0x00;
     // Send the message using APS Encryption, using the Link Key shared with the

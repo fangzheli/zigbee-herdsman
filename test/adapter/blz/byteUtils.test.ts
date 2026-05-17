@@ -11,27 +11,19 @@ import {
 
 describe("BLZ byte utilities", () => {
     it("converts uint64 values to little-endian buffers", () => {
-        expect(uint64ToLittleEndianBuffer(0x0102030405060708n)).toEqual(
-            Buffer.from([8, 7, 6, 5, 4, 3, 2, 1]),
-        );
+        expect(uint64ToLittleEndianBuffer(0x0102030405060708n)).toEqual(Buffer.from([8, 7, 6, 5, 4, 3, 2, 1]));
     });
 
     it("converts little-endian bytes back to uint64 values", () => {
-        expect(uint64FromLittleEndianBytes([8, 7, 6, 5, 4, 3, 2, 1])).toBe(
-            0x0102030405060708n,
-        );
+        expect(uint64FromLittleEndianBytes([8, 7, 6, 5, 4, 3, 2, 1])).toBe(0x0102030405060708n);
     });
 
     it("converts uint64 values to big-endian buffers", () => {
-        expect(uint64ToBigEndianBuffer(0x0102030405060708n)).toEqual(
-            Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]),
-        );
+        expect(uint64ToBigEndianBuffer(0x0102030405060708n)).toEqual(Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]));
     });
 
     it("converts big-endian bytes back to uint64 values", () => {
-        expect(uint64FromBigEndianBytes([1, 2, 3, 4, 5, 6, 7, 8])).toBe(
-            0x0102030405060708n,
-        );
+        expect(uint64FromBigEndianBytes([1, 2, 3, 4, 5, 6, 7, 8])).toBe(0x0102030405060708n);
     });
 
     it("formats array-like bytes as lowercase hex", () => {

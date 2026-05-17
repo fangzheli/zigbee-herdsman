@@ -1,8 +1,11 @@
 /* istanbul ignore file */
+// biome-ignore-all lint/suspicious/noExplicitAny: BLZ struct schemas use dynamic runtime field descriptors.
+// biome-ignore-all lint/suspicious/noImplicitAnyLet: BLZ struct deserialization unpacks dynamically typed values.
+// biome-ignore-all lint/style/useNamingConvention: TxPower and Channel mirror BLZ firmware field names.
 
-import * as basic from './basic';
-import * as named from './named';
-import {serializeMappedBufferSegments} from './basic';
+import * as basic from "./basic";
+import {serializeMappedBufferSegments} from "./basic";
+import * as named from "./named";
 
 export class BlzStruct {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any*/
@@ -44,19 +47,19 @@ export class BlzNetworkParameters extends BlzStruct {
 
     static _fields = [
         // The network's extended PAN identifier.
-        ['extendedPanId', basic.fixed_list(8, basic.uint8_t)],
+        ["extendedPanId", basic.fixed_list(8, basic.uint8_t)],
         // The network's PAN identifier.
-        ['panId', basic.uint16_t],
+        ["panId", basic.uint16_t],
         // A power setting, in dBm.
-        ['TxPower', basic.uint8_t],
+        ["TxPower", basic.uint8_t],
         // A radio channel.
-        ['Channel', basic.uint8_t],
+        ["Channel", basic.uint8_t],
         // The method used to initially join the network.
-        ['nwkManagerId', basic.uint16_t],
+        ["nwkManagerId", basic.uint16_t],
         // NWK Update ID. The value of the ZigBee nwkUpdateId known by the stack.
-        ['nwkUpdateId', basic.uint8_t],
+        ["nwkUpdateId", basic.uint8_t],
         // NWK channel mask.
-        ['channels', basic.uint32_t],
+        ["channels", basic.uint32_t],
     ];
 }
 
@@ -76,19 +79,19 @@ export class BlzApsFrame extends BlzStruct {
 
     static _fields = [
         // The application profile ID that describes the format of the message.
-        ['profileId', basic.uint16_t],
+        ["profileId", basic.uint16_t],
         // The cluster ID for this message.
-        ['clusterId', basic.uint16_t],
+        ["clusterId", basic.uint16_t],
         // The source endpoint.
-        ['sourceEndpoint', basic.uint8_t],
+        ["sourceEndpoint", basic.uint8_t],
         // The destination endpoint.
-        ['destinationEndpoint', basic.uint8_t],
+        ["destinationEndpoint", basic.uint8_t],
         // A bitmask of options.
-        ['options', named.BlzApsOption],
+        ["options", named.BlzApsOption],
         // The group ID for this message, if it is multicast mode.
-        ['groupId', basic.uint16_t],
+        ["groupId", basic.uint16_t],
         // The sequence number.
-        ['sequence', basic.uint8_t],
+        ["sequence", basic.uint8_t],
     ];
 }
 
