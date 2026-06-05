@@ -9,7 +9,7 @@ import type {Eui64} from "../../zspec/tstypes";
 import * as Zcl from "../../zspec/zcl";
 import type {TClusterCommandPayload, TPartialClusterAttributes} from "../../zspec/zcl/definition/clusters-types";
 import type {Cluster, CustomClusters} from "../../zspec/zcl/definition/tstype";
-import type {TZclFrame} from "../../zspec/zcl/zclFrame";
+import type {TFoundationZclFrame, TZclFrame} from "../../zspec/zcl/zclFrame";
 import * as Zdo from "../../zspec/zdo";
 import type {BindingTableEntry, LQITableEntry, RoutingTableEntry} from "../../zspec/zdo/definition/tstypes";
 import type {ControllerEventMap} from "../controller";
@@ -78,6 +78,7 @@ export class Device extends Entity<ControllerEventMap> {
     private _gpSecurityKey?: number[];
     #scheduledOta: OtaSource | undefined;
     #otaInProgress = false;
+    #otaAbortController: AbortController | undefined;
 
     // Getters/setters
     get ieeeAddr(): string {
@@ -1443,26 +1444,27 @@ export class Device extends Entity<ControllerEventMap> {
     #waitForOtaCommand<Co extends string>(
         endpointId: number,
         commandId: number,
-        transactionSequenceNumber: number | undefined,
+        defaultRspCommandId: number | undefined,
         timeout: number,
-    ): {promise: Promise<TZclFrame<"genOta", Co>>; cancel: () => void} {
+    ): {promise: Promise<TZclFrame<"genOta", Co> | TFoundationZclFrame<"defaultRsp">>; cancel: () => void} {
         const waiter = Entity.adapter.waitFor(
             this.networkAddress,
             endpointId,
             Zcl.FrameType.SPECIFIC,
             Zcl.Direction.CLIENT_TO_SERVER,
-            transactionSequenceNumber,
+            undefined,
             GEN_OTA_CLUSTER_ID,
             commandId,
+            defaultRspCommandId,
             timeout,
         );
-        const promise = new Promise<TZclFrame<"genOta", Co>>((resolve, reject) => {
+        const promise = new Promise<TZclFrame<"genOta", Co> | TFoundationZclFrame<"defaultRsp">>((resolve, reject) => {
             waiter.promise.then(
                 (payload) => {
                     try {
                         const frame = Zcl.Frame.fromBuffer(payload.clusterID, payload.header, payload.data, this.customClusters);
 
-                        resolve(frame as TZclFrame<"genOta", Co>);
+                        resolve(frame as TZclFrame<"genOta", Co> | TFoundationZclFrame<"defaultRsp">);
                     } catch (error) {
                         reject(error);
                     }
@@ -1514,7 +1516,7 @@ export class Device extends Entity<ControllerEventMap> {
         const queryNextImageRequest = this.#waitForOtaCommand<"queryNextImageRequest">(
             endpoint.ID,
             Zcl.Clusters.genOta.commands.queryNextImageRequest.ID,
-            undefined,
+            Zcl.Clusters.genOta.commandsResponse.imageNotify.ID,
             60000,
         );
 
@@ -1523,7 +1525,9 @@ export class Device extends Entity<ControllerEventMap> {
 
             const response = await queryNextImageRequest.promise;
 
-            return [response.payload, response.header.transactionSequenceNumber];
+            assert(response.header.isSpecific);
+
+            return [(response as TZclFrame<"genOta", "queryNextImageRequest">).payload, response.header.transactionSequenceNumber];
         } catch {
             queryNextImageRequest.cancel();
 
@@ -1716,9 +1720,15 @@ export class Device extends Entity<ControllerEventMap> {
         let endResult: TZclFrame<"genOta", "upgradeEndRequest">;
 
         try {
-            endResult = await session.run();
+            this.#otaAbortController = new AbortController();
+            const runEnd = await session.run(this.#otaAbortController.signal);
+
+            assert(runEnd.header.isSpecific);
+
+            endResult = runEnd as TZclFrame<"genOta", "upgradeEndRequest">;
         } finally {
             this.#otaInProgress = false;
+            this.#otaAbortController = undefined;
         }
 
         logger.debug(() => `Received upgrade end request for ${this.ieeeAddr}: ${JSON.stringify(endResult.payload)}`, NS);
@@ -1806,6 +1816,13 @@ export class Device extends Entity<ControllerEventMap> {
 
             throw new Error(`OTA update of ${this.ieeeAddr} failed with reason: ${Zcl.Status[endResult.payload.status]}`);
         }
+    }
+
+    /**
+     * Abort running OTA if any. Send `ABORT` with next block response to device.
+     */
+    abortOta(): void {
+        this.#otaAbortController?.abort();
     }
 
     scheduleOta(source: OtaSource): void {

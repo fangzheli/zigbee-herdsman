@@ -18,6 +18,7 @@ export interface ClusterWaitressMatcher {
     clusterId: number;
     endpoint?: number;
     commandId?: number;
+    defaultRspCommandId?: number;
     transactionSequenceNumber?: number;
 }
 
@@ -135,7 +136,9 @@ export abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
             (matcher.transactionSequenceNumber === undefined || header.transactionSequenceNumber === matcher.transactionSequenceNumber) &&
             (header.commandIdentifier === matcher.commandId ||
                 // defaultRsp
-                (header.frameControl.frameType === Zcl.FrameType.GLOBAL && header.commandIdentifier === 0x0b))
+                (header.frameControl.frameType === Zcl.FrameType.GLOBAL &&
+                    header.commandIdentifier === 0x0b &&
+                    (matcher.defaultRspCommandId === undefined || payload.data[payload.data.byteLength - 2] === matcher.defaultRspCommandId)))
         );
     }
 
@@ -165,6 +168,7 @@ export abstract class Adapter extends events.EventEmitter<AdapterEventMap> {
         transactionSequenceNumber: number | undefined,
         clusterId: number,
         commandId: number,
+        defaultRspCommandId: number | undefined,
         timeout: number,
     ): {promise: Promise<AdapterEvents.ZclPayload>; cancel: () => void};
 

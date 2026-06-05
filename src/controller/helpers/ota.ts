@@ -58,6 +58,7 @@ const ZIGBEE_OTA_PREVIOUS_URL = "https://raw.githubusercontent.com/Koenkk/zigbee
 const UPGRADE_END_REQUEST_ID = Zcl.Clusters.genOta.commands.upgradeEndRequest.ID;
 const IMAGE_BLOCK_REQUEST_ID = Zcl.Clusters.genOta.commands.imageBlockRequest.ID;
 const IMAGE_PAGE_REQUEST_ID = Zcl.Clusters.genOta.commands.imagePageRequest.ID;
+const IMAGE_BLOCK_RESPONSE_ID = Zcl.Clusters.genOta.commandsResponse.imageBlockResponse.ID;
 
 /** uint32 LE */
 export const UPGRADE_FILE_IDENTIFIER = 0x0beef11e;
@@ -390,9 +391,9 @@ export class OtaSession {
         private readonly waitForOtaCommand: <Co extends string>(
             endpointId: number,
             commandId: number,
-            transactionSequenceNumber: number | undefined,
+            defaultRspCommandId: number | undefined,
             timeout: number,
-        ) => {promise: Promise<TZclFrame<"genOta", Co>>; cancel: () => void},
+        ) => {promise: Promise<TZclFrame<"genOta", Co> | TFoundationZclFrame<"defaultRsp">>; cancel: () => void},
     ) {
         this.#startTime = performance.now();
 
@@ -445,9 +446,10 @@ export class OtaSession {
         );
     }
 
-    public async run(): Promise<TZclFrame<"genOta", "upgradeEndRequest">> {
+    public async run(abortSignal: AbortSignal): Promise<TZclFrame<"genOta", "upgradeEndRequest"> | TFoundationZclFrame<"defaultRsp">> {
         // can take a long time, use max (int32 - 1), ~24 days
-        const upgradeEndRequest = this.waitForOtaCommand<"upgradeEndRequest">(this.endpoint.ID, UPGRADE_END_REQUEST_ID, undefined, 2147483647);
+        // never match on defaultRsp
+        const upgradeEndRequest = this.waitForOtaCommand<"upgradeEndRequest">(this.endpoint.ID, UPGRADE_END_REQUEST_ID, -1, 2147483647);
 
         try {
             for await (const request of this.commandStream(upgradeEndRequest)) {
@@ -470,7 +472,10 @@ export class OtaSession {
                             request.header.transactionSequenceNumber,
                             pageOffset,
                             pagePayload.pageSize,
+                            abortSignal.aborted,
                         );
+
+                        abortSignal.throwIfAborted();
                     }
                 } else {
                     await this.sendImageBlockResponse(
@@ -478,7 +483,9 @@ export class OtaSession {
                         request.header.transactionSequenceNumber,
                         0,
                         0,
+                        abortSignal.aborted,
                     );
+                    abortSignal.throwIfAborted();
                 }
                 /* v8 ignore start */
             }
@@ -494,27 +501,30 @@ export class OtaSession {
             upgradeEndRequest.cancel();
 
             const err = error as Error;
-            err.message = `Device ${this.ieeeAddr} did not start/finish firmware download after being notified. (${err.message})`;
 
-            throw err;
+            if (err.name === "AbortError") {
+                throw new Error(`OTA for device ${this.ieeeAddr} was aborted`);
+            }
+
+            throw new Error(`Device ${this.ieeeAddr} did not start/finish firmware download after being notified. (${err.message})`);
         }
     }
 
     private async *commandStream(upgradeEndRequest: {
-        promise: Promise<TZclFrame<"genOta", "upgradeEndRequest">>;
+        promise: Promise<TZclFrame<"genOta", "upgradeEndRequest"> | TFoundationZclFrame<"defaultRsp">>;
         cancel: () => void;
     }): AsyncGenerator<OtaDataRequest | OtaUpgradeEndRequest | TFoundationZclFrame<"defaultRsp">> {
         while (true) {
             const imageBlockRequest = this.waitForOtaCommand<"imageBlockRequest">(
                 this.endpoint.ID,
                 IMAGE_BLOCK_REQUEST_ID,
-                undefined,
+                IMAGE_BLOCK_RESPONSE_ID,
                 this.dataSettings.requestTimeout,
             );
             const imagePageRequest = this.waitForOtaCommand<"imagePageRequest">(
                 this.endpoint.ID,
                 IMAGE_PAGE_REQUEST_ID,
-                undefined,
+                IMAGE_BLOCK_RESPONSE_ID,
                 this.dataSettings.requestTimeout,
             );
             const dataRequest = Promise.race([imageBlockRequest.promise, imagePageRequest.promise]);
@@ -533,6 +543,7 @@ export class OtaSession {
         requestTsn: number,
         pageOffset: number,
         pageSize: number,
+        abort: boolean,
     ): Promise<number> {
         // throttle if needed
         let callNow = performance.now();
@@ -547,6 +558,16 @@ export class OtaSession {
         }
 
         this.#lastBlockResponseTime = callNow;
+
+        if (abort) {
+            try {
+                await this.endpoint.commandResponse("genOta", "imageBlockResponse", {status: Zcl.Status.ABORT}, undefined, requestTsn);
+            } catch (error) {
+                logger.debug(() => `Abort image block response failed for ${this.ieeeAddr}: ${(error as Error).message}`, NS);
+            }
+
+            return 0;
+        }
 
         try {
             const blockPayload = buildImageBlockPayload(this.image, requestPayload, pageOffset, pageSize, this.dataSettings.baseSize);
