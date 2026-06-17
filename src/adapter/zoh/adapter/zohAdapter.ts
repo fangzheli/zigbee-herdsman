@@ -227,7 +227,7 @@ export class ZoHAdapter extends Adapter {
 
             return await new Promise((resolve, reject): void => {
                 const openError = async (err: Error): Promise<void> => {
-                    await this.stop();
+                    await this.closePort();
 
                     reject(err);
                 };
@@ -304,7 +304,7 @@ export class ZoHAdapter extends Adapter {
                 await wait(150);
             }
         } catch (error) {
-            await this.stop();
+            await this.closePort();
 
             throw error;
         }
@@ -455,9 +455,13 @@ export class ZoHAdapter extends Adapter {
         transactionSequenceNumber: number | undefined,
         clusterId: number,
         commandId: number,
+        defaultRspCommandId: number | undefined,
         timeout: number,
     ): {promise: Promise<ZclPayload>; cancel: () => void} {
-        const waiter = this.zclWaitress.waitFor({address: networkAddress, endpoint, clusterId, commandId, transactionSequenceNumber}, timeout);
+        const waiter = this.zclWaitress.waitFor(
+            {address: networkAddress, endpoint, clusterId, commandId, defaultRspCommandId, transactionSequenceNumber},
+            timeout,
+        );
         const cancel = (): void => this.zclWaitress.remove(waiter.ID);
 
         return {cancel, promise: waiter.start().promise};
@@ -632,6 +636,7 @@ export class ZoHAdapter extends Adapter {
                                     clusterId: zclFrame.cluster.ID,
                                     endpoint,
                                     commandId: commandResponseId,
+                                    defaultRspCommandId: undefined,
                                     transactionSequenceNumber: zclFrame.header.transactionSequenceNumber,
                                 },
                                 timeout,
@@ -778,11 +783,13 @@ export class ZoHAdapter extends Adapter {
                 // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
                 clusterID: apsHeader.clusterId!,
                 header: Zcl.Header.fromBuffer(apsPayload),
+                // always use 16-bit address for ZCL
+                // only fallback to 64-bit if no choice - waitress will never match on it
                 address:
-                    sender64 !== undefined
-                        ? `0x${bigUInt64ToHexBE(sender64)}`
+                    sender16 !== undefined
+                        ? sender16
                         : // biome-ignore lint/style/noNonNullAssertion: ignore
-                          sender16!,
+                          `0x${bigUInt64ToHexBE(sender64!)}`,
                 data: apsPayload,
                 // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
                 endpoint: apsHeader.sourceEndpoint!,

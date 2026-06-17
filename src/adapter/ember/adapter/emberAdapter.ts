@@ -957,16 +957,22 @@ export class EmberAdapter extends Adapter {
                 logger.info("[INIT TC] Forming from backup.", NS);
                 // `backup` valid in this `action` path (not detected by TS)
                 /* v8 ignore start */
+                const keyList: LinkKeyBackupData[] = [];
+
                 // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
-                const keyList: LinkKeyBackupData[] = backup!.devices.map((device) => ({
-                    deviceEui64: ZSpec.Utils.eui64BEBufferToHex(device.ieeeAddress),
-                    // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
-                    key: {contents: device.linkKey!.key},
-                    // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
-                    outgoingFrameCounter: device.linkKey!.txCounter,
-                    // biome-ignore lint/style/noNonNullAssertion: ignored using `--suppress`
-                    incomingFrameCounter: device.linkKey!.rxCounter,
-                }));
+                for (const device of backup!.devices) {
+                    // link_key is optional in the open coordinator backup format, skip devices without one
+                    if (device.linkKey == null) {
+                        continue;
+                    }
+
+                    keyList.push({
+                        deviceEui64: ZSpec.Utils.eui64BEBufferToHex(device.ieeeAddress),
+                        key: {contents: device.linkKey.key},
+                        outgoingFrameCounter: device.linkKey.txCounter,
+                        incomingFrameCounter: device.linkKey.rxCounter,
+                    });
+                }
                 /* v8 ignore stop */
 
                 // before forming
@@ -1712,6 +1718,7 @@ export class EmberAdapter extends Adapter {
         transactionSequenceNumber: number | undefined,
         clusterID: number,
         commandIdentifier: number,
+        defaultRspCommandId: number | undefined,
         timeout: number,
     ): {promise: Promise<ZclPayload>; cancel: () => void} {
         const sourceEndpointInfo = FIXED_ENDPOINTS[0];
@@ -1729,6 +1736,7 @@ export class EmberAdapter extends Adapter {
                 },
                 zclSequence: transactionSequenceNumber,
                 commandIdentifier,
+                defaultRspCommandId,
             },
             timeout,
         );
@@ -1956,6 +1964,11 @@ export class EmberAdapter extends Adapter {
         // don't RETRY if no response expected
         if (commandResponseId === undefined) {
             apsFrame.options &= ~EmberApsOption.RETRY;
+        }
+
+        // Zigbee Direct cluster, enable APS layer encryption
+        if (zclFrame.cluster.ID === Zcl.Clusters.zigbeeDirectConfiguration.ID) {
+            apsFrame.options |= EmberApsOption.ENCRYPTION;
         }
 
         const data = zclFrame.toBuffer();

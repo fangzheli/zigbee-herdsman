@@ -1,5 +1,66 @@
 # Changelog
 
+## [10.4.1](https://github.com/Koenkk/zigbee-herdsman/compare/v10.4.0...v10.4.1) (2026-06-17)
+
+
+### Bug Fixes
+
+* **ignore:** bump the minor-patch group with 2 updates ([#1782](https://github.com/Koenkk/zigbee-herdsman/issues/1782)) ([823ad8d](https://github.com/Koenkk/zigbee-herdsman/commit/823ad8d10befcf172f69667ebdee882722ae4559))
+* Zboss: emit disconnected on unexpected port close ([#1779](https://github.com/Koenkk/zigbee-herdsman/issues/1779)) ([c3c3361](https://github.com/Koenkk/zigbee-herdsman/commit/c3c336144c2caecacd81bafe69ed297b73a34cee))
+* zoh: prioritize 16-bit address for ZCL to match waitress logic ([#1780](https://github.com/Koenkk/zigbee-herdsman/issues/1780)) ([cc84d5a](https://github.com/Koenkk/zigbee-herdsman/commit/cc84d5a03fa381c055d3c68dc7261f4ac7a83474))
+
+## [10.4.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.3.0...v10.4.0) (2026-06-09)
+
+
+### Features
+
+* Support for Frient install codes ([#1778](https://github.com/Koenkk/zigbee-herdsman/issues/1778)) ([40f3eeb](https://github.com/Koenkk/zigbee-herdsman/commit/40f3eeb99bc1fa6feb5b9edba0ba4d2e8a1f9003))
+
+
+### Bug Fixes
+
+* ember: skip backup devices without a link key in FORM_BACKUP ([#1774](https://github.com/Koenkk/zigbee-herdsman/issues/1774)) ([324a005](https://github.com/Koenkk/zigbee-herdsman/commit/324a005dea5bab54b927e3632f22fc4149a0fc19))
+* **ignore:** bump @types/node from 24.12.4 to 24.13.0 in the minor-patch group ([#1773](https://github.com/Koenkk/zigbee-herdsman/issues/1773)) ([7825459](https://github.com/Koenkk/zigbee-herdsman/commit/7825459784e03f78e9b7768c76e41cef9f11c209))
+* **ignore:** bump vitest from 3.2.4 to 3.2.6 ([#1781](https://github.com/Koenkk/zigbee-herdsman/issues/1781)) ([5a48d1b](https://github.com/Koenkk/zigbee-herdsman/commit/5a48d1b7bb313906ac5643a93162c78b96907d0b))
+* zoh: only close port (if needed) on init port failure ([#1776](https://github.com/Koenkk/zigbee-herdsman/issues/1776)) ([5592148](https://github.com/Koenkk/zigbee-herdsman/commit/559214808d1f488a3427c321a256109b3c667e38))
+
+## [10.3.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.2.0...v10.3.0) (2026-06-03)
+
+
+### Features
+
+* Add ability to abort running OTA ([#1759](https://github.com/Koenkk/zigbee-herdsman/issues/1759)) ([a70e57b](https://github.com/Koenkk/zigbee-herdsman/commit/a70e57b1aab60aa43e0d12a44643bbc5c6bd5694))
+
+## [10.2.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.1.0...v10.2.0) (2026-06-02)
+
+
+### Features
+
+* Enable APS layer encryption for Zigbee Direct cluster operations ([#1762](https://github.com/Koenkk/zigbee-herdsman/issues/1762)) ([0ab26c0](https://github.com/Koenkk/zigbee-herdsman/commit/0ab26c06153030f98f49e0fd11b1f8a055b0fcf3))
+
+
+### Bug Fixes
+
+* defaultRsp matching for OTA ([#1771](https://github.com/Koenkk/zigbee-herdsman/issues/1771)) ([a4f4492](https://github.com/Koenkk/zigbee-herdsman/commit/a4f44922901ccc71bca802ff39fbb5cf87c897e2))
+* **ignore:** bump @date-fns/tz from 1.4.1 to 1.5.0 in the minor-patch group ([#1764](https://github.com/Koenkk/zigbee-herdsman/issues/1764)) ([b1e1577](https://github.com/Koenkk/zigbee-herdsman/commit/b1e1577a74f4f521e2e89e95c037ec25e003ce6d))
+* **ignore:** bump the minor-patch group with 2 updates ([#1766](https://github.com/Koenkk/zigbee-herdsman/issues/1766)) ([6b0b5c2](https://github.com/Koenkk/zigbee-herdsman/commit/6b0b5c2c384396f6107f7beff14968c58d25f64c))
+* Zboss: keep onPackage active during inReset ([#1763](https://github.com/Koenkk/zigbee-herdsman/issues/1763)) ([fb2b2fe](https://github.com/Koenkk/zigbee-herdsman/commit/fb2b2fe411f7c4c5038244971ba3927d73d9cd85))
+
+## [10.1.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.0.8...v10.1.0) (2026-05-17)
+
+
+### Features
+
+* add parsing for more GreenPower frames ([#1732](https://github.com/Koenkk/zigbee-herdsman/issues/1732)) ([3f8e4b4](https://github.com/Koenkk/zigbee-herdsman/commit/3f8e4b40ecf9709dc92a29d839380381125a0c04))
+* add support for Zigbee Direct cluster ([#1761](https://github.com/Koenkk/zigbee-herdsman/issues/1761)) ([89e40f8](https://github.com/Koenkk/zigbee-herdsman/commit/89e40f830941fb40d47b879ee4f86081088557b4))
+
+
+### Bug Fixes
+
+* Fix uncaught error in device ZCL event ([#1755](https://github.com/Koenkk/zigbee-herdsman/issues/1755)) ([ffd9a89](https://github.com/Koenkk/zigbee-herdsman/commit/ffd9a896707a535cf7630ae294e8808d69973c6a))
+* ignore default response during OTA blocks sending ([#1756](https://github.com/Koenkk/zigbee-herdsman/issues/1756)) ([2ff4428](https://github.com/Koenkk/zigbee-herdsman/commit/2ff44284975e04269e1060aa050e5384c2be1bec))
+* **ignore:** bump the minor-patch group with 2 updates ([#1757](https://github.com/Koenkk/zigbee-herdsman/issues/1757)) ([594804a](https://github.com/Koenkk/zigbee-herdsman/commit/594804aed19b0a9e8f06fc151f991a61e17180dd))
+
 ## [10.0.8](https://github.com/Koenkk/zigbee-herdsman/compare/v10.0.7...v10.0.8) (2026-05-08)
 
 
