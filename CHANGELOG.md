@@ -1,5 +1,26 @@
 # Changelog
 
+## [10.5.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.4.2...v10.5.0) (2026-06-25)
+
+
+### Features
+
+* Support for Sonoff Dongle-PP10 auto-discovery. ([#1797](https://github.com/Koenkk/zigbee-herdsman/issues/1797)) ([f01cd75](https://github.com/Koenkk/zigbee-herdsman/commit/f01cd75dec2b088cdc900b73f430ce901c5c1b55))
+
+
+### Bug Fixes
+
+* Fix min and max Group ID ([#1795](https://github.com/Koenkk/zigbee-herdsman/issues/1795)) ([a30116a](https://github.com/Koenkk/zigbee-herdsman/commit/a30116a76585335a8ac3327db8cace7890cae5d0))
+
+## [10.4.2](https://github.com/Koenkk/zigbee-herdsman/compare/v10.4.1...v10.4.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **deps:** bump actions/checkout from 6 to 7 ([#1787](https://github.com/Koenkk/zigbee-herdsman/issues/1787)) ([28f6e9b](https://github.com/Koenkk/zigbee-herdsman/commit/28f6e9bcc15088ddf58b36105f401146234de414))
+* **ignore:** bump @biomejs/biome from 2.4.16 to 2.5.0 in the minor-patch group ([#1788](https://github.com/Koenkk/zigbee-herdsman/issues/1788)) ([53ed6fc](https://github.com/Koenkk/zigbee-herdsman/commit/53ed6fc80a97b78a3c7e5808621d1cfebb7da116))
+* OTA: fix possible race condition with abort ([#1793](https://github.com/Koenkk/zigbee-herdsman/issues/1793)) ([1a2007d](https://github.com/Koenkk/zigbee-herdsman/commit/1a2007d8cde7e8ee450dcc69ac7fe201e850e426))
+
 ## [10.4.1](https://github.com/Koenkk/zigbee-herdsman/compare/v10.4.0...v10.4.1) (2026-06-17)
 
 
