@@ -380,7 +380,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
             currentGroup: {name: "currentGroup", ID: 0x0002, type: DataType.UINT16, required: true, max: 0xfff7, default: 0},
             sceneValid: {name: "sceneValid", ID: 0x0003, type: DataType.BOOLEAN, required: true, default: 0},
             nameSupport: {name: "nameSupport", ID: 0x0004, type: DataType.BITMAP8, required: true, default: 0},
-            lastCfgBy: {name: "lastCfgBy", ID: 0x0005, type: DataType.IEEE_ADDR, special: [["UnknownOrNotConfigured", "ffffffffffffffff"]]},
+            lastCfgBy: {name: "lastCfgBy", ID: 0x0005, type: DataType.IEEE_ADDR, special: {"0xffffffffffffffff": "UnknownOrNotConfigured"}},
         },
         commands: {
             add: {
@@ -557,11 +557,11 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                         type: DataType.UINT8,
                         min: 0,
                         max: 0xff,
-                        special: [
-                            ["NoFurtherScenesMayBeAdded", "00"],
-                            ["AtLeastOneFurtherSceneMayBeAdded", "fe"],
-                            ["Unknown", "ff"],
-                        ],
+                        special: {
+                            0: "NoFurtherScenesMayBeAdded",
+                            254: "AtLeastOneFurtherSceneMayBeAdded",
+                            255: "Unknown",
+                        },
                     },
                     {name: "groupid", type: DataType.UINT16},
                     {
@@ -629,7 +629,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
             globalSceneCtrl: {name: "globalSceneCtrl", ID: 0x4000, type: DataType.BOOLEAN, default: 1},
             onTime: {name: "onTime", ID: 0x4001, type: DataType.UINT16, write: true, max: 0xffff, default: 0},
             offWaitTime: {name: "offWaitTime", ID: 0x4002, type: DataType.UINT16, write: true, max: 0xffff, default: 0},
-            startUpOnOff: {name: "startUpOnOff", ID: 0x4003, type: DataType.ENUM8, write: true, max: 0xff, special: [["SetToPreviousValue", "ff"]]},
+            startUpOnOff: {name: "startUpOnOff", ID: 0x4003, type: DataType.ENUM8, write: true, max: 0xff, special: {255: "SetToPreviousValue"}},
         },
         commands: {
             off: {name: "off", ID: 0x00, parameters: [], required: true},
@@ -700,10 +700,10 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 type: DataType.UINT8,
                 write: true,
                 max: 0xff,
-                special: [
-                    ["MinimumDeviceValuePermitted", "00"],
-                    ["SetToPreviousValue", "ff"],
-                ],
+                special: {
+                    0: "MinimumDeviceValuePermitted",
+                    255: "SetToPreviousValue",
+                },
             },
         },
         commands: {
@@ -1413,21 +1413,21 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 write: true,
                 required: true,
                 default: "0xffffffffffffffff",
-                special: [["PANIdUnspecified", "ffffffffffffffff"]],
+                special: {"0xffffffffffffffff": "PANIdUnspecified"},
             },
             panId: {name: "panId", ID: 0x0002, type: DataType.UINT16, write: true, required: true, max: 0xffff},
             channelmask: {name: "channelmask", ID: 0x0003, type: DataType.BITMAP32, write: true, required: true},
             protocolVersion: {name: "protocolVersion", ID: 0x0004, type: DataType.UINT8, write: true, required: true, min: 0x02, max: 0x02},
             stackProfile: {name: "stackProfile", ID: 0x0005, type: DataType.UINT8, write: true, required: true, min: 0x01, max: 0x02},
             startupControl: {name: "startupControl", ID: 0x0006, type: DataType.ENUM8, write: true, required: true, max: 0x03},
-            trustCenterress: {
-                name: "trustCenterress",
+            trustCenterAddress: {
+                name: "trustCenterAddress",
                 ID: 0x0010,
                 type: DataType.IEEE_ADDR,
                 write: true,
                 required: true,
                 default: "0x0000000000000000",
-                special: [["AddressUnspecified", "0000000000000000"]],
+                special: {"0x0000000000000000": "AddressUnspecified"},
             },
             trustCenterMasterKey: {name: "trustCenterMasterKey", ID: 0x0011, type: DataType.SEC_KEY, write: true},
             networkKey: {name: "networkKey", ID: 0x0012, type: DataType.SEC_KEY, write: true, required: true},
@@ -2225,10 +2225,10 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 type: DataType.UINT8,
                 write: true,
                 max: 0xff,
-                special: [
-                    ["MinimumDeviceValuePermitted", "00"],
-                    ["SetToPreviousValue", "ff"],
-                ],
+                special: {
+                    0: "MinimumDeviceValuePermitted",
+                    255: "SetToPreviousValue",
+                },
             },
         },
         commands: {
@@ -2899,7 +2899,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 write: true,
                 max: 0xffff,
                 default: 0xffff,
-                special: [["Never", "ffff"]],
+                special: {65535: "Never"},
             },
         },
         commands: {},
@@ -3050,7 +3050,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 writeOptional: true,
                 report: true,
                 default: 0,
-                special: [["Disabled", "0"]],
+                special: {0: "Disabled"},
             },
             soundVolume: {name: "soundVolume", ID: 0x0024, type: DataType.UINT8, write: true, writeOptional: true, report: true, default: 0},
             operatingMode: {name: "operatingMode", ID: 0x0025, type: DataType.ENUM8, write: true, writeOptional: true, report: true, default: 0},
@@ -3138,7 +3138,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 name: "getLogRecord",
                 ID: 0x04,
                 response: 0x04,
-                parameters: [{name: "logindex", type: DataType.UINT16, special: [["MostRecent", "0"]]}],
+                parameters: [{name: "logindex", type: DataType.UINT16, special: {0: "MostRecent"}}],
             },
             setPinCode: {
                 name: "setPinCode",
@@ -3509,7 +3509,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 scene: true,
                 required: true,
                 max: 100,
-                special: [["PositionUnknown", "ff"]],
+                special: {255: "PositionUnknown"},
             },
         },
         commands: {
@@ -3797,7 +3797,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 scene: true,
                 max: 0xfeff,
                 default: 0x00fa,
-                special: [["Undefined", "0000"]],
+                special: {0: "Undefined"},
             },
             colorMode: {name: "colorMode", ID: 0x0008, type: DataType.ENUM8, required: true, max: 0x02, default: 1},
             options: {name: "options", ID: 0x000f, type: DataType.BITMAP8, write: true, required: true, default: 0},
@@ -3874,7 +3874,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 type: DataType.UINT16,
                 write: true,
                 max: 0xfeff,
-                special: [["SetColorTempToPreviousValue", "ffff"]],
+                special: {65535: "SetColorTempToPreviousValue"},
             },
         },
         commands: {
@@ -4246,15 +4246,15 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                 required: true,
                 max: 0xfffe,
                 default: 0,
-                special: [
-                    ["TooLowToBeMeasured", "0000"],
-                    ["Invalid", "ffff"],
-                ],
+                special: {
+                    0: "TooLowToBeMeasured",
+                    65535: "Invalid",
+                },
             },
             minMeasuredValue: {name: "minMeasuredValue", ID: 0x0001, type: DataType.UINT16, required: true, min: 1, max: 65533},
             maxMeasuredValue: {name: "maxMeasuredValue", ID: 0x0002, type: DataType.UINT16, required: true, min: 2, max: 65534},
             tolerance: {name: "tolerance", ID: 0x0003, type: DataType.UINT16, max: 0x0800},
-            lightSensorType: {name: "lightSensorType", ID: 0x0004, type: DataType.ENUM8, default: 0xff, special: [["Unknown", "ff"]]},
+            lightSensorType: {name: "lightSensorType", ID: 0x0004, type: DataType.ENUM8, default: 0xff, special: {255: "Unknown"}},
         },
         commands: {},
         commandsResponse: {},
@@ -6945,10 +6945,10 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                         name: "duration",
                         type: DataType.UINT16,
                         max: 0xffff,
-                        special: [
-                            ["ExitIdentifyMode", "0000"],
-                            ["IdentifyForReceiverKnownTime", "ffff"],
-                        ],
+                        special: {
+                            0: "ExitIdentifyMode",
+                            65535: "IdentifyForReceiverKnownTime",
+                        },
                     },
                 ],
                 required: true,
@@ -7188,23 +7188,18 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
         },
     },
     /**
-     * Tuya cluster
-     *
-     * Common parameters:
-     *
+     * Common parameter:
      *  seq -  Sequence number of transmitted data, range 0-65535, revert to 0 after reaching 65535
      *
-     * Official Tuya documentation: https://developer.tuya.com/en/docs/iot-device-dev/tuya-zigbee-universal-docking-access-standard?id=K9ik6zvofpzql#subtitle-6-Private%20cluster
-     *
+     * Tuya cluster documentation: https://developer.tuya.com/en/docs/iot-device-dev/tuya-zigbee-universal-docking-access-standard?id=K9ik6zvofpzql#subtitle-6-Private%20cluster
+     * Device types documentation: https://developer.tuya.com/en/docs/connect-subdevices-to-gateways/Zigbee_2?id=Kcww7qppbe87m
      */
     manuSpecificTuya: {
         name: "manuSpecificTuya",
         ID: 0xef00, // 61184
         attributes: {},
         commands: {
-            /**
-             * Gateway-side data request
-             */
+            /** Read/write some datapoints. Device returns dataResponse(s) */
             dataRequest: {
                 name: "dataRequest",
                 ID: 0x00,
@@ -7213,21 +7208,9 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "dpValues", type: BuffaloZclDataType.LIST_TUYA_DATAPOINT_VALUES},
                 ],
             },
-            /**
-             * GW send, trigger MCU side to report all current information, no zcl payload.
-             * Note: Device side can make a policy, data better not to report centrally
-             */
+            /** Read all datapoints. Device returns dataResponse(s) */
             dataQuery: {name: "dataQuery", ID: 0x03, parameters: []},
-            /**
-             * Gw->Zigbee gateway query MCU version
-             */
-            mcuVersionRequest: {name: "mcuVersionRequest", ID: 0x10, parameters: [{name: "seq", type: DataType.UINT16, max: 0xffff}]},
-            /**
-             * FIXME: This command is not listed in Tuya zigbee cluster description,
-             *  but there is some command 0x04 (description is: Command Issuance)
-             *  in `Serial command list` section of the same document
-             *  So, need to investigate more information about it
-             */
+            /** Some devices need this instead of dataRequest? Device returns dataResponse(s) */
             sendData: {
                 name: "sendData",
                 ID: 0x04,
@@ -7236,9 +7219,9 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "dpValues", type: BuffaloZclDataType.LIST_TUYA_DATAPOINT_VALUES},
                 ],
             },
-            /**
-             * Gw->Zigbee gateway notifies MCU of upgrade
-             */
+            /** Read MCU version. Device returns mcuVersionResponse */
+            mcuVersionRequest: {name: "mcuVersionRequest", ID: 0x10, parameters: [{name: "seq", type: DataType.UINT16, max: 0xffff}]},
+            /** Notify update. Device returns mcuOtaBlockDataRequest */
             mcuOtaNotify: {
                 name: "mcuOtaNotify",
                 ID: 0x12,
@@ -7256,9 +7239,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "crc", type: DataType.UINT32, max: 0xffffffff},
                 ],
             },
-            /**
-             * Gw->Zigbee gateway returns the requested upgrade package for MCU
-             */
+            /** Reply to mcuOtaBlockDataRequest with chunks of update file. Ends with device returning mcuOtaResult */
             mcuOtaBlockDataResponse: {
                 name: "mcuOtaBlockDataResponse",
                 ID: 0x14,
@@ -7272,9 +7253,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "imageData", type: BuffaloZclDataType.LIST_UINT8},
                 ],
             },
-            /**
-             * Time synchronization (bidirectional)
-             */
+            /** Device asks current time, gateway replies with same command + payload */
             mcuSyncTime: {
                 name: "mcuSyncTime",
                 ID: 0x24,
@@ -7283,9 +7262,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "payload", type: BuffaloZclDataType.LIST_UINT8},
                 ],
             },
-            /**
-             * Gateway connection status (bidirectional)
-             */
+            /** Gateway connection status (bidirectional) */
             mcuGatewayConnectionStatus: {
                 name: "mcuGatewayConnectionStatus",
                 ID: 0x25,
@@ -7294,15 +7271,11 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "payload", type: DataType.UINT8, max: 0xff},
                 ],
             },
-            /**
-             * Weather forecast synchronization (check requestWeatherInformation)
-             */
+            /** Weather forecast sync. Reply to requestWeatherInformation */
             tuyaWeatherSync: {name: "tuyaWeatherSync", ID: 0x61, parameters: [{name: "payload", type: BuffaloZclDataType.BUFFER}]},
         },
         commandsResponse: {
-            /**
-             * Reply to MCU-side data request
-             */
+            /** Reply to dataQuery or sendData with some datapoints */
             dataResponse: {
                 name: "dataResponse",
                 ID: 0x01,
@@ -7311,9 +7284,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "dpValues", type: BuffaloZclDataType.LIST_TUYA_DATAPOINT_VALUES},
                 ],
             },
-            /**
-             * MCU-side data active upload (bidirectional)
-             */
+            /** Report some datapoints. Bidirectional? */
             dataReport: {
                 name: "dataReport",
                 ID: 0x02,
@@ -7350,9 +7321,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "dpValues", type: BuffaloZclDataType.LIST_TUYA_DATAPOINT_VALUES},
                 ],
             },
-            /**
-             * Zigbee->Gw MCU return version or actively report version
-             */
+            /** Report / reply to mcuVersionRequest */
             mcuVersionResponse: {
                 name: "mcuVersionResponse",
                 ID: 0x11,
@@ -7361,9 +7330,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "version", type: DataType.UINT8, max: 0xff},
                 ],
             },
-            /**
-             * Zigbee->Gw requests an upgrade package for the MCU
-             */
+            /** Request chunks of update file. Replying to mcuOtaNotify */
             mcuOtaBlockDataRequest: {
                 name: "mcuOtaBlockDataRequest",
                 ID: 0x13,
@@ -7376,9 +7343,7 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "size", type: DataType.UINT32, max: 0xffffffff},
                 ],
             },
-            /**
-             * Zigbee->Gw returns the upgrade result for the mcu
-             */
+            /** End update. Replying to last mcuOtaBlockDataResponse */
             mcuOtaResult: {
                 name: "mcuOtaResult",
                 ID: 0x15,
@@ -7390,25 +7355,15 @@ export const Clusters: Readonly<Record<ClusterName, Cluster>> = {
                     {name: "version", type: DataType.UINT8, max: 0xff},
                 ],
             },
-            /**
-             * Time synchronization (bidirectional)
-             */
+            /** Device asks current time, gateway replies with same command + payload */
             mcuSyncTime: {name: "mcuSyncTime", ID: 0x24, parameters: [{name: "payloadSize", type: DataType.UINT16, max: 0xffff}]},
-            /**
-             * Gateway connection status (bidirectional)
-             */
+            /** Gateway connection status (bidirectional) */
             mcuGatewayConnectionStatus: {
                 name: "mcuGatewayConnectionStatus",
                 ID: 0x25,
                 parameters: [{name: "payloadSize", type: DataType.UINT16, max: 0xffff}],
             },
-            /**
-             * Device can request weather forecast information and expects response respecting given parameters.
-             * This command ID seem to be device speciffic, because there is simmilar structure documented in Tuya Serial Communication Protocol,
-             * but with different ID (0x3a and 0x3b respectively). In this case, I'm not sure if the name should reflect the one from
-             * docs or be also speciffic (providing space for the implementation of the correct one in the future)?
-             *
-             */
+            /** Request weather forecast. Can be device-specific */
             tuyaWeatherRequest: {name: "tuyaWeatherRequest", ID: 0x60, parameters: [{name: "payload", type: BuffaloZclDataType.BUFFER}]},
         },
     },

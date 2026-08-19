@@ -886,6 +886,19 @@ export class Device extends Entity<ControllerEventMap> {
             return true;
         }
 
+        // Control4 in-wall dimmers/keypads do not answer genBasic reads at all, so the interview always
+        // fails before a modelID is known and the modelID-keyed quirks below can never match them. The
+        // node descriptor already identifies them unambiguously (manufacturerCode 0xabcd), and their
+        // proprietary text protocol handles identification beyond this.
+        // https://github.com/Koenkk/zigbee-herdsman/pull/1792
+        if (this._manufacturerID === 0xabcd) {
+            this.#genBasic.manufacturerName = "Control4";
+            this.#genBasic.modelId = "C4-Zigbee";
+            this.#genBasic.powerSource = Zcl.PowerSource["Mains (single phase)"];
+            logger.debug("Interview - quirks matched for Control4 device", NS);
+            return true;
+        }
+
         // Some devices, e.g. Xiaomi end devices have a different interview procedure, after pairing they
         // report it's modelID trough a readResponse. The readResponse is received by the controller and set
         // on the device.
@@ -1015,6 +1028,7 @@ export class Device extends Entity<ControllerEventMap> {
         logger.debug(`Interview - got active endpoints for device '${this.ieeeAddr}'`, NS);
 
         const coordinator = Device.byType("Coordinator")[0];
+        const genBasicAttrs = new Set(INTERVIEW_GENBASIC_ATTRIBUTES);
 
         for (const endpoint of this._endpoints) {
             await endpoint.updateSimpleDescriptor();
@@ -1023,8 +1037,13 @@ export class Device extends Entity<ControllerEventMap> {
             // Read attributes
             // nice to have but not required for successful pairing as most of the attributes are not mandatory in ZCL specification
             if (endpoint.supportsInputCluster("genBasic")) {
-                for (const key of INTERVIEW_GENBASIC_ATTRIBUTES) {
-                    if (ignoreCache || !this.#genBasic[key]) {
+                for (const key of genBasicAttrs) {
+                    if (
+                        ignoreCache ||
+                        this.#genBasic[key] === undefined ||
+                        this.#genBasic[key] === "" ||
+                        (key === "powerSource" && this.#genBasic.powerSource === Zcl.PowerSource.Unknown)
+                    ) {
                         try {
                             let result: TPartialClusterAttributes<"genBasic">;
 
@@ -1045,6 +1064,7 @@ export class Device extends Entity<ControllerEventMap> {
                             }
 
                             this.updateGenBasic(result);
+                            genBasicAttrs.delete(key);
                             logger.debug(`Interview - got '${key}' for device '${this.ieeeAddr}'`, NS);
                         } catch (error) {
                             logger.debug(`Interview - failed to read attribute '${key}' from endpoint '${endpoint.ID}' (${error})`, NS);
@@ -1194,7 +1214,7 @@ export class Device extends Entity<ControllerEventMap> {
         await Entity.adapter.sendZdo(this.ieeeAddr, ZSpec.BroadcastAddress.RX_ON_WHEN_IDLE, clusterId, zdoPayload, true);
     }
 
-    public async removeFromNetwork(): Promise<void> {
+    public async removeFromNetwork(clearCache = false): Promise<void> {
         if (this._type === "GreenPower") {
             const payload = {
                 options: 0x002550,
@@ -1228,10 +1248,10 @@ export class Device extends Entity<ControllerEventMap> {
             }
         }
 
-        this.removeFromDatabase();
+        this.removeFromDatabase(clearCache);
     }
 
-    public removeFromDatabase(): void {
+    public removeFromDatabase(clearCache = false): void {
         Device.loadFromDatabaseIfNecessary();
 
         for (const endpoint of this.endpoints) {
@@ -1242,28 +1262,32 @@ export class Device extends Entity<ControllerEventMap> {
             Entity.database.remove(this.ID);
         }
 
-        Device.deletedDevices.set(this.ieeeAddr, this);
-        Device.devices.delete(this.ieeeAddr);
+        if (clearCache) {
+            Device.devices.delete(this.ieeeAddr);
+        } else {
+            Device.deletedDevices.set(this.ieeeAddr, this);
+            Device.devices.delete(this.ieeeAddr);
 
-        // Clear all data in case device joins again
-        // Green power devices are never interviewed, keep existing interview state.
-        this._interviewState = this.type === "GreenPower" ? this._interviewState : InterviewState.Pending;
-        this.meta = {};
-        const newEndpoints: Endpoint[] = [];
-        for (const endpoint of this.endpoints) {
-            newEndpoints.push(
-                Endpoint.create(
-                    endpoint.ID,
-                    endpoint.profileID,
-                    endpoint.deviceID,
-                    endpoint.inputClusters,
-                    endpoint.outputClusters,
-                    this.networkAddress,
-                    this.ieeeAddr,
-                ),
-            );
+            // Clear all data in case device joins again
+            // Green power devices are never interviewed, keep existing interview state.
+            this._interviewState = this.type === "GreenPower" ? this._interviewState : InterviewState.Pending;
+            this.meta = {};
+            const newEndpoints: Endpoint[] = [];
+            for (const endpoint of this.endpoints) {
+                newEndpoints.push(
+                    Endpoint.create(
+                        endpoint.ID,
+                        endpoint.profileID,
+                        endpoint.deviceID,
+                        endpoint.inputClusters,
+                        endpoint.outputClusters,
+                        this.networkAddress,
+                        this.ieeeAddr,
+                    ),
+                );
+            }
+            this._endpoints = newEndpoints;
         }
-        this._endpoints = newEndpoints;
     }
 
     public async lqi(): Promise<LQITableEntry[]> {
@@ -1736,8 +1760,6 @@ export class Device extends Entity<ControllerEventMap> {
 
         if (endResult.payload.status === Zcl.Status.SUCCESS) {
             try {
-                const currentTime = timeService.timestampToZigbeeUtcTime(Date.now());
-
                 await endpoint.commandResponse(
                     "genOta",
                     "upgradeEndResponse",
@@ -1745,8 +1767,9 @@ export class Device extends Entity<ControllerEventMap> {
                         manufacturerCode: image.header.manufacturerCode,
                         imageType: image.header.imageType,
                         fileVersion: image.header.fileVersion,
-                        currentTime,
-                        upgradeTime: currentTime + 1, // TODO: could this tiny offset be a problem for some stacks?
+                        // using 0 tells the device to use `upgradeTime` as offset (11.13.8.2.8), preventing issues with UTC Time support
+                        currentTime: 0,
+                        upgradeTime: 1,
                     },
                     undefined,
                     endResult.header.transactionSequenceNumber,

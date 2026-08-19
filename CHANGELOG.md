@@ -1,5 +1,62 @@
 # Changelog
 
+## [10.9.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.8.1...v10.9.0) (2026-08-12)
+
+
+### Features
+
+* Accept the Control4 custom profile ID on the EZSP adapters ([#1837](https://github.com/Koenkk/zigbee-herdsman/issues/1837)) ([9a992e6](https://github.com/Koenkk/zigbee-herdsman/commit/9a992e6b5bafbf8389e39bf83f9fe7b63ce1f228))
+
+
+### Bug Fixes
+
+* Add fingerprint for different zbt-2 batch ([#1842](https://github.com/Koenkk/zigbee-herdsman/issues/1842)) ([0c33dd9](https://github.com/Koenkk/zigbee-herdsman/commit/0c33dd9c4c4369c52414e3e751cac5a46d343a22))
+* Interview Control4 devices via a manufacturerCode-keyed quirk ([#1840](https://github.com/Koenkk/zigbee-herdsman/issues/1840)) ([f6885e2](https://github.com/Koenkk/zigbee-herdsman/commit/f6885e2efccf7d665929737850be717bdb05325c))
+* Prevent crash on backup failure ([#1838](https://github.com/Koenkk/zigbee-herdsman/issues/1838)) ([646cb9a](https://github.com/Koenkk/zigbee-herdsman/commit/646cb9a24ccc77cb3bd17cd22e1365ad760b4f0a))
+
+## [10.8.1](https://github.com/Koenkk/zigbee-herdsman/compare/v10.8.0...v10.8.1) (2026-08-03)
+
+
+### Bug Fixes
+
+* OTA send relative upgrade time in upgradeEndResponse ([#1835](https://github.com/Koenkk/zigbee-herdsman/issues/1835)) ([898da16](https://github.com/Koenkk/zigbee-herdsman/commit/898da162914ff59c69491acd356ec0ab3b2cdb00))
+
+## [10.8.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.7.0...v10.8.0) (2026-07-30)
+
+
+### Features
+
+* Handle `special` in ZCL spec ([#1825](https://github.com/Koenkk/zigbee-herdsman/issues/1825)) ([8cad765](https://github.com/Koenkk/zigbee-herdsman/commit/8cad765426016ff935c7cd9f8045882289b73748))
+
+
+### Bug Fixes
+
+* Add support for some recent `EzspValueId` ([#1830](https://github.com/Koenkk/zigbee-herdsman/issues/1830)) ([09d8101](https://github.com/Koenkk/zigbee-herdsman/commit/09d81012caed1c80fd3e570a67a9a8aa17b0e475))
+* **ignore:** bump the minor-patch group with 2 updates ([#1832](https://github.com/Koenkk/zigbee-herdsman/issues/1832)) ([5d4c8bf](https://github.com/Koenkk/zigbee-herdsman/commit/5d4c8bfb1d179256f754e0623d6b21bb65fb1206))
+* **ignore:** Clean-up manuSpecificTuya ([#1824](https://github.com/Koenkk/zigbee-herdsman/issues/1824)) ([55f3648](https://github.com/Koenkk/zigbee-herdsman/commit/55f36488edacdaf2fd68c8feb5d54f9b70c883ef))
+
+## [10.7.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.6.3...v10.7.0) (2026-07-24)
+
+
+### Features
+
+* Allow to remove device from cache on request ([#1819](https://github.com/Koenkk/zigbee-herdsman/issues/1819)) ([1f42869](https://github.com/Koenkk/zigbee-herdsman/commit/1f428690d1dfbe9ca6166fcf404ea6026310a36d))
+
+
+### Bug Fixes
+
+* **ignore:** bump @biomejs/biome from 2.5.3 to 2.5.5 in the minor-patch group across 1 directory ([#1814](https://github.com/Koenkk/zigbee-herdsman/issues/1814)) ([e86ce9f](https://github.com/Koenkk/zigbee-herdsman/commit/e86ce9ffabccddc1ad7601b5c82f7a741227185c))
+
+## [10.6.3](https://github.com/Koenkk/zigbee-herdsman/compare/v10.6.2...v10.6.3) (2026-07-21)
+
+
+### Bug Fixes
+
+* **deps:** bump actions/setup-node from 6 to 7 ([#1813](https://github.com/Koenkk/zigbee-herdsman/issues/1813)) ([c380c2f](https://github.com/Koenkk/zigbee-herdsman/commit/c380c2fb67f495c287c93215f5a2d7e857d0dca8))
+* **ignore:** bump the minor-patch group with 3 updates ([#1810](https://github.com/Koenkk/zigbee-herdsman/issues/1810)) ([562df3d](https://github.com/Koenkk/zigbee-herdsman/commit/562df3de1750f8bab2314088159dc778f3ab32d3))
+* **ignore:** bump typescript from 6.0.3 to 7.0.2 ([#1811](https://github.com/Koenkk/zigbee-herdsman/issues/1811)) ([595f653](https://github.com/Koenkk/zigbee-herdsman/commit/595f65373068842899aa56c02522fe5c732b0b7a))
+* Optimize attribute reads during interview logic ([#1816](https://github.com/Koenkk/zigbee-herdsman/issues/1816)) ([528f1e4](https://github.com/Koenkk/zigbee-herdsman/commit/528f1e4605d812c36cadc62831a734def4630b74))
+
 ## [10.6.2](https://github.com/Koenkk/zigbee-herdsman/compare/v10.6.1...v10.6.2) (2026-07-06)
 
 
