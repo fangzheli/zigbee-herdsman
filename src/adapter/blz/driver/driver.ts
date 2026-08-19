@@ -79,7 +79,6 @@ export class Driver extends EventEmitter {
   private nwkOpt: TsType.NetworkOptions;
   // @ts-expect-error XXX: init in startup
   public networkParams: BlzNetworkParameters;
-  //// @ts-expect-error XXX: init in startup
   private eui64ToNodeId = new Map<string, number>();
   // @ts-expect-error XXX: init in startup
   public ieee: BlzEUI64;
