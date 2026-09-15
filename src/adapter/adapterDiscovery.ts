@@ -67,12 +67,21 @@ const USB_FINGERPRINTS: Record<DiscoverableUsbAdapter, UsbAdapterFingerprint[]> 
         //     pathRegex: '.*.*',
         // },
         {
-            // Home Assistant Connect ZBT-1
+            // Home Assistant SkyConnect (pre ZBT-1 rename)
             vendorId: "10c4",
             productId: "ea60",
             manufacturer: "Nabu Casa",
             // /dev/serial/by-id/usb-Nabu_Casa_SkyConnect_v1.0_3abe54797c91ed118fc3cad13b20a111-if00-port0
             pathRegex: ".*Nabu_Casa_SkyConnect.*",
+            options: {rtscts: true},
+        },
+        {
+            // Home Assistant Connect ZBT-1
+            vendorId: "10c4",
+            productId: "ea60",
+            manufacturer: "Nabu Casa",
+            // ..Nabu_Casa_Home_Assistant_Connect_ZBT-1_..
+            pathRegex: ".*Nabu_Casa.*_ZBT-1.*",
             options: {rtscts: true},
         },
         {
@@ -579,7 +588,9 @@ export async function findMdnsAdapter(path: string): Promise<TsType.SerialPortOp
         throw new Error("No mdns device specified. You must specify the coordinator mdns service type after mdns://, e.g. mdns://my-adapter");
     }
 
-    const bj = new Bonjour();
+    const bj = new Bonjour({}, (error: unknown) => {
+        throw new Error(`Failed to start mdns discovery: ${error}`);
+    });
 
     logger.info(`Starting mdns discovery for coordinator: ${mdnsDevice}`, NS);
 
@@ -730,14 +741,16 @@ export async function findAllDevices(): Promise<AllDevices> {
 
             devices.push(device);
         }
-        /* v8 ignore start */
     } catch (error) {
         logger.debug(`Failed to retrieve serial list ${(error as Error).message}.`, NS);
     }
-    /* v8 ignore stop */
+
+    let bonjour: Bonjour | undefined;
 
     try {
-        const bonjour = new Bonjour();
+        bonjour = new Bonjour({}, (error: unknown) => {
+            throw new Error(`${error}`);
+        });
         const browser = bonjour.find(null, (service) => {
             if (service.txt?.radio_type) {
                 const path = `tcp://${service.addresses?.[0] ?? service.host}:${service.port}`;
@@ -753,12 +766,11 @@ export async function findAllDevices(): Promise<AllDevices> {
         browser.start();
         await wait(MDNS_SCAN_TIME);
         browser.stop();
-        bonjour.destroy();
-        /* v8 ignore start */
     } catch (error) {
         logger.debug(`Failed to retrieve mDNS list ${(error as Error).message}.`, NS);
+    } finally {
+        bonjour?.destroy();
     }
-    /* v8 ignore stop */
 
     return devices;
 }

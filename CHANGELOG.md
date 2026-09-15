@@ -1,5 +1,33 @@
 # Changelog
 
+## [10.9.3](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.2...v10.9.3) (2026-09-04)
+
+
+### Bug Fixes
+
+* Better handle discovery errors ([#1858](https://github.com/Koenkk/zigbee-herdsman/issues/1858)) ([72eb422](https://github.com/Koenkk/zigbee-herdsman/commit/72eb42212e3e9c64fc7933eb1940dcbe4ee81d3f))
+* Honor group command response status ([#1855](https://github.com/Koenkk/zigbee-herdsman/issues/1855)) ([61d0c10](https://github.com/Koenkk/zigbee-herdsman/commit/61d0c1089656a02e2eeebcbac8b8717ff34ddce5))
+* Prevent creating groups with fractional IDs ([#1863](https://github.com/Koenkk/zigbee-herdsman/issues/1863)) ([cc7544f](https://github.com/Koenkk/zigbee-herdsman/commit/cc7544f92fd818d7833c1f8b7b102f6bfb97b2bc))
+
+## [10.9.2](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.1...v10.9.2) (2026-09-03)
+
+
+### Bug Fixes
+
+* Add fingerprint for zbt-1 ([#1860](https://github.com/Koenkk/zigbee-herdsman/issues/1860)) ([e353c40](https://github.com/Koenkk/zigbee-herdsman/commit/e353c408204fe69dd569952ce081662bc90815f1))
+* **ignore:** bump @types/node from 26.2.0 to 26.4.0 in the minor-patch group ([#1861](https://github.com/Koenkk/zigbee-herdsman/issues/1861)) ([753b334](https://github.com/Koenkk/zigbee-herdsman/commit/753b3342cf7924dc194c2c51da342625b00ce1aa))
+
+## [10.9.1](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.0...v10.9.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* Deconz: improve checkWaitForDataRequestTimeouts() ([#1851](https://github.com/Koenkk/zigbee-herdsman/issues/1851)) ([0f1e502](https://github.com/Koenkk/zigbee-herdsman/commit/0f1e50243a2bb6b9bbc5713fa425b5a8d60db729))
+* Fix not every group member removed when deleting a group ([#1854](https://github.com/Koenkk/zigbee-herdsman/issues/1854)) ([a70284a](https://github.com/Koenkk/zigbee-herdsman/commit/a70284ac995a392dce31e90ebc4acbfc86fa952c))
+* Ignore iAS enroll failure for AduroSmart Eria Smart Siren ([#1848](https://github.com/Koenkk/zigbee-herdsman/issues/1848)) ([b3e89bd](https://github.com/Koenkk/zigbee-herdsman/commit/b3e89bd002f6395aa258a7a0350d41753484ed29))
+* **ignore:** bump @types/node from 26.1.2 to 26.2.0 in the minor-patch group ([#1844](https://github.com/Koenkk/zigbee-herdsman/issues/1844)) ([3c7782f](https://github.com/Koenkk/zigbee-herdsman/commit/3c7782fc76abe4fa1ff9ebacd951f82c2cb0ad01))
+* Patch serialport bindings-cpp for Node v26.3+ ([#1856](https://github.com/Koenkk/zigbee-herdsman/issues/1856)) ([04f0529](https://github.com/Koenkk/zigbee-herdsman/commit/04f0529ad9ac57131d32f148625aa0728bd2dfa6))
+
 ## [10.9.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.8.1...v10.9.0) (2026-08-12)
 
 

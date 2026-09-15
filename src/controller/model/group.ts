@@ -144,7 +144,7 @@ export class Group extends ZigbeeEntity {
     }
 
     public static create(groupID: number): Group {
-        assert(typeof groupID === "number", "GroupID must be a number");
+        assert(Number.isInteger(groupID), "GroupID must be a whole number");
         // Valid range from spec:
         assert(groupID >= 0x0001 && groupID <= 0xfff7, "GroupID must be >= 1 and <= 65527");
 
@@ -163,7 +163,7 @@ export class Group extends ZigbeeEntity {
     }
 
     public async removeFromNetwork(): Promise<void> {
-        for (const endpoint of this._members) {
+        for (const endpoint of [...this._members]) {
             await endpoint.removeFromGroup(this);
         }
 
