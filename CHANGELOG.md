@@ -1,5 +1,36 @@
 # Changelog
 
+## [10.10.0](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.6...v10.10.0) (2026-09-30)
+
+
+### Features
+
+* Ember: support manufacturer code stack config ([#1893](https://github.com/Koenkk/zigbee-herdsman/issues/1893)) ([105edf9](https://github.com/Koenkk/zigbee-herdsman/commit/105edf9301b3ee9a72e95a50ddf698453d3eb520))
+
+## [10.9.6](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.5...v10.9.6) (2026-09-29)
+
+
+### Bug Fixes
+
+* Z-Stack: fix permitting join through only coordinator allowing join via routers ([#1888](https://github.com/Koenkk/zigbee-herdsman/issues/1888)) ([a8ecb2f](https://github.com/Koenkk/zigbee-herdsman/commit/a8ecb2f60d737b518131318ffcf3275b7e9b4546))
+* ZBoss: refresh network info after formation ([#1891](https://github.com/Koenkk/zigbee-herdsman/issues/1891)) ([5e6f402](https://github.com/Koenkk/zigbee-herdsman/commit/5e6f402c630f0ce7ce3bc73e494aa3c67e085a98))
+
+## [10.9.5](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.4...v10.9.5) (2026-09-19)
+
+
+### Bug Fixes
+
+* Ember: prevent possible crash on bad ZDO frame ([#1882](https://github.com/Koenkk/zigbee-herdsman/issues/1882)) ([e7cda46](https://github.com/Koenkk/zigbee-herdsman/commit/e7cda4681b3e0add7780928360b2e8a1aac4d8ad))
+
+## [10.9.4](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.3...v10.9.4) (2026-09-14)
+
+
+### Bug Fixes
+
+* Fix missing response ID for the foundation discover command ([#1866](https://github.com/Koenkk/zigbee-herdsman/issues/1866)) ([59d730f](https://github.com/Koenkk/zigbee-herdsman/commit/59d730f9660202125b1be6f18d1e7fa4634d3824))
+* **ignore:** bump @types/node from 26.4.0 to 26.5.0 in the minor-patch group ([#1870](https://github.com/Koenkk/zigbee-herdsman/issues/1870)) ([37d5776](https://github.com/Koenkk/zigbee-herdsman/commit/37d5776e6994f28c8034c17e21a3ab1d0fed8d74))
+* Preserve 0xFFFF manufacturerCode in genOta requests ([#1874](https://github.com/Koenkk/zigbee-herdsman/issues/1874)) ([b4863e4](https://github.com/Koenkk/zigbee-herdsman/commit/b4863e4814a7c783f670a6d0cb8a2bf1840a36b3))
+
 ## [10.9.3](https://github.com/Koenkk/zigbee-herdsman/compare/v10.9.2...v10.9.3) (2026-09-04)
 
 

@@ -513,6 +513,7 @@ describe("Ember Adapter Layer", () => {
             END_DEVICE_POLL_TIMEOUT: 12,
             TRANSIENT_KEY_TIMEOUT_S: 500,
             CCA_MODE: "SIGNAL_AND_RSSI",
+            DEFAULT_MANUFACTURER_CODE: 0x1234,
         };
 
         writeFileSync(STACK_CONFIG_PATH, JSON.stringify(config, undefined, 2));
@@ -538,6 +539,7 @@ describe("Ember Adapter Layer", () => {
             END_DEVICE_POLL_TIMEOUT: 15,
             TRANSIENT_KEY_TIMEOUT_S: 65536,
             CCA_MODE: "abcd",
+            DEFAULT_MANUFACTURER_CODE: 65536,
         };
 
         writeFileSync(STACK_CONFIG_PATH, JSON.stringify(config, undefined, 2));
@@ -1466,6 +1468,31 @@ describe("Ember Adapter Layer", () => {
             expect(spyResolveZDO).toHaveBeenCalledTimes(1);
             expect(spyResolveZDO).toHaveBeenCalledWith("0x332211eeddccbbaa", apsFrame, zdoResponse);
             expect(spyEmit).toHaveBeenCalledWith("zdoResponse", Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE, zdoResponse);
+        });
+
+        it("Handles bad ZDO response", async () => {
+            const spyResolveZDO = vi.spyOn(
+                // @ts-expect-error private
+                adapter.oneWaitress,
+                "resolveZDO",
+            );
+            const spyEmit = vi.spyOn(adapter, "emit");
+            const sender = 1234;
+            const apsFrame: EmberApsFrame = {
+                profileId: Zdo.ZDO_PROFILE_ID,
+                clusterId: Zdo.ClusterId.NETWORK_ADDRESS_RESPONSE,
+                sourceEndpoint: Zdo.ZDO_ENDPOINT,
+                destinationEndpoint: Zdo.ZDO_ENDPOINT,
+                options: 0,
+                groupId: 0,
+                sequence: 0,
+            };
+
+            mockEzspEmitter.emit("zdoResponse", apsFrame, sender, Buffer.from([]));
+            await flushPromises();
+
+            expect(spyResolveZDO).toHaveBeenCalledTimes(0);
+            expect(spyEmit).toHaveBeenCalledTimes(0);
         });
 
         it("Emits device announce event on ZDO END_DEVICE_ANNOUNCE", async () => {
